@@ -41,7 +41,7 @@
       <div class="avatar">{{ current_user.nombre[:1] }}</div>
       <div>
         <div style="font-weight:600">{{ current_user.nombre }}</div>
-        <div class="muted small">{{ current_user.rol }} · <a href="{{ url_for('auth.logout') }}">Salir</a></div>
+        <div class="muted small">{{ current_user.rol }}{% if config.LOGIN_OBLIGATORIO %} · <a href="{{ url_for('auth.logout') }}">Salir</a>{% endif %}</div>
       </div>
     </div>
   </aside>

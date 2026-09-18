@@ -8,7 +8,7 @@ Sistema de gestión del taller mecánico Ferro. Reemplaza la app de AppSheet + G
 
 | Módulo | Estado |
 |---|---|
-| Login y usuarios (Admin / Mecánico) | ✅ |
+| Login y usuarios (Admin / Mecánico) | ✅ apagado por ahora: se entra directo. `LOGIN_OBLIGATORIO=1` en `.env` lo activa |
 | Tablero (OT abiertas, facturado y ganancia del mes, turnos, stock bajo) | ✅ |
 | Clientes y vehículos (alta, edición, búsqueda en vivo, historial) | ✅ |
 | Órdenes de trabajo | 🟡 listado y detalle (falta alta/edición, consumos, horas, fotos, reporte PDF) |
@@ -55,7 +55,6 @@ wsgi.py              punto de entrada para PythonAnywhere
    python3.10 -m venv ~/.venvs/ferro
    ~/.venvs/ferro/bin/pip install -r requirements.txt
    cp .env.example .env && nano .env      # SECRET_KEY larga y aleatoria
-   ~/.venvs/ferro/bin/flask --app wsgi crear-usuario
    ```
 3. Pestaña **Web** → *Add a new web app* → *Manual configuration* → Python 3.10.
    - **Virtualenv:** `/home/<usuario>/.venvs/ferro`

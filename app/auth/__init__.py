@@ -1,13 +1,33 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
-from flask_login import login_required, login_user, logout_user
+import secrets
 
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from flask_login import current_user, login_required, login_user, logout_user
+
+from ..extensions import db
 from ..models import Usuario
 
 bp = Blueprint("auth", __name__)
 
+EMAIL_TALLER = "taller@ferro.local"
+
+
+def ingreso_automatico():
+    """Con LOGIN_OBLIGATORIO apagado, todos entran como el usuario genérico 'Taller'."""
+    if current_user.is_authenticated or request.endpoint == "static":
+        return
+    usuario = Usuario.query.filter_by(email=EMAIL_TALLER).first()
+    if usuario is None:
+        usuario = Usuario(email=EMAIL_TALLER, nombre="Taller Ferro", rol="Admin")
+        usuario.set_password(secrets.token_hex(32))  # nadie la conoce: solo sirve para el ingreso automático
+        db.session.add(usuario)
+        db.session.commit()
+    login_user(usuario)
+
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
+    if not current_app.config["LOGIN_OBLIGATORIO"]:
+        return redirect(url_for("dashboard.index"))
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         usuario = Usuario.query.filter_by(email=email, activo=True).first()

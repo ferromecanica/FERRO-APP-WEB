@@ -38,6 +38,11 @@ def create_app(config_class=Config):
     register_cli(app)
     register_filters(app)
 
+    if not app.config["LOGIN_OBLIGATORIO"]:
+        from .auth import ingreso_automatico
+
+        app.before_request(ingreso_automatico)
+
     with app.app_context():
         db.create_all()
 
