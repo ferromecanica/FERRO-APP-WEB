@@ -9,3 +9,4 @@ instance/*
 *.db
 .DS_Store
 app/static/uploads/
+.deploy.env
