@@ -86,7 +86,8 @@ def lista():
         like = f"%{q}%"
         consulta = consulta.outerjoin(Vehiculo).filter(
             or_(Cliente.nombre.ilike(like), Cliente.telefono.ilike(like), Vehiculo.patente.ilike(like),
-                Cliente.cuit.ilike(like))
+                Cliente.cuit.ilike(like), Cliente.notas.ilike(like), Vehiculo.marca.ilike(like),
+                Vehiculo.modelo.ilike(like))
         ).distinct()
     clientes = consulta.order_by(Cliente.nombre).all()
     plantilla = "clientes/_tabla.html" if request.headers.get("HX-Request") else "clientes/lista.html"
