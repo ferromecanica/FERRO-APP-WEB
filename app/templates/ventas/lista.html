@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">Gestión</div><h1>Ventas</h1></div></div>
+
+{% if por_mes %}
+<div class="card" style="margin-bottom:16px">
+  <div class="card-head"><h2>Resultado mensual</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Mes</th><th class="num hide-sm">Ventas</th><th class="num">Facturado</th><th class="num hide-sm">Costo</th><th class="num">Ganancia neta</th></tr></thead>
+    <tbody>
+    {% for clave, m in por_mes.items() %}
+      <tr><td><strong>{{ m.fecha | fecha('%m/%Y') }}</strong></td><td class="num hide-sm">{{ m.cant }}</td>
+        <td class="num">{{ m.total | pesos }}</td><td class="num hide-sm">{{ m.costo | pesos }}</td>
+        <td class="num"><strong>{{ (m.total - m.costo) | pesos }}</strong></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head"><h2>Detalle de ventas</h2></div>
+  {% if ventas %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Fecha</th><th>Cliente</th><th class="hide-sm">OT</th><th class="hide-sm">Pago</th><th class="num">Total</th><th class="num hide-sm">Ganancia</th></tr></thead>
+    <tbody>
+    {% for v in ventas %}
+      <tr><td>{{ v.fecha | fecha }}</td><td>{{ v.cliente.nombre if v.cliente else 'Mostrador' }}</td>
+        <td class="hide-sm">{% if v.ot_id %}<a href="{{ url_for('ot.detalle', id=v.ot_id) }}">#{{ v.ot_id }}</a>{% endif %}</td>
+        <td class="hide-sm">{{ v.metodo_pago or '—' }}</td><td class="num">{{ v.total | pesos }}</td><td class="num hide-sm">{{ v.ganancia | pesos }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-cash-register', 'Sin ventas registradas.') }}{% endif %}
+</div>
+{% endblock %}

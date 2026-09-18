@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}Movimientos de stock{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">Gestión</div><h1>Stock</h1></div></div>
+{% include "stock/_tabs.html" %}
+<div class="card">
+  {% if movimientos %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="hide-sm">OT</th><th class="num">Cantidad</th></tr></thead>
+    <tbody>
+    {% for m in movimientos %}
+      <tr><td>{{ m.fecha | fecha('%d/%m/%Y %H:%M') }}</td><td><span class="badge">{{ m.tipo }}</span></td><td>{{ m.detalle }}</td>
+        <td class="hide-sm">{% if m.ot_id %}<a href="{{ url_for('ot.detalle', id=m.ot_id) }}">#{{ m.ot_id }}</a>{% endif %}</td>
+        <td class="num" style="color:{{ 'var(--ok)' if m.cantidad > 0 else 'var(--danger)' }}">{{ '+' if m.cantidad > 0 }}{{ m.cantidad | numero(1) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-right-left', 'Sin movimientos registrados.') }}{% endif %}
+</div>
+{% endblock %}

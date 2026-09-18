@@ -1,0 +1,5 @@
+<div class="filters" style="margin-bottom:14px">
+  <a class="chip {{ 'active' if request.endpoint == 'stock.lista' }}" href="{{ url_for('stock.lista') }}">Repuestos</a>
+  <a class="chip {{ 'active' if request.endpoint == 'stock.ingresos' }}" href="{{ url_for('stock.ingresos') }}">Ingresos de mercadería</a>
+  <a class="chip {{ 'active' if request.endpoint == 'stock.movimientos' }}" href="{{ url_for('stock.movimientos') }}">Movimientos</a>
+</div>

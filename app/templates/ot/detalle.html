@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado, vacio %}
+{% block title %}OT #{{ ot.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Orden de trabajo · {{ ot.fecha_ingreso | fecha }}</div>
+    <h1>#{{ ot.id }} <span class="plate" style="font-size:1rem;vertical-align:middle">{{ ot.vehiculo.patente }}</span></h1></div>
+  <div class="actions">{{ estado(ot.estado) }}</div>
+</div>
+
+<div class="grid grid-3-1">
+  <div class="stack">
+    <div class="card card-body">
+      <h2 style="margin-bottom:8px">Trabajo solicitado</h2>
+      <p style="margin:0;white-space:pre-line">{{ ot.detalle or '—' }}</p>
+      {% if ot.tareas %}
+      <h2 style="margin:18px 0 8px">Tareas adicionales</h2>
+      <ul style="margin:0;padding-left:18px">{% for t in ot.tareas %}<li>{{ t.descripcion }}</li>{% endfor %}</ul>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Repuestos e insumos</h2><span class="muted small">{{ ot.consumos | length }} ítems</span></div>
+      {% if ot.consumos %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Artículo</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th></tr></thead>
+        <tbody>
+        {% for c in ot.consumos %}
+          <tr><td>{{ c.descripcion }}</td><td class="num">{{ c.cantidad | numero(1) }}</td>
+            <td class="num">{{ c.precio_unitario | pesos }}</td><td class="num">{{ c.subtotal | pesos }}</td></tr>
+        {% endfor %}
+        <tr><td colspan="3" class="num"><strong>Total repuestos</strong></td><td class="num"><strong>{{ ot.total_repuestos | pesos }}</strong></td></tr>
+        </tbody>
+      </table></div>
+      {% else %}{{ vacio('fa-box-open', 'Sin repuestos consumidos.') }}{% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Horas de mano de obra</h2><span class="muted small">{{ ot.horas_insumidas | numero(1) }} h</span></div>
+      {% if ot.horas %}
+      <ul class="list">{% for h in ot.horas %}
+        <li><div><strong>{{ h.mecanico }}</strong> <span class="muted small">{{ h.fecha | fecha }}</span><div class="muted small">{{ h.detalle or '' }}</div></div>
+        <span class="badge">{{ h.horas | numero(1) }} h</span></li>
+      {% endfor %}</ul>
+      {% else %}{{ vacio('fa-clock', 'Sin horas registradas.') }}{% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card card-body">
+      <dl class="props">
+        <dt>Cliente</dt><dd><a href="{{ url_for('clientes.detalle', id=ot.cliente.id) }}">{{ ot.cliente.nombre }}</a></dd>
+        <dt>Vehículo</dt><dd>{{ ot.vehiculo.descripcion or '—' }}</dd>
+        <dt>Km entrada</dt><dd>{{ ot.km_entrada | numero }}</dd>
+        <dt>Presupuesto</dt><dd>{{ ot.presupuesto_cliente | pesos }}</dd>
+        <dt>Cobrado</dt><dd>{{ ot.total_cobrado | pesos }}</dd>
+        <dt>Finalizada</dt><dd>{{ ot.fecha_fin | fecha }}</dd>
+      </dl>
+    </div>
+    <div class="card card-body">
+      <h2 style="margin-bottom:10px">Checklist de service</h2>
+      {% set items = [('Aceite motor', ot.aceite_motor), ('Aceite caja', ot.aceite_caja), ('Aceite diferencial', ot.aceite_diferencial),
+                      ('Filtro aceite', ot.filtro_aceite), ('Filtro aire', ot.filtro_aire), ('Filtro habitáculo', ot.filtro_habitaculo),
+                      ('Filtro combustible', ot.filtro_combustible), ('Scanner', ot.scaneo)] %}
+      {% for nombre, hecho in items %}
+        <div style="padding:4px 0"><i class="fa-{{ 'solid fa-circle-check' if hecho else 'regular fa-circle' }}" style="color:{{ 'var(--ok)' if hecho else '#cbd0d8' }}"></i> {{ nombre }}</div>
+      {% endfor %}
+      {% if ot.km_proximo_service %}<p class="muted small" style="margin-bottom:0">Próximo service: {{ ot.km_proximo_service | numero }} km</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

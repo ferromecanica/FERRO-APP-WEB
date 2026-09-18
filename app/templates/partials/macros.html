@@ -1,0 +1,12 @@
+{% macro estado(valor) -%}
+  {%- set clases = {
+    'Terminado': 'ok', 'Entregado': 'ok', 'Confirmado': 'ok', 'Aprobado': 'ok', 'Finalizado': 'ok',
+    'En reparación': 'accent', 'En diagnóstico': 'info', 'Ingresado': 'info', 'Enviado': 'info',
+    'Esperando repuestos': 'warn', 'Pendiente': 'warn', 'Borrador': '',
+    'Cancelado': 'danger', 'Rechazado': 'danger'} -%}
+  <span class="badge {{ 'badge-' ~ clases[valor] if clases.get(valor) }}">{{ valor or '—' }}</span>
+{%- endmacro %}
+
+{% macro vacio(icono, texto) -%}
+  <div class="empty"><i class="fa-solid {{ icono }}"></i>{{ texto }}</div>
+{%- endmacro %}

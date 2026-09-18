@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}Stock{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Gestión</div><h1>Stock</h1></div>
+  <form class="search" method="get"><i class="fa-solid fa-magnifying-glass"></i>
+    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código de barras…"></form>
+</div>
+{% include "stock/_tabs.html" %}
+<div class="card">
+  {% if repuestos %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Repuesto</th><th class="hide-sm">Categoría</th><th class="num">Stock</th><th class="num hide-sm">Costo</th><th class="num">Venta</th></tr></thead>
+    <tbody>
+    {% for r in repuestos %}
+      <tr>
+        <td><strong>{{ r.nombre }}</strong><div class="muted small">#{{ r.id }}{% if r.marca %} · {{ r.marca }}{% endif %}{% if r.nro_parte %} · {{ r.nro_parte }}{% endif %}</div></td>
+        <td class="hide-sm">{{ r.categoria.nombre if r.categoria else '—' }}</td>
+        <td class="num">{% if not r.controla_stock %}<span class="muted">n/a</span>
+          {% else %}<span class="badge {{ 'badge-danger' if r.bajo_stock else 'badge-ok' }}">{{ r.stock_actual | numero(1) }}</span>{% endif %}</td>
+        <td class="num hide-sm">{{ r.precio_costo | pesos }}</td>
+        <td class="num">{{ r.precio_venta | pesos }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-boxes-stacked', 'No hay repuestos' ~ (' que coincidan' if q else ' cargados') ~ '.') }}{% endif %}
+</div>
+{% endblock %}

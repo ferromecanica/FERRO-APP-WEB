@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Ferro">
+  <circle cx="50" cy="50" r="49" fill="#000"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="M4.45 56.4 A46 46 0 0 1 64.2 6.3" stroke="#f7890f" stroke-width="3.6"/>
+    <path d="M95.2 58.8 A46 46 0 0 1 32 92.3" stroke="#f7890f" stroke-width="3.6"/>
+    <path d="M10.6 43.1 A40 40 0 1 1 87.6 63.7" stroke="#fff" stroke-width="2.4"/>
+    <path d="M82.8 72.9 A40 40 0 0 1 10.6 56.9" stroke="#fff" stroke-width="2.4"/>
+  </g>
+  <path d="M26 19.2 H78.1 V29.8 H34.4 V78.3 H24 V21.2 A2 2 0 0 1 26 19.2 Z" fill="#f7890f"/>
+  <rect x="38.8" y="42.5" width="34.4" height="10.2" fill="#f7890f"/>
+</svg>

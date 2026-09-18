@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado, vacio %}
+{% block title %}Presupuestos{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Taller</div><h1>Presupuestos</h1></div>
+  <div class="actions"><button class="btn btn-primary" disabled title="Próximamente"><i class="fa-solid fa-plus"></i> Nuevo presupuesto</button></div>
+</div>
+<div class="card">
+  {% if presupuestos %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th class="hide-sm">Vehículo</th><th>Estado</th><th class="num">Total</th></tr></thead>
+    <tbody>
+    {% for p in presupuestos %}
+      <tr><td><strong>{{ p.id }}</strong></td><td>{{ p.fecha | fecha }}</td><td>{{ p.cliente.nombre }}</td>
+        <td class="hide-sm">{% if p.vehiculo %}<span class="plate">{{ p.vehiculo.patente }}</span>{% endif %}</td>
+        <td>{{ estado(p.estado) }}</td><td class="num">{{ p.total | pesos }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-file-invoice', 'Todavía no hay presupuestos.') }}{% endif %}
+</div>
+{% endblock %}

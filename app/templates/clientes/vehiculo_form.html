@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Vehículo{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">{{ vehiculo.cliente.nombre }}</div><h1>{{ vehiculo.patente if vehiculo.id else 'Nuevo vehículo' }}</h1></div>
+</div>
+<form class="card card-body" method="post" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-grid">
+    <div><label>Patente *</label><input name="patente" value="{{ vehiculo.patente or '' }}" style="text-transform:uppercase" required autofocus></div>
+    <div><label>Año</label><input name="anio" inputmode="numeric" value="{{ vehiculo.anio or '' }}"></div>
+    <div><label>Marca</label><input name="marca" value="{{ vehiculo.marca or '' }}"></div>
+    <div><label>Modelo</label><input name="modelo" value="{{ vehiculo.modelo or '' }}"></div>
+    <div><label>Motor</label><input name="motor" value="{{ vehiculo.motor or '' }}"></div>
+    <div><label>Tracción</label><input name="traccion" value="{{ vehiculo.traccion or '' }}"></div>
+    <div><label>Color</label><input name="color" value="{{ vehiculo.color or '' }}"></div>
+    <div><label>Kilometraje</label><input name="kilometraje" inputmode="numeric" value="{{ vehiculo.kilometraje or '' }}"></div>
+    <div class="full"><label>VIN</label><input name="vin" value="{{ vehiculo.vin or '' }}"></div>
+    <div><label>ECU marca</label><input name="ecu_marca" value="{{ vehiculo.ecu_marca or '' }}"></div>
+    <div><label>ECU modelo</label><input name="ecu_modelo" value="{{ vehiculo.ecu_modelo or '' }}"></div>
+  </div>
+  <div class="actions" style="margin-top:18px">
+    <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button>
+    <a class="btn" href="{{ url_for('clientes.detalle', id=vehiculo.cliente.id) }}">Cancelar</a>
+  </div>
+</form>
+{% if vehiculo.id and not vehiculo.ordenes %}
+<form method="post" action="{{ url_for('clientes.vehiculo_eliminar', id=vehiculo.id) }}" style="margin-top:12px"
+      onsubmit="return confirm('¿Eliminar el vehículo {{ vehiculo.patente }}?')">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar vehículo</button>
+</form>
+{% endif %}
+{% endblock %}

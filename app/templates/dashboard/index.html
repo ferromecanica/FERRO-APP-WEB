@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado, vacio %}
+{% block title %}Tablero{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">{{ hoy | fecha('%d/%m/%Y') }}</div>
+    <h1>Hola, {{ current_user.nombre.split()[0] }}</h1>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('turnos.lista') }}"><i class="fa-regular fa-calendar-plus"></i> Turno</a>
+    <a class="btn btn-primary" href="{{ url_for('ot.lista') }}"><i class="fa-solid fa-plus"></i> Nueva OT</a>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:16px">
+  <div class="card kpi">
+    <div class="kpi-label"><i class="fa-solid fa-screwdriver-wrench"></i> OT abiertas</div>
+    <div class="kpi-value">{{ ots_abiertas | length }}</div>
+    <div class="kpi-foot">en el taller ahora</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label"><i class="fa-solid fa-cash-register"></i> Facturado del mes</div>
+    <div class="kpi-value">{{ facturado | pesos }}</div>
+    <div class="kpi-foot">{{ cant_ventas }} venta{{ 's' if cant_ventas != 1 }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label"><i class="fa-solid fa-arrow-trend-up"></i> Ganancia neta del mes</div>
+    <div class="kpi-value">{{ ganancia | pesos }}</div>
+    <div class="kpi-foot">ventas menos costo de repuestos</div>
+  </div>
+  <div class="card kpi">
+    <div class="kpi-label"><i class="fa-solid fa-triangle-exclamation"></i> Stock bajo</div>
+    <div class="kpi-value">{{ cant_bajo_stock }}</div>
+    <div class="kpi-foot">repuestos en o bajo el mínimo</div>
+  </div>
+</div>
+
+<div class="grid grid-3-1">
+  <div class="card">
+    <div class="card-head"><h2>Órdenes de trabajo abiertas</h2><a class="small" href="{{ url_for('ot.lista') }}">Ver todas</a></div>
+    {% if ots_abiertas %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>OT</th><th>Vehículo</th><th class="hide-sm">Cliente</th><th>Estado</th><th class="num hide-sm">Ingreso</th></tr></thead>
+      <tbody>
+      {% for ot in ots_abiertas %}
+        <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
+          <td><strong>#{{ ot.id }}</strong><div class="muted small">{{ ot.detalle or '' }}</div></td>
+          <td><span class="plate">{{ ot.vehiculo.patente }}</span><div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
+          <td class="hide-sm">{{ ot.cliente.nombre }}</td>
+          <td>{{ estado(ot.estado) }}</td>
+          <td class="num hide-sm">{{ ot.fecha_ingreso | fecha }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}{{ vacio('fa-mug-hot', 'No hay órdenes abiertas.') }}{% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Próximos turnos</h2><a class="small" href="{{ url_for('turnos.lista') }}">Agenda</a></div>
+      {% if turnos %}
+      <ul class="list">
+        {% for t in turnos %}
+        <li>
+          <div>
+            <strong>{{ t.fecha | fecha('%d/%m') }}{% if t.hora %} · {{ t.hora.strftime('%H:%M') }}{% endif %}</strong>
+            <div class="muted small">{{ t.motivo or '' }}</div>
+          </div>
+          {% if t.vehiculo %}<span class="plate">{{ t.vehiculo.patente }}</span>{% else %}<span class="small">{{ t.contacto or '' }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}{{ vacio('fa-calendar', 'Sin turnos próximos.') }}{% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Reponer</h2><a class="small" href="{{ url_for('stock.lista') }}">Stock</a></div>
+      {% if bajo_stock %}
+      <ul class="list">
+        {% for r in bajo_stock %}
+        <li><span class="small">{{ r.nombre }}</span><span class="badge badge-danger">{{ r.stock_actual | numero(1) }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}{{ vacio('fa-circle-check', 'Stock en orden.') }}{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado, vacio %}
+{% block title %}Turnos{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Taller</div><h1>Turnos</h1></div>
+  <div class="actions"><button class="btn btn-primary" disabled title="Próximamente"><i class="fa-solid fa-plus"></i> Nuevo turno</button></div>
+</div>
+<div class="card">
+  {% if turnos %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Fecha</th><th>Cliente</th><th>Vehículo</th><th class="hide-sm">Motivo</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for t in turnos %}
+      <tr><td><strong>{{ t.fecha | fecha('%a %d/%m') }}</strong>{% if t.hora %}<div class="muted small">{{ t.hora.strftime('%H:%M') }}</div>{% endif %}</td>
+        <td>{{ t.cliente.nombre if t.cliente else (t.contacto or '—') }}<div class="muted small">{{ t.telefono or '' }}</div></td>
+        <td>{% if t.vehiculo %}<span class="plate">{{ t.vehiculo.patente }}</span>{% else %}—{% endif %}</td>
+        <td class="hide-sm">{{ t.motivo or '' }}</td><td>{{ estado(t.estado) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-calendar', 'No hay turnos próximos.') }}{% endif %}
+</div>
+{% endblock %}

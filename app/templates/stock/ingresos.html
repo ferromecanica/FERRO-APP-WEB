@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado, vacio %}
+{% block title %}Ingresos de mercadería{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">Gestión</div><h1>Stock</h1></div></div>
+{% include "stock/_tabs.html" %}
+<div class="card">
+  {% if ingresos %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Fecha</th><th>Proveedor</th><th class="hide-sm">Factura</th><th>Estado</th><th class="num">Total</th></tr></thead>
+    <tbody>
+    {% for i in ingresos %}
+      <tr><td>{{ i.fecha | fecha }}</td><td>{{ i.proveedor }}<div class="muted small">{{ i.items | length }} ítems</div></td>
+        <td class="hide-sm">{{ i.nro_factura or '—' }}</td><td>{{ estado(i.estado) }}</td><td class="num">{{ i.total | pesos }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-truck-ramp-box', 'Sin ingresos de mercadería.') }}{% endif %}
+</div>
+{% endblock %}

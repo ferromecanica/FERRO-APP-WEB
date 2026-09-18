@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado, vacio %}
+{% block title %}{{ cliente.nombre }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">{{ cliente.codigo }}</div><h1>{{ cliente.nombre }}</h1></div>
+  <div class="actions">
+    {% if cliente.telefono %}<a class="btn" href="https://wa.me/549{{ cliente.telefono | replace(' ', '') }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>{% endif %}
+    <a class="btn" href="{{ url_for('clientes.form', id=cliente.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
+  </div>
+</div>
+
+<div class="grid grid-3-1">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Vehículos</h2>
+        <a class="btn btn-sm" href="{{ url_for('clientes.vehiculo_form', cliente_id=cliente.id) }}"><i class="fa-solid fa-plus"></i> Vehículo</a></div>
+      {% if cliente.vehiculos %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>Patente</th><th>Vehículo</th><th class="num hide-sm">Año</th><th class="num">Km</th><th></th></tr></thead>
+        <tbody>
+        {% for v in cliente.vehiculos %}
+          <tr>
+            <td><span class="plate">{{ v.patente }}</span></td>
+            <td>{{ v.descripcion or '—' }}<div class="muted small">{{ v.color or '' }}</div></td>
+            <td class="num hide-sm">{{ v.anio or '—' }}</td>
+            <td class="num">{{ v.kilometraje | numero }}</td>
+            <td class="num"><a class="btn btn-sm" href="{{ url_for('clientes.vehiculo_form', id=v.id) }}"><i class="fa-solid fa-pen"></i></a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}{{ vacio('fa-car', 'Sin vehículos cargados.') }}{% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Historial de órdenes</h2></div>
+      {% if cliente.ordenes %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>OT</th><th>Fecha</th><th>Patente</th><th class="hide-sm">Trabajo</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for ot in cliente.ordenes %}
+          <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
+            <td><strong>#{{ ot.id }}</strong></td><td>{{ ot.fecha_ingreso | fecha }}</td>
+            <td><span class="plate">{{ ot.vehiculo.patente }}</span></td>
+            <td class="hide-sm">{{ ot.detalle or '' }}</td><td>{{ estado(ot.estado) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}{{ vacio('fa-clipboard', 'Todavía no tiene órdenes de trabajo.') }}{% endif %}
+    </div>
+  </div>
+
+  <div class="card card-body">
+    <dl class="props">
+      <dt>Teléfono</dt><dd>{{ cliente.telefono or '—' }}</dd>
+      <dt>Email</dt><dd>{{ cliente.email or '—' }}</dd>
+      <dt>Dirección</dt><dd>{{ cliente.direccion or '—' }}</dd>
+      <dt>CUIT</dt><dd>{{ cliente.cuit or '—' }}</dd>
+      <dt>IVA</dt><dd>{{ cliente.condicion_iva or '—' }}</dd>
+    </dl>
+    {% if cliente.notas %}<p class="muted" style="margin:16px 0 0;white-space:pre-line">{{ cliente.notas }}</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

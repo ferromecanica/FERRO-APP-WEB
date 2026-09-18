@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if cliente.id else 'Nuevo' }} cliente{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Clientes</div><h1>{{ cliente.nombre if cliente.id else 'Nuevo cliente' }}</h1></div>
+</div>
+<form class="card card-body" method="post" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-grid">
+    <div class="full"><label>Nombre completo *</label><input name="nombre" value="{{ cliente.nombre or '' }}" required autofocus></div>
+    <div><label>Teléfono</label><input name="telefono" type="tel" value="{{ cliente.telefono or '' }}"></div>
+    <div><label>Email</label><input name="email" type="email" value="{{ cliente.email or '' }}"></div>
+    <div class="full"><label>Dirección</label><input name="direccion" value="{{ cliente.direccion or '' }}"></div>
+    <div><label>CUIT</label><input name="cuit" value="{{ cliente.cuit or '' }}"></div>
+    <div><label>Condición IVA</label>
+      <select name="condicion_iva">{% for c in condiciones %}<option {{ 'selected' if c == cliente.condicion_iva }}>{{ c }}</option>{% endfor %}</select>
+    </div>
+    <div class="full"><label>Notas</label><textarea name="notas">{{ cliente.notas or '' }}</textarea></div>
+  </div>
+  <div class="actions" style="margin-top:18px">
+    <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button>
+    <a class="btn" href="{{ url_for('clientes.detalle', id=cliente.id) if cliente.id else url_for('clientes.lista') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

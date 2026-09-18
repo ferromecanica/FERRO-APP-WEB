@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ taller_nombre }}{% endblock %} · Ferro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ferro.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.12/htmx.min.js" defer></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
+{% set seccion = request.blueprint %}
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <img class="brand-mark" src="{{ url_for('static', filename='img/logo.svg') }}" alt="Ferro">
+      <div>
+        <div class="brand-name">Ferro Taller</div>
+        <div class="brand-sub">Gestión</div>
+      </div>
+    </div>
+    {% set ep = request.endpoint %}
+    <nav class="nav">
+      <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if seccion == 'dashboard' }}"><i class="fa-solid fa-gauge-high"></i> Tablero</a>
+      <div class="nav-label">Taller</div>
+      <a href="{{ url_for('ot.lista') }}" class="{{ 'active' if seccion == 'ot' }}"><i class="fa-solid fa-warehouse"></i> Taller (OT)</a>
+      <a href="{{ url_for('turnos.lista') }}" class="{{ 'active' if seccion == 'turnos' }}"><i class="fa-regular fa-calendar-check"></i> Turnos</a>
+      <a href="{{ url_for('presupuestos.lista') }}" class="{{ 'active' if seccion == 'presupuestos' }}"><i class="fa-solid fa-file-invoice-dollar"></i> Presupuestos</a>
+      <a href="{{ url_for('clientes.lista') }}" class="{{ 'active' if seccion == 'clientes' and ep != 'clientes.vehiculos' }}"><i class="fa-solid fa-user-group"></i> Clientes</a>
+      <a href="{{ url_for('clientes.vehiculos') }}" class="{{ 'active' if ep == 'clientes.vehiculos' }}"><i class="fa-solid fa-car-side"></i> Vehículos</a>
+      <div class="nav-label">Comercial</div>
+      <a href="{{ url_for('ventas.lista') }}" class="{{ 'active' if seccion == 'ventas' }}"><i class="fa-solid fa-cart-shopping"></i> Ventas</a>
+      <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if ep == 'stock.lista' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
+      <a href="{{ url_for('stock.ingresos') }}" class="{{ 'active' if ep == 'stock.ingresos' }}"><i class="fa-solid fa-truck-ramp-box"></i> Ingreso Stock</a>
+      <a href="{{ url_for('stock.movimientos') }}" class="{{ 'active' if ep == 'stock.movimientos' }}"><i class="fa-solid fa-barcode"></i> Control de Stock</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="avatar">{{ current_user.nombre[:1] }}</div>
+      <div>
+        <div style="font-weight:600">{{ current_user.nombre }}</div>
+        <div class="muted small">{{ current_user.rol }} · <a href="{{ url_for('auth.logout') }}">Salir</a></div>
+      </div>
+    </div>
+  </aside>
+
+  <div>
+    <header class="topbar">
+      <button type="button" aria-label="Menú" onclick="document.body.classList.toggle('nav-open')"><i class="fa-solid fa-bars"></i></button>
+      <img class="brand-mark" src="{{ url_for('static', filename='img/logo.svg') }}" alt="Ferro" style="width:32px;height:32px"><span class="brand-name">Ferro Taller</span>
+    </header>
+    <main class="main" onclick="if(event.target===this)document.body.classList.remove('nav-open')">
+      {% with mensajes = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in mensajes %}<div class="flash flash-{{ cat }}">{{ msg }}</div>{% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+</body>
+</html>
