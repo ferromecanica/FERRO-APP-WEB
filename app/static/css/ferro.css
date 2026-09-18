@@ -187,3 +187,4 @@ textarea { min-height: 90px; resize: vertical; }
   .search input { min-width: 0; }
   .hide-sm { display: none; }
 }
+input::placeholder, textarea::placeholder { color: #a8adb7; font-weight: 400; letter-spacing: normal; }

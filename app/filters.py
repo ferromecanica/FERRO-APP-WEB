@@ -1,5 +1,7 @@
 from datetime import date, datetime
 
+from .validaciones import whatsapp_numero
+
 
 def pesos(valor, decimales=0):
     """$ 1.234.567 (formato argentino)."""
@@ -27,6 +29,7 @@ def register_filters(app):
     app.jinja_env.filters["pesos"] = pesos
     app.jinja_env.filters["numero"] = numero
     app.jinja_env.filters["fecha"] = fecha
+    app.jinja_env.filters["whatsapp"] = whatsapp_numero
 
     @app.context_processor
     def inject_globals():

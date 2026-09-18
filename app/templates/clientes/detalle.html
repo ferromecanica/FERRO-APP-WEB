@@ -5,7 +5,9 @@
 <div class="page-head">
   <div><div class="eyebrow">{{ cliente.codigo }}</div><h1>{{ cliente.nombre }}</h1></div>
   <div class="actions">
-    {% if cliente.telefono %}<a class="btn" href="https://wa.me/549{{ cliente.telefono | replace(' ', '') }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a>{% endif %}
+    {% set wa = cliente.telefono | whatsapp %}
+    {% if wa %}<a class="btn" href="https://wa.me/{{ wa }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i> WhatsApp</a>{% endif %}
+    {% if cliente.telefono %}<a class="btn" href="tel:{{ cliente.telefono }}"><i class="fa-solid fa-phone"></i> Llamar</a>{% endif %}
     <a class="btn" href="{{ url_for('clientes.form', id=cliente.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
   </div>
 </div>
@@ -17,15 +19,14 @@
         <a class="btn btn-sm" href="{{ url_for('clientes.vehiculo_form', cliente_id=cliente.id) }}"><i class="fa-solid fa-plus"></i> Vehículo</a></div>
       {% if cliente.vehiculos %}
       <div class="table-wrap"><table>
-        <thead><tr><th>Patente</th><th>Vehículo</th><th class="num hide-sm">Año</th><th class="num">Km</th><th></th></tr></thead>
+        <thead><tr><th>Patente</th><th>Vehículo</th><th class="num hide-sm">Año</th><th class="num">Km</th></tr></thead>
         <tbody>
         {% for v in cliente.vehiculos %}
-          <tr>
+          <tr class="clickable" onclick="location='{{ url_for('clientes.vehiculo_detalle', id=v.id) }}'">
             <td><span class="plate">{{ v.patente }}</span></td>
             <td>{{ v.descripcion or '—' }}<div class="muted small">{{ v.color or '' }}</div></td>
             <td class="num hide-sm">{{ v.anio or '—' }}</td>
             <td class="num">{{ v.kilometraje | numero }}</td>
-            <td class="num"><a class="btn btn-sm" href="{{ url_for('clientes.vehiculo_form', id=v.id) }}"><i class="fa-solid fa-pen"></i></a></td>
           </tr>
         {% endfor %}
         </tbody>
@@ -52,15 +53,29 @@
     </div>
   </div>
 
-  <div class="card card-body">
-    <dl class="props">
-      <dt>Teléfono</dt><dd>{{ cliente.telefono or '—' }}</dd>
-      <dt>Email</dt><dd>{{ cliente.email or '—' }}</dd>
-      <dt>Dirección</dt><dd>{{ cliente.direccion or '—' }}</dd>
-      <dt>CUIT</dt><dd>{{ cliente.cuit or '—' }}</dd>
-      <dt>IVA</dt><dd>{{ cliente.condicion_iva or '—' }}</dd>
-    </dl>
-    {% if cliente.notas %}<p class="muted" style="margin:16px 0 0;white-space:pre-line">{{ cliente.notas }}</p>{% endif %}
+  <div class="stack">
+    <div class="card card-body">
+      <dl class="props">
+        <dt>Teléfono</dt><dd>{{ cliente.telefono or '—' }}</dd>
+        <dt>Email</dt><dd>{% if cliente.email %}<a href="mailto:{{ cliente.email }}">{{ cliente.email }}</a>{% else %}—{% endif %}</dd>
+        <dt>Dirección</dt><dd>{{ cliente.direccion or '—' }}</dd>
+        <dt>CUIT</dt><dd>{{ cliente.cuit or '—' }}</dd>
+        <dt>IVA</dt><dd>{{ cliente.condicion_iva or '—' }}</dd>
+        <dt>Cliente desde</dt><dd>{{ cliente.creado | fecha }}</dd>
+      </dl>
+      {% if cliente.notas %}<p class="muted" style="margin:16px 0 0;white-space:pre-line">{{ cliente.notas }}</p>{% endif %}
+    </div>
+    <div class="card card-body">
+      {% if bloqueos %}
+        <p class="muted small" style="margin:0"><i class="fa-solid fa-lock"></i> No se puede eliminar porque tiene {{ bloqueos | join(', ') }}.</p>
+      {% else %}
+        <form method="post" action="{{ url_for('clientes.eliminar', id=cliente.id) }}"
+              onsubmit="return confirm('¿Eliminar a {{ cliente.nombre }}{{ ' y sus vehículos' if cliente.vehiculos }}? No se puede deshacer.')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar cliente</button>
+        </form>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

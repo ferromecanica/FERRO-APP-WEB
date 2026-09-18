@@ -1,0 +1,22 @@
+{# Campos del vehículo. Variables: v (Vehiculo o None), p (prefijo de los nombres), completo (bool) #}
+{% set f = request.form if request.method == 'POST' else {} %}
+{% macro val(campo) -%}{{ f.get(p ~ campo, (v[campo] if v and v[campo] is not none else '')) }}{%- endmacro %}
+<div><label>Patente{{ " *" if not p }}</label>
+  <input name="{{ p }}patente" value="{{ val('patente') }}" placeholder="AB123CD" autocomplete="off"
+         style="text-transform:uppercase;font-family:var(--font-display);font-weight:700;letter-spacing:.08em"></div>
+<div><label>Año</label><input name="{{ p }}anio" inputmode="numeric" maxlength="4" value="{{ val('anio') }}"></div>
+<div><label>Marca</label><input name="{{ p }}marca" list="marcas" value="{{ val('marca') }}" autocomplete="off"></div>
+<div><label>Modelo</label><input name="{{ p }}modelo" value="{{ val('modelo') }}"></div>
+<div><label>Motor</label><input name="{{ p }}motor" value="{{ val('motor') }}" placeholder="1.6, 2.0 TDI…"></div>
+<div><label>Kilometraje</label><input name="{{ p }}kilometraje" inputmode="numeric" value="{{ val('kilometraje') }}"></div>
+{% if completo %}
+<div><label>Color</label><input name="{{ p }}color" value="{{ val('color') }}"></div>
+<div><label>Tracción</label>
+  <select name="{{ p }}traccion">
+    {% for t in ['', 'Delantera', 'Trasera', '4x4', 'AWD'] %}<option value="{{ t }}" {{ 'selected' if val('traccion') == t }}>{{ t or '—' }}</option>{% endfor %}
+  </select></div>
+<div class="full"><label>VIN / Nº de chasis</label><input name="{{ p }}vin" value="{{ val('vin') }}" style="text-transform:uppercase"></div>
+<div><label>ECU marca</label><input name="{{ p }}ecu_marca" value="{{ val('ecu_marca') }}" placeholder="Bosch, Marelli…"></div>
+<div><label>ECU modelo</label><input name="{{ p }}ecu_modelo" value="{{ val('ecu_modelo') }}"></div>
+{% endif %}
+<datalist id="marcas">{% for m in marcas %}<option value="{{ m }}">{% endfor %}</datalist>

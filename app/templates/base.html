@@ -29,8 +29,8 @@
       <a href="{{ url_for('ot.lista') }}" class="{{ 'active' if seccion == 'ot' }}"><i class="fa-solid fa-warehouse"></i> Taller (OT)</a>
       <a href="{{ url_for('turnos.lista') }}" class="{{ 'active' if seccion == 'turnos' }}"><i class="fa-regular fa-calendar-check"></i> Turnos</a>
       <a href="{{ url_for('presupuestos.lista') }}" class="{{ 'active' if seccion == 'presupuestos' }}"><i class="fa-solid fa-file-invoice-dollar"></i> Presupuestos</a>
-      <a href="{{ url_for('clientes.lista') }}" class="{{ 'active' if seccion == 'clientes' and ep != 'clientes.vehiculos' }}"><i class="fa-solid fa-user-group"></i> Clientes</a>
-      <a href="{{ url_for('clientes.vehiculos') }}" class="{{ 'active' if ep == 'clientes.vehiculos' }}"><i class="fa-solid fa-car-side"></i> Vehículos</a>
+      <a href="{{ url_for('clientes.lista') }}" class="{{ 'active' if seccion == 'clientes' and not (ep or '').startswith('clientes.vehiculo') }}"><i class="fa-solid fa-user-group"></i> Clientes</a>
+      <a href="{{ url_for('clientes.vehiculos') }}" class="{{ 'active' if (ep or '').startswith('clientes.vehiculo') }}"><i class="fa-solid fa-car-side"></i> Vehículos</a>
       <div class="nav-label">Comercial</div>
       <a href="{{ url_for('ventas.lista') }}" class="{{ 'active' if seccion == 'ventas' }}"><i class="fa-solid fa-cart-shopping"></i> Ventas</a>
       <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if ep == 'stock.lista' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>

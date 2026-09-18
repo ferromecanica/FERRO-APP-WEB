@@ -1,34 +1,26 @@
 {% extends "base.html" %}
-{% block title %}Vehículo{% endblock %}
+{% block title %}{{ vehiculo.patente if vehiculo.id else 'Nuevo vehículo' }}{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><div class="eyebrow">{{ vehiculo.cliente.nombre }}</div><h1>{{ vehiculo.patente if vehiculo.id else 'Nuevo vehículo' }}</h1></div>
+  <div><div class="eyebrow">{{ dueno.nombre if dueno else 'Vehículos' }}</div>
+    <h1>{% if vehiculo.id %}<span class="plate" style="font-size:1.2rem">{{ vehiculo.patente }}</span>{% else %}Nuevo vehículo{% endif %}</h1></div>
 </div>
-<form class="card card-body" method="post" style="max-width:760px">
+<form class="card" method="post" style="max-width:760px">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <div class="form-grid">
-    <div><label>Patente *</label><input name="patente" value="{{ vehiculo.patente or '' }}" style="text-transform:uppercase" required autofocus></div>
-    <div><label>Año</label><input name="anio" inputmode="numeric" value="{{ vehiculo.anio or '' }}"></div>
-    <div><label>Marca</label><input name="marca" value="{{ vehiculo.marca or '' }}"></div>
-    <div><label>Modelo</label><input name="modelo" value="{{ vehiculo.modelo or '' }}"></div>
-    <div><label>Motor</label><input name="motor" value="{{ vehiculo.motor or '' }}"></div>
-    <div><label>Tracción</label><input name="traccion" value="{{ vehiculo.traccion or '' }}"></div>
-    <div><label>Color</label><input name="color" value="{{ vehiculo.color or '' }}"></div>
-    <div><label>Kilometraje</label><input name="kilometraje" inputmode="numeric" value="{{ vehiculo.kilometraje or '' }}"></div>
-    <div class="full"><label>VIN</label><input name="vin" value="{{ vehiculo.vin or '' }}"></div>
-    <div><label>ECU marca</label><input name="ecu_marca" value="{{ vehiculo.ecu_marca or '' }}"></div>
-    <div><label>ECU modelo</label><input name="ecu_modelo" value="{{ vehiculo.ecu_modelo or '' }}"></div>
+  <div class="card-body form-grid">
+    <div class="full"><label>Dueño *</label>
+      <select name="cliente_id" required>
+        <option value="">Elegí un cliente…</option>
+        {% for c in clientes %}<option value="{{ c.id }}" {{ 'selected' if c.id == vehiculo.cliente_id }}>{{ c.nombre }}{% if c.telefono %} · {{ c.telefono }}{% endif %}</option>{% endfor %}
+      </select>
+      {% if vehiculo.id %}<div class="muted small" style="margin-top:4px">Si vendieron el auto, elegí el nuevo dueño: las OT anteriores quedan con el anterior.</div>{% endif %}
+      {% if not clientes %}<div class="small" style="margin-top:4px">No hay clientes: <a href="{{ url_for('clientes.form') }}">creá uno con su vehículo</a>.</div>{% endif %}
+    </div>
+    {% with v=vehiculo if vehiculo.id else None, p='', completo=True %}{% include "clientes/_campos_vehiculo.html" %}{% endwith %}
   </div>
-  <div class="actions" style="margin-top:18px">
+  <div class="card-body actions" style="border-top:1px solid var(--border)">
     <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button>
-    <a class="btn" href="{{ url_for('clientes.detalle', id=vehiculo.cliente.id) }}">Cancelar</a>
+    <a class="btn" href="{{ url_for('clientes.vehiculo_detalle', id=vehiculo.id) if vehiculo.id else (url_for('clientes.detalle', id=dueno.id) if dueno else url_for('clientes.vehiculos')) }}">Cancelar</a>
   </div>
 </form>
-{% if vehiculo.id and not vehiculo.ordenes %}
-<form method="post" action="{{ url_for('clientes.vehiculo_eliminar', id=vehiculo.id) }}" style="margin-top:12px"
-      onsubmit="return confirm('¿Eliminar el vehículo {{ vehiculo.patente }}?')">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar vehículo</button>
-</form>
-{% endif %}
 {% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado, vacio %}
+{% block title %}{{ vehiculo.patente }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Vehículo</div>
+    <h1><span class="plate" style="font-size:1.3rem;padding:3px 12px">{{ vehiculo.patente }}</span>
+      <span style="margin-left:8px">{{ vehiculo.descripcion or '' }}</span></h1></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('clientes.vehiculo_form', id=vehiculo.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
+  </div>
+</div>
+
+<div class="grid grid-3-1">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><h2>Historial de trabajos</h2><span class="muted small">{{ vehiculo.ordenes | length }} OT</span></div>
+      {% if vehiculo.ordenes %}
+      <div class="table-wrap"><table>
+        <thead><tr><th>OT</th><th>Fecha</th><th class="num">Km</th><th>Trabajo</th><th>Estado</th></tr></thead>
+        <tbody>
+        {% for ot in vehiculo.ordenes %}
+          <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
+            <td><strong>#{{ ot.id }}</strong></td><td>{{ ot.fecha_ingreso | fecha }}</td>
+            <td class="num">{{ ot.km_entrada | numero }}</td>
+            <td>{{ ot.detalle or '' }}{% if ot.cliente_id != vehiculo.cliente_id %}<div class="muted small">Dueño anterior: {{ ot.cliente.nombre }}</div>{% endif %}</td>
+            <td>{{ estado(ot.estado) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% else %}{{ vacio('fa-clipboard', 'Todavía no tiene órdenes de trabajo.') }}{% endif %}
+    </div>
+
+    {% if lecturas | length > 1 %}
+    {% set primera, ultima = lecturas[0], lecturas[-1] %}
+    {% set dias = (ultima[0] - primera[0]).days %}
+    <div class="card card-body">
+      <h2 style="margin-bottom:6px">Uso</h2>
+      <p style="margin:0">{{ (ultima[1] - primera[1]) | numero }} km en {{ dias }} días
+        {% if dias > 30 %}· <strong>≈ {{ ((ultima[1] - primera[1]) / dias * 30) | numero }} km por mes</strong>{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    <div class="card card-body">
+      <dl class="props">
+        <dt>Dueño</dt><dd><a href="{{ url_for('clientes.detalle', id=vehiculo.cliente.id) }}">{{ vehiculo.cliente.nombre }}</a></dd>
+        <dt>Marca</dt><dd>{{ vehiculo.marca or '—' }}</dd>
+        <dt>Modelo</dt><dd>{{ vehiculo.modelo or '—' }}</dd>
+        <dt>Motor</dt><dd>{{ vehiculo.motor or '—' }}</dd>
+        <dt>Año</dt><dd>{{ vehiculo.anio or '—' }}</dd>
+        <dt>Km actual</dt><dd>{{ vehiculo.kilometraje | numero }}</dd>
+        <dt>Color</dt><dd>{{ vehiculo.color or '—' }}</dd>
+        <dt>Tracción</dt><dd>{{ vehiculo.traccion or '—' }}</dd>
+        <dt>VIN</dt><dd style="word-break:break-all">{{ vehiculo.vin or '—' }}</dd>
+        <dt>ECU</dt><dd>{{ ((vehiculo.ecu_marca or '') ~ ' ' ~ (vehiculo.ecu_modelo or '')).strip() or '—' }}</dd>
+      </dl>
+    </div>
+    <div class="card card-body">
+      {% if vehiculo.ordenes %}
+        <p class="muted small" style="margin:0"><i class="fa-solid fa-lock"></i> No se puede eliminar porque tiene órdenes de trabajo.</p>
+      {% else %}
+        <form method="post" action="{{ url_for('clientes.vehiculo_eliminar', id=vehiculo.id) }}"
+              onsubmit="return confirm('¿Eliminar el vehículo {{ vehiculo.patente }}?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar vehículo</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
