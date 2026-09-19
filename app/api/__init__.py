@@ -70,6 +70,8 @@ def historial():
         ordenes = (OrdenTrabajo.query.filter_by(cliente_id=cliente.id, vehiculo_id=vehiculo.id)
                    .order_by(OrdenTrabajo.id.desc()).all())
         if vehiculo.cliente_id == cliente.id or ordenes:
+            # La web muestra "servicios cerrados": las OT en curso no se publican
+            ordenes = [ot for ot in ordenes if ot.estado == "Finalizada"]
             return _responder({
                 "cliente": cliente.nombre,
                 "vehiculo": f"{vehiculo.marca or ''} {vehiculo.modelo or ''}".strip(),
