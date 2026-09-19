@@ -8,13 +8,12 @@
 <form class="card" method="post" style="max-width:760px">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="card-body form-grid">
-    <div class="full"><label>Dueño *</label>
-      <select name="cliente_id" required>
-        <option value="">Elegí un cliente…</option>
+    <div class="full"><label>Dueño</label>
+      <select name="cliente_id">
+        <option value="">Sin dueño asignado</option>
         {% for c in clientes %}<option value="{{ c.id }}" {{ 'selected' if c.id == vehiculo.cliente_id }}>{{ c.nombre }}{% if c.telefono %} · {{ c.telefono }}{% endif %}</option>{% endfor %}
       </select>
       {% if vehiculo.id %}<div class="muted small" style="margin-top:4px">Si vendieron el auto, elegí el nuevo dueño: las OT anteriores quedan con el anterior.</div>{% endif %}
-      {% if not clientes %}<div class="small" style="margin-top:4px">No hay clientes: <a href="{{ url_for('clientes.form') }}">creá uno con su vehículo</a>.</div>{% endif %}
     </div>
     {% with v=vehiculo if vehiculo.id else None, p='', completo=True %}{% include "clientes/_campos_vehiculo.html" %}{% endwith %}
   </div>

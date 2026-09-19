@@ -7,7 +7,7 @@
     <tr class="clickable" onclick="location='{{ url_for('clientes.vehiculo_detalle', id=v.id) }}'">
       <td><span class="plate">{{ v.patente }}</span></td>
       <td>{{ v.descripcion or '—' }}<div class="muted small">{{ v.color or '' }}</div></td>
-      <td>{{ v.cliente.nombre }}</td>
+      <td>{{ v.cliente.nombre if v.cliente else '' }}{% if not v.cliente %}<span class="muted">Sin dueño</span>{% endif %}</td>
       <td class="num hide-sm">{{ v.anio or '—' }}</td>
       <td class="num hide-sm">{{ v.kilometraje | numero }}</td>
       <td class="num hide-sm">{{ v.ordenes | length }}</td>

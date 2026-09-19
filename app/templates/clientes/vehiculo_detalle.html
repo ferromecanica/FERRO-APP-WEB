@@ -47,7 +47,8 @@
   <div class="stack">
     <div class="card card-body">
       <dl class="props">
-        <dt>Dueño</dt><dd><a href="{{ url_for('clientes.detalle', id=vehiculo.cliente.id) }}">{{ vehiculo.cliente.nombre }}</a></dd>
+        <dt>Dueño</dt><dd>{% if vehiculo.cliente %}<a href="{{ url_for('clientes.detalle', id=vehiculo.cliente.id) }}">{{ vehiculo.cliente.nombre }}</a>
+          {% else %}<span class="muted">Sin asignar</span> · <a href="{{ url_for('clientes.vehiculo_form', id=vehiculo.id) }}">asignar</a>{% endif %}</dd>
         <dt>Marca</dt><dd>{{ vehiculo.marca or '—' }}</dd>
         <dt>Modelo</dt><dd>{{ vehiculo.modelo or '—' }}</dd>
         <dt>Motor</dt><dd>{{ vehiculo.motor or '—' }}</dd>

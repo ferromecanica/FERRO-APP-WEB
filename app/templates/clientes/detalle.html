@@ -70,7 +70,7 @@
         <p class="muted small" style="margin:0"><i class="fa-solid fa-lock"></i> No se puede eliminar porque tiene {{ bloqueos | join(', ') }}.</p>
       {% else %}
         <form method="post" action="{{ url_for('clientes.eliminar', id=cliente.id) }}"
-              onsubmit="return confirm('¿Eliminar a {{ cliente.nombre }}{{ ' y sus vehículos' if cliente.vehiculos }}? No se puede deshacer.')">
+              onsubmit="return confirm('¿Eliminar a {{ cliente.nombre }}?{{ ' Sus vehículos quedan cargados, sin dueño.' if cliente.vehiculos }}')">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar cliente</button>
         </form>

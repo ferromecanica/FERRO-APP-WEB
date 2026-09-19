@@ -89,11 +89,16 @@ class Cliente(TimestampMixin, db.Model):
     def codigo(self):
         return f"CLI-{self.id:03d}"
 
+    @property
+    def etiqueta(self):
+        """Texto para elegirlo en un buscador: 'Nombre · CLI-003'."""
+        return f"{self.nombre} · {self.codigo}"
+
 
 class Vehiculo(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patente = db.Column(db.String(10), unique=True, nullable=False, index=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"))  # puede no tener dueño asignado todavía
     marca = db.Column(db.String(40))
     modelo = db.Column(db.String(60))
     motor = db.Column(db.String(40))

@@ -60,7 +60,8 @@ def _cargar_vehiculo(vehiculo, prefijo=""):
         with db.session.no_autoflush:
             duplicado = Vehiculo.query.filter(Vehiculo.patente == patente, Vehiculo.id != vehiculo.id).first()
         if duplicado:
-            errores.append(f"La patente {patente} ya está cargada a nombre de {duplicado.cliente.nombre}.")
+            dueno = f" a nombre de {duplicado.cliente.nombre}" if duplicado.cliente else ""
+            errores.append(f"La patente {patente} ya está cargada{dueno}.")
     vehiculo.patente = patente
     for campo in CAMPOS_VEHICULO:
         setattr(vehiculo, campo, _texto(campo, prefijo))
@@ -100,25 +101,15 @@ def form(id=None):
     cliente = db.get_or_404(Cliente, id) if id else Cliente()
     if request.method == "POST":
         errores = _cargar_cliente(cliente)
-        vehiculo = None
-        # En el alta se puede cargar el primer vehículo en el mismo paso
-        if not cliente.id and request.form.get("v_patente", "").strip():
-            vehiculo = Vehiculo()
-            errores += _cargar_vehiculo(vehiculo, prefijo="v_")
         if errores:
             for e in errores:
                 flash(e, "error")
         else:
             db.session.add(cliente)
-            if vehiculo:
-                vehiculo.cliente = cliente
-                db.session.add(vehiculo)
             db.session.commit()
-            flash("Cliente guardado." + (f" Vehículo {vehiculo.patente} agregado." if vehiculo else ""), "ok")
-            if request.args.get("siguiente") == "ot" and vehiculo:
-                return redirect(url_for("ot.form", vehiculo_id=vehiculo.id))
+            flash("Cliente guardado.", "ok")
             return redirect(url_for(".detalle", id=cliente.id))
-    return render_template("clientes/form.html", cliente=cliente, condiciones=CONDICIONES_IVA, marcas=_marcas())
+    return render_template("clientes/form.html", cliente=cliente, condiciones=CONDICIONES_IVA)
 
 
 @bp.route("/<int:id>")
@@ -132,10 +123,6 @@ def _bloqueos_borrado(cliente):
     motivos = []
     if cliente.ordenes:
         motivos.append(f"{len(cliente.ordenes)} órdenes de trabajo")
-    # Un auto con historial (aunque sea de un dueño anterior) no se puede borrar con el cliente
-    con_historial = [v.patente for v in cliente.vehiculos if v.ordenes]
-    if con_historial:
-        motivos.append("vehículos con historial de OT (" + ", ".join(con_historial) + "): pasalos a otro dueño primero")
     n = Presupuesto.query.filter_by(cliente_id=cliente.id).count()
     if n:
         motivos.append(f"{n} presupuestos")
@@ -154,8 +141,7 @@ def eliminar(id):
         return redirect(url_for(".detalle", id=id))
     Turno.query.filter_by(cliente_id=id).update({"cliente_id": None, "contacto": cliente.nombre})
     for v in list(cliente.vehiculos):
-        Turno.query.filter_by(vehiculo_id=v.id).update({"vehiculo_id": None})
-        db.session.delete(v)
+        v.cliente = None  # el auto sigue existiendo, sin dueño asignado
     db.session.delete(cliente)
     db.session.commit()
     flash(f"Cliente {cliente.nombre} eliminado.", "ok")
@@ -168,7 +154,7 @@ def eliminar(id):
 @bp.route("/vehiculos")
 def vehiculos():
     q = request.args.get("q", "").strip()
-    consulta = Vehiculo.query.join(Cliente)
+    consulta = Vehiculo.query.outerjoin(Cliente)
     if q:
         like = f"%{q}%"
         consulta = consulta.filter(or_(Vehiculo.patente.ilike(like), Vehiculo.marca.ilike(like),
@@ -197,14 +183,12 @@ def vehiculo_form(cliente_id=None, id=None):
     if request.method == "POST":
         errores = _cargar_vehiculo(vehiculo)
         nuevo_dueno = request.form.get("cliente_id", type=int)
-        if nuevo_dueno and nuevo_dueno != vehiculo.cliente_id:
-            if db.session.get(Cliente, nuevo_dueno) is None:
+        if nuevo_dueno != vehiculo.cliente_id:
+            if nuevo_dueno and db.session.get(Cliente, nuevo_dueno) is None:
                 errores.append("El cliente elegido no existe.")
-            elif vehiculo.id:
+            elif vehiculo.id and vehiculo.cliente_id and vehiculo.ordenes:
                 flash("Cambio de dueño registrado. Las OT anteriores quedan con el dueño que tenían.", "info")
             vehiculo.cliente_id = nuevo_dueno
-        if not vehiculo.cliente_id:
-            errores.append("Elegí a qué cliente pertenece el vehículo.")
         if errores:
             for e in errores:
                 flash(e, "error")
@@ -229,4 +213,4 @@ def vehiculo_eliminar(id):
     db.session.delete(vehiculo)
     db.session.commit()
     flash(f"Vehículo {vehiculo.patente} eliminado.", "ok")
-    return redirect(url_for(".detalle", id=cliente_id))
+    return redirect(url_for(".detalle", id=cliente_id) if cliente_id else url_for(".vehiculos"))

@@ -68,11 +68,16 @@ def main():
     consola = consolas[0]["id"]
 
     marca = f"DEPLOY-{version}-{int(time.time())}"
-    comando = f"cd ~/FERRO && git pull --ff-only && echo {marca}-OK || echo {marca}-FALLO\n"
+    comando = (
+        "cd ~/FERRO && git pull --ff-only"
+        " && ~/.venvs/ferro/bin/pip install -q -r requirements.txt"
+        " && ~/.venvs/ferro/bin/python scripts/migrar.py"
+        f" && echo {marca}-OK || echo {marca}-FALLO\n"
+    )
     api("POST", f"consoles/{consola}/send_input/", {"input": comando})
 
     salida = ""
-    for _ in range(30):
+    for _ in range(90):
         time.sleep(2)
         salida = api("GET", f"consoles/{consola}/get_latest_output/").get("output", "")
         if f"{marca}-OK" in salida or f"{marca}-FALLO" in salida:
@@ -81,7 +86,7 @@ def main():
     if f"{marca}-OK" not in salida:
         print(ultimo)
         sys.exit("✗ El git pull en el servidor no terminó bien (ver arriba).")
-    print("✓ Código actualizado en el servidor")
+    print("✓ Código, librerías y base de datos actualizados en el servidor")
 
     api("POST", f"webapps/{DOMINIO}/reload/")
     print("✓ Web app recargada")

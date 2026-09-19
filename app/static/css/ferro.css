@@ -228,3 +228,7 @@ dl.props.totales dd { text-align: right; }
   .checklist .check-item { grid-template-columns: 1fr; }
   .add-row { flex-direction: column; }
 }
+.hint { font-size: .84rem; color: var(--muted); margin-top: 6px; min-height: 1em; }
+.sub-alta { border: 1px dashed #f5b56b; background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.sub-alta[hidden] { display: none; }
+.sub-alta-titulo { font-weight: 600; font-size: .86rem; color: var(--accent-ink); margin-bottom: 10px; }

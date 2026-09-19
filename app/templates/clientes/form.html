@@ -21,14 +21,6 @@
     </div>
   </div>
 
-  {% if not cliente.id %}
-  <div class="card">
-    <div class="card-head"><h2><i class="fa-solid fa-car-side" style="color:var(--accent)"></i> Vehículo <span class="muted small" style="font-weight:500">(opcional)</span></h2></div>
-    <div class="card-body form-grid">
-      {% with v=None, p='v_', completo=False %}{% include "clientes/_campos_vehiculo.html" %}{% endwith %}
-    </div>
-  </div>
-  {% endif %}
 
   <div class="actions">
     <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button>

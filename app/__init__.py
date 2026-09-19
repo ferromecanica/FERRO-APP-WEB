@@ -2,7 +2,7 @@ from flask import Flask
 
 from config import Config
 
-from .extensions import csrf, db, login_manager
+from .extensions import csrf, db, login_manager, migrate
 
 
 def create_app(config_class=Config):
@@ -10,6 +10,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
+    migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
 
@@ -44,8 +45,5 @@ def create_app(config_class=Config):
         from .auth import ingreso_automatico
 
         app.before_request(ingreso_automatico)
-
-    with app.app_context():
-        db.create_all()
 
     return app

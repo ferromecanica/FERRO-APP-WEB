@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
 from sqlalchemy import or_
 
@@ -22,7 +22,7 @@ from ..models import (
     VentaItem,
 )
 from ..services.stock import buscar_repuesto, consumir_en_ot, repuesto_varios, revertir_consumo
-from ..validaciones import normalizar_patente, numero_ar
+from ..validaciones import MARCAS_COMUNES, normalizar_patente, numero_ar, patente_valida
 
 bp = Blueprint("ot", __name__)
 
@@ -95,6 +95,30 @@ def lista():
                            valor_hora=ConfigTaller.get().valor_hora or 0)
 
 
+def _buscar_cliente(texto):
+    """Resuelve lo escrito en el campo Cliente: 'Nombre · CLI-003', o un nombre exacto."""
+    texto = (texto or "").strip()
+    if "CLI-" in texto:
+        codigo = texto.rsplit("CLI-", 1)[1].strip()
+        if codigo.isdigit():
+            return db.session.get(Cliente, int(codigo))
+    coincidencias = Cliente.query.filter(db.func.lower(Cliente.nombre) == texto.lower()).all()
+    return coincidencias[0] if len(coincidencias) == 1 else None
+
+
+@bp.route("/vehiculo")
+def vehiculo_info():
+    """Datos de una patente para el formulario de nueva OT (lo pide el navegador al tipear)."""
+    patente = normalizar_patente(request.args.get("patente"))
+    v = Vehiculo.query.filter_by(patente=patente).first() if patente else None
+    if v is None:
+        return jsonify(existe=False, patente=patente, valida=patente_valida(patente))
+    return jsonify(
+        existe=True, patente=v.patente, descripcion=v.descripcion, km=v.kilometraje,
+        cliente=v.cliente.etiqueta if v.cliente else None,
+    )
+
+
 @bp.route("/nueva", methods=["GET", "POST"])
 @bp.route("/<int:id>/editar", methods=["GET", "POST"])
 def form(id=None):
@@ -106,10 +130,7 @@ def form(id=None):
     if request.method == "POST":
         errores = []
         if not id:
-            patente = normalizar_patente(request.form.get("patente"))
-            vehiculo = Vehiculo.query.filter_by(patente=patente).first() if patente else None
-            if vehiculo is None:
-                errores.append(f"No encontré la patente {patente or '(vacía)'}. Si es un auto nuevo, cargalo primero.")
+            vehiculo, cliente, errores = _resolver_vehiculo_y_cliente()
         km = numero_ar(request.form.get("km_entrada"))
         ot.km_entrada = int(km) if km is not None else None
         ot.detalle = request.form.get("detalle", "").strip() or None
@@ -118,13 +139,18 @@ def form(id=None):
         if not ot.detalle:
             errores.append("Contá qué trae el auto (motivo de ingreso).")
         if errores:
+            db.session.rollback()
             for e in errores:
                 flash(e, "error")
         else:
             if not id:
+                if vehiculo.cliente is not cliente:
+                    if vehiculo.cliente is not None:
+                        flash(f"{vehiculo.patente} pasó de {vehiculo.cliente.nombre} a {cliente.nombre}.", "info")
+                    vehiculo.cliente = cliente
                 ot.id = OrdenTrabajo.proximo_numero()
                 ot.vehiculo = vehiculo
-                ot.cliente_id = vehiculo.cliente_id
+                ot.cliente = cliente
                 ot.estado = "Ingresado"
                 db.session.add(ot)
             if ot.km_entrada and ot.km_entrada > (ot.vehiculo.kilometraje or 0):
@@ -133,9 +159,46 @@ def form(id=None):
             flash(f"OT #{ot.id} {'creada' if not id else 'guardada'}.", "ok")
             return _volver(ot)
 
-    vehiculos = Vehiculo.query.join(Cliente).order_by(Vehiculo.patente).all() if not id else []
-    return render_template("ot/form.html", ot=ot, vehiculo=vehiculo, vehiculos=vehiculos,
-                           proximo=OrdenTrabajo.proximo_numero())
+    vehiculos = clientes = marcas = []
+    if not id:
+        vehiculos = Vehiculo.query.outerjoin(Cliente).order_by(Vehiculo.patente).all()
+        clientes = Cliente.query.order_by(db.func.lower(Cliente.nombre)).all()
+        cargadas = {m for (m,) in db.session.query(Vehiculo.marca).distinct() if m}
+        marcas = sorted(set(MARCAS_COMUNES) | cargadas, key=str.lower)
+    return render_template("ot/form.html", ot=ot, vehiculo=vehiculo, vehiculos=vehiculos, clientes=clientes,
+                           marcas=marcas, proximo=OrdenTrabajo.proximo_numero())
+
+
+def _resolver_vehiculo_y_cliente():
+    """Del formulario de nueva OT: busca o da de alta (por separado) el vehículo y el cliente."""
+    errores = []
+    patente = normalizar_patente(request.form.get("patente"))
+    vehiculo = Vehiculo.query.filter_by(patente=patente).first() if patente else None
+    if vehiculo is None:
+        if not patente_valida(patente):
+            errores.append(f"La patente «{request.form.get('patente', '')}» no parece válida.")
+        else:
+            anio = request.form.get("v_anio", "").strip()
+            vehiculo = Vehiculo(
+                patente=patente,
+                marca=request.form.get("v_marca", "").strip() or None,
+                modelo=request.form.get("v_modelo", "").strip() or None,
+                motor=request.form.get("v_motor", "").strip() or None,
+                anio=int(anio) if anio.isdigit() else None,
+            )
+            db.session.add(vehiculo)
+
+    texto_cliente = request.form.get("cliente", "").strip()
+    cliente = _buscar_cliente(texto_cliente)
+    if cliente is None:
+        if not texto_cliente:
+            errores.append("Indicá el cliente.")
+        elif "CLI-" in texto_cliente:
+            errores.append(f"No encontré el cliente «{texto_cliente}».")
+        else:
+            cliente = Cliente(nombre=texto_cliente, telefono=request.form.get("c_telefono", "").strip() or None)
+            db.session.add(cliente)
+    return vehiculo, cliente, errores
 
 
 @bp.route("/<int:id>")
