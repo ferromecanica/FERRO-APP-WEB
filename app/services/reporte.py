@@ -10,7 +10,7 @@ import posixpath
 import urllib.parse
 import urllib.request
 
-from flask import render_template, url_for
+from flask import render_template
 
 from ..models import ConfigTaller
 
@@ -18,7 +18,7 @@ from ..models import ConfigTaller
 TALLER_POR_DEFECTO = {
     "direccion": "Santa María de Oro 217 bis - CP (2000)",
     "localidad": "Rosario - Santa Fe",
-    "telefono": "3417183101",
+    "telefono": "3416206823",
     "iva": "Responsable Inscripto",
 }
 
@@ -31,8 +31,8 @@ def _si_no(valor):
     return "Sí" if valor else "No"
 
 
-def armar_html(ot, vista_previa=False):
-    """HTML del reporte. En vista previa usa el logo local y no incluye las fotos de Drive."""
+def armar_html(ot):
+    """HTML del reporte (logo, firma y fotos quedan como marcas que completa el Apps Script)."""
     cfg = ConfigTaller.get()
     taller = dict(TALLER_POR_DEFECTO)
     if cfg.direccion:
@@ -46,8 +46,6 @@ def armar_html(ot, vista_previa=False):
             continue
         if foto.archivo.startswith("http"):
             src = foto.archivo
-        elif vista_previa:
-            continue
         else:
             src = f"__FOTO:{posixpath.basename(foto.archivo)}__"
         fotos.append({"src": src, "descripcion": foto.descripcion})
@@ -56,8 +54,8 @@ def armar_html(ot, vista_previa=False):
         "reportes/mantenimiento.html",
         ot=ot,
         taller=taller,
-        logo=url_for("static", filename="img/logo.svg") if vista_previa else "__LOGO__",
-        firma=None if vista_previa else "__FIRMA__",
+        logo="__LOGO__",
+        firma="__FIRMA__",
         fluidos=[
             ("Aceite motor", _si_no(ot.aceite_motor), ot.aceite_motor_detalle),
             ("Aceite caja", _si_no(ot.aceite_caja), ot.aceite_caja_detalle),

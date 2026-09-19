@@ -547,11 +547,6 @@ def reporte_generar(id):
     return _volver(ot)
 
 
-@bp.route("/<int:id>/reporte/vista")
-def reporte_vista(id):
-    """Vista previa del reporte en el navegador (sin firma ni fotos de Drive)."""
-    return reporte.armar_html(db.get_or_404(OrdenTrabajo, id), vista_previa=True)
-
 
 @bp.route("/<int:id>/cobrar", methods=["GET", "POST"])
 def cobrar(id):
