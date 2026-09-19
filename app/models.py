@@ -437,13 +437,18 @@ class IngresoStock(TimestampMixin, db.Model):
     proveedor = db.Column(db.String(120), nullable=False)
     nro_factura = db.Column(db.String(40))
     notas = db.Column(db.Text)
-    estado = db.Column(db.String(20), default="Borrador")  # Borrador | Confirmado
+    estado = db.Column(db.String(20), default="Borrador")  # Borrador | Confirmado | Anulado
 
-    items = db.relationship("IngresoStockItem", back_populates="ingreso", cascade="all, delete-orphan")
+    items = db.relationship("IngresoStockItem", back_populates="ingreso", cascade="all, delete-orphan",
+                            order_by="IngresoStockItem.id")
 
     @property
     def total(self):
         return sum(i.subtotal for i in self.items)
+
+    @property
+    def editable(self):
+        return self.estado == "Borrador"
 
 
 class IngresoStockItem(db.Model):

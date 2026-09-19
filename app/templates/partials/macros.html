@@ -3,7 +3,7 @@
     'Finalizada': 'ok', 'En proceso': 'accent', 'Confirmado': 'ok', 'Aprobado': 'ok', 'Finalizado': 'ok',
     'En reparación': 'accent', 'En diagnóstico': 'info', 'Ingresado': 'info', 'Enviado': 'info',
     'Esperando repuestos': 'warn', 'Pendiente': 'warn', 'Por cobrar': 'danger', 'Borrador': '',
-    'Cancelado': 'danger', 'Rechazado': 'danger'} -%}
+    'Cancelado': 'danger', 'Rechazado': 'danger', 'Anulado': 'danger'} -%}
   <span class="badge {{ 'badge-' ~ clases[valor] if clases.get(valor) }}">{{ valor or '—' }}</span>
 {%- endmacro %}
 

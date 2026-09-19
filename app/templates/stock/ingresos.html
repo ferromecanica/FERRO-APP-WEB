@@ -1,20 +1,37 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import estado, vacio %}
+{% from "partials/macros.html" import estado as badge, vacio %}
 {% block title %}Ingresos de mercadería{% endblock %}
 {% block content %}
-<div class="page-head"><div><div class="eyebrow">Gestión</div><h1>Stock</h1></div></div>
+<div class="page-head">
+  <div><div class="eyebrow">Stock</div><h1>Ingresos de mercadería</h1></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('stock.ingreso') }}"><i class="fa-solid fa-plus"></i> Nuevo ingreso</a></div>
+</div>
 {% include "stock/_tabs.html" %}
+<div class="filters" style="margin-bottom:14px">
+  <a class="chip {{ 'active' if not estado }}" href="{{ url_for('stock.ingresos') }}">Todos</a>
+  {% for e in ['Borrador', 'Confirmado', 'Anulado'] %}
+    <a class="chip {{ 'active' if estado == e }}" href="{{ url_for('stock.ingresos', estado=e) }}">{{ e }}</a>
+  {% endfor %}
+</div>
 <div class="card">
   {% if ingresos %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Proveedor</th><th class="hide-sm">Factura</th><th>Estado</th><th class="num">Total</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Proveedor</th><th class="hide-sm">Nº factura</th><th class="hide-sm">Notas</th>
+      <th class="num">Ítems</th><th class="num">Total</th><th>Estado</th></tr></thead>
     <tbody>
     {% for i in ingresos %}
-      <tr><td>{{ i.fecha | fecha }}</td><td>{{ i.proveedor }}<div class="muted small">{{ i.items | length }} ítems</div></td>
-        <td class="hide-sm">{{ i.nro_factura or '—' }}</td><td>{{ estado(i.estado) }}</td><td class="num">{{ i.total | pesos }}</td></tr>
+      <tr class="clickable" onclick="location='{{ url_for('stock.ingreso', id=i.id) }}'">
+        <td style="white-space:nowrap">{{ i.fecha | fecha }}</td>
+        <td><strong>{{ i.proveedor }}</strong></td>
+        <td class="hide-sm mono">{{ i.nro_factura or '—' }}</td>
+        <td class="hide-sm">{{ i.notas or '' }}</td>
+        <td class="num">{{ i.items | length }}</td>
+        <td class="num">{{ i.total | pesos }}</td>
+        <td>{{ badge(i.estado) }}</td>
+      </tr>
     {% endfor %}
     </tbody>
   </table></div>
-  {% else %}{{ vacio('fa-truck-ramp-box', 'Sin ingresos de mercadería.') }}{% endif %}
+  {% else %}{{ vacio('fa-truck-ramp-box', 'No hay ingresos' ~ (' en ese estado' if estado else ' cargados') ~ '.') }}{% endif %}
 </div>
 {% endblock %}

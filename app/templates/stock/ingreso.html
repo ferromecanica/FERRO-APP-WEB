@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado as badge, vacio %}
+{% block title %}{{ 'Ingreso #' ~ ing.id if ing.id else 'Nuevo ingreso' }}{% endblock %}
+{% macro encabezado(icono, titulo, extra='') -%}
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2><span class="muted small">{{ extra }}</span></div>
+{%- endmacro %}
+{% block content %}
+{% set f = request.form %}
+<div class="page-head">
+  <div><div class="eyebrow">Stock · ingreso de mercadería</div>
+    <h1>{{ ('Ingreso #' ~ ing.id) if ing.id else 'Nuevo ingreso' }}
+      {% if ing.id %}<span style="font-size:1rem;vertical-align:middle">{{ badge(ing.estado) }}</span>{% endif %}</h1></div>
+  <div class="actions">
+    {% if ing.id and ing.editable %}
+      <form method="post" action="{{ url_for('stock.ingreso_confirmar', id=ing.id) }}"
+            onsubmit="return confirm('¿Confirmar el ingreso? Entra al stock lo cargado y se actualizan los costos.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-primary"><i class="fa-solid fa-check-double"></i> Confirmar ingreso</button></form>
+    {% elif ing.estado == 'Confirmado' %}
+      <form method="post" action="{{ url_for('stock.ingreso_anular', id=ing.id) }}"
+            onsubmit="return confirm('¿Anular el ingreso? Se descuenta del stock lo que había entrado.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn"><i class="fa-solid fa-rotate-left"></i> Anular</button></form>
+    {% endif %}
+    <a class="btn" href="{{ url_for('stock.ingresos') }}">Volver</a>
+  </div>
+</div>
+
+<div class="grid grid-3-1">
+  <div class="stack">
+    {# ───── Cabecera ───── #}
+    <form class="card" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {{ encabezado('fa-file-invoice', 'Datos de la compra') }}
+      <div class="card-body form-grid">
+        <div><label>Proveedor *</label>
+          <div class="input-group">
+            <select name="proveedor" id="proveedor" required {{ 'disabled' if not ing.editable and ing.id }}>
+              <option value="">Elegí…</option>
+              {% set prov = f.get('proveedor', ing.proveedor or '') %}
+              {% for p in proveedores %}<option {{ 'selected' if p == prov }}>{{ p }}</option>{% endfor %}
+            </select>
+            {% if ing.editable %}<button type="button" class="btn btn-sm" id="nuevo-proveedor" title="Agregar proveedor"><i class="fa-solid fa-plus"></i></button>{% endif %}
+          </div></div>
+        <div><label>Fecha</label><input type="date" name="fecha" value="{{ f.get('fecha', (ing.fecha or hoy).isoformat()) }}" {{ 'disabled' if not ing.editable and ing.id }}></div>
+        <div><label>Nº de factura</label><input name="nro_factura" value="{{ f.get('nro_factura', ing.nro_factura or '') }}" placeholder="0010-00108189" {{ 'disabled' if not ing.editable and ing.id }}></div>
+        <div><label>Notas</label><input name="notas" value="{{ f.get('notas', ing.notas or '') }}" placeholder="Ej.: Filtros Spark II" {{ 'disabled' if not ing.editable and ing.id }}></div>
+      </div>
+      {% if ing.editable %}
+      <div class="card-body" style="border-top:1px solid var(--border)">
+        <button class="btn btn-primary"><i class="fa-solid fa-check"></i> {{ 'Guardar' if ing.id else 'Crear y cargar repuestos' }}</button>
+      </div>
+      {% endif %}
+    </form>
+
+    {# ───── Ítems ───── #}
+    {% if ing.id %}
+    <div class="card" id="items">
+      {{ encabezado('fa-boxes-stacked', 'Repuestos', (ing.items | length) ~ ' ítems') }}
+      {% if ing.items %}
+      <div class="table-wrap"><table class="tabla-densa">
+        <thead><tr><th class="izq">Repuesto</th><th class="num">Cant.</th><th class="num">Costo unit.</th><th class="num">Subtotal</th>
+          <th class="hide-sm">Efecto en el precio</th>{% if ing.editable %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for i in ing.items %}
+          {% set cambia = ing.editable and i.costo_unitario and not i.repuesto.costo_manual and i.costo_unitario != i.repuesto.costo_lista %}
+          <tr id="item-{{ i.id }}">
+            <td><a href="{{ url_for('stock.ficha', id=i.repuesto_id) }}"><span class="muted">{{ i.repuesto_id }}</span> · {{ i.repuesto.nombre }}</a>
+              <div class="muted small">stock actual {{ i.repuesto.stock_actual | numero(2) | replace(',00', '') }}{% if i.repuesto.costo_manual %} · costo fijo{% endif %}</div></td>
+            <td class="num">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+            <td class="num">{{ i.costo_unitario | pesos(2) }}</td>
+            <td class="num"><strong>{{ i.subtotal | pesos(2) }}</strong></td>
+            <td class="hide-sm small">
+              {% if cambia %}<span style="color:var(--accent-ink)">costo {{ i.repuesto.precio_costo | pesos(2) }} → {{ i.costo_unitario | pesos(2) }}</span>
+              {% elif i.repuesto.costo_manual %}<span class="muted">no cambia (costo fijo)</span>
+              {% else %}<span class="muted">sin cambios</span>{% endif %}
+            </td>
+            {% if ing.editable %}
+            <td class="num"><span class="acciones-fila">
+              <button type="button" class="btn-icon btn-editar" data-editar="item-{{ i.id }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+              <form method="post" action="{{ url_for('stock.ingreso_item_eliminar', iid=i.id) }}" onsubmit="return confirm('¿Quitar este repuesto del ingreso?')" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn-icon" title="Quitar"><i class="fa-solid fa-xmark"></i></button></form>
+            </span></td>
+            {% endif %}
+          </tr>
+          {% if ing.editable %}
+          <tr id="item-{{ i.id }}-edicion" class="fila-edicion" hidden><td colspan="6">
+            <form method="post" action="{{ url_for('stock.ingreso_item_editar', iid=i.id) }}" class="fila">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="c-desc"><label>Repuesto</label><input value="{{ i.repuesto.nombre }}" disabled></div>
+              <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ i.cantidad | numero(2) | replace(',00', '') }}"></div>
+              <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" inputmode="decimal" value="{{ i.costo_unitario | numero(2) if i.costo_unitario else '' }}"></div>
+              <div class="c-btn"><span class="acciones-edicion"><button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
+                <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
+            </form>
+          </td></tr>
+          {% endif %}
+        {% endfor %}
+          <tr class="total-row"><td colspan="3">Total de la compra</td><td class="num">{{ ing.total | pesos(2) }}</td>
+            <td class="hide-sm"></td>{% if ing.editable %}<td></td>{% endif %}</tr>
+        </tbody>
+      </table></div>
+      {% else %}{{ vacio('fa-boxes-stacked', 'Todavía no cargaste repuestos.') }}{% endif %}
+
+      {% if ing.editable %}
+      <form method="post" action="{{ url_for('stock.ingreso_item_agregar', id=ing.id) }}" class="add-box fila">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="c-desc"><label>Repuesto (nombre, código o escáner)</label>
+          <input name="repuesto" id="repuesto-ingreso" list="lista-repuestos" autocomplete="off" required data-escaner placeholder="Escribí para buscar…">
+          <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}" data-costo="{{ r.costo_lista or 0 }}">stock {{ r.stock_actual | numero(1) }} · costo {{ r.precio_costo | pesos(2) }}</option>{% endfor %}</datalist></div>
+        <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+        <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" id="costo-ingreso" inputmode="decimal" placeholder="$ (deja el actual)"></div>
+        <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+        <div class="span-4 muted small">Al confirmar el ingreso, el costo cargado pasa a ser el costo de lista del repuesto y se recalcula su precio de venta (salvo los marcados como "costo fijo").</div>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="stack">
+    {% if ing.id %}
+    <div class="card">
+      {{ encabezado('fa-calculator', 'Resumen') }}
+      <div class="card-body">
+        <dl class="props totales">
+          <dt>Ítems</dt><dd class="num">{{ ing.items | length }}</dd>
+          <dt>Unidades</dt><dd class="num">{{ ing.items | sum(attribute='cantidad') | numero(2) | replace(',00', '') }}</dd>
+          <dt><strong>Total</strong></dt><dd class="num"><strong>{{ ing.total | pesos(2) }}</strong></dd>
+        </dl>
+        <p class="muted small" style="margin:12px 0 0">
+          {% if ing.editable %}Mientras está en <strong>Borrador</strong> no afecta el stock.
+          {% elif ing.estado == 'Confirmado' %}Confirmado: ya entró al stock.
+          {% else %}Anulado: se descontó del stock.{% endif %}</p>
+      </div>
+    </div>
+    {% if ing.editable %}
+    <div class="card card-body">
+      <form method="post" action="{{ url_for('stock.ingreso_eliminar', id=ing.id) }}" onsubmit="return confirm('¿Eliminar este ingreso en borrador?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar ingreso</button>
+      </form>
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+<script>
+  if (document.getElementById('nuevo-proveedor'))
+    FerroAltaEnSelect('proveedor', 'nuevo-proveedor', '{{ url_for("stock.proveedor_nuevo") }}', 'Nombre del proveedor nuevo:');
+  /* Al elegir un repuesto, sugiere su costo actual */
+  var campoRepuesto = document.getElementById('repuesto-ingreso');
+  if (campoRepuesto) campoRepuesto.addEventListener('input', function () {
+    var op = Array.prototype.find.call(document.querySelectorAll('#lista-repuestos option'), function (o) { return o.value === campoRepuesto.value; });
+    var costo = document.getElementById('costo-ingreso');
+    if (op && !costo.value) costo.value = (parseFloat(op.dataset.costo) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  });
+  /* Editar un renglón en el lugar */
+  document.querySelectorAll('[data-editar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById(b.dataset.editar).hidden = true;
+      document.getElementById(b.dataset.editar + '-edicion').hidden = false;
+    });
+  });
+  document.querySelectorAll('[data-cancelar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ed = b.closest('.fila-edicion'); ed.hidden = true;
+      document.getElementById(ed.id.replace(/-edicion$/, '')).hidden = false;
+    });
+  });
+</script>
+{% endblock %}

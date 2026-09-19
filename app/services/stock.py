@@ -92,6 +92,18 @@ def confirmar_ingreso(ingreso):
     ingreso.estado = "Confirmado"
 
 
+def anular_ingreso(ingreso):
+    """Deshace una compra confirmada: saca del stock lo que había sumado (los costos quedan como están)."""
+    if ingreso.estado != "Confirmado":
+        raise ValueError("Solo se puede anular un ingreso confirmado.")
+    for item in ingreso.items:
+        registrar_movimiento(
+            item.repuesto, -item.cantidad, "Reversion",
+            detalle=f"Anulación de ingreso {ingreso.nro_factura or ingreso.id}", ingreso_id=ingreso.id,
+        )
+    ingreso.estado = "Anulado"
+
+
 def clave_markup(repuesto):
     """Clave para buscar la regla del proveedor (como en AppSheet).
 

@@ -1,6 +1,6 @@
 import base64
 import secrets
-from datetime import datetime
+from datetime import date, datetime
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
@@ -9,6 +9,7 @@ from sqlalchemy import func, or_
 from ..extensions import db
 from ..models import (
     Categoria,
+    IngresoStock,
     ConfigMarkup,
     ConsumoOT,
     FotoRepuesto,
@@ -21,7 +22,9 @@ from ..models import (
     VentaItem,
 )
 from ..services import drive
-from ..services.stock import recalcular_precio_venta, regla_markup, registrar_movimiento
+from ..services.stock import (
+    anular_ingreso, buscar_repuesto, confirmar_ingreso, recalcular_precio_venta, regla_markup, registrar_movimiento,
+)
 from ..validaciones import numero_ar
 
 bp = Blueprint("stock", __name__)
@@ -399,6 +402,139 @@ def movimientos():
 
 @bp.route("/ingresos")
 def ingresos():
-    from ..models import IngresoStock
-    ingresos = IngresoStock.query.order_by(IngresoStock.fecha.desc()).all()
-    return render_template("stock/ingresos.html", ingresos=ingresos)
+    estado = request.args.get("estado", "")
+    consulta = IngresoStock.query
+    if estado:
+        consulta = consulta.filter(IngresoStock.estado == estado)
+    lista_ingresos = consulta.order_by(IngresoStock.fecha.desc(), IngresoStock.id.desc()).all()
+    return render_template("stock/ingresos.html", ingresos=lista_ingresos, estado=estado)
+
+
+@bp.route("/ingresos/nuevo", methods=["GET", "POST"])
+@bp.route("/ingresos/<int:id>", methods=["GET", "POST"])
+def ingreso(id=None):
+    ing = db.get_or_404(IngresoStock, id) if id else IngresoStock(fecha=date.today(), estado="Borrador")
+    if request.method == "POST":
+        if id and not ing.editable:
+            flash("El ingreso ya está confirmado: no se puede editar.", "error")
+            return redirect(url_for(".ingreso", id=id))
+        proveedor = request.form.get("proveedor", "").strip()
+        if proveedor not in _proveedores():
+            flash("Elegí un proveedor de la lista.", "error")
+        else:
+            ing.proveedor = proveedor
+            ing.nro_factura = _texto("nro_factura")
+            ing.notas = _texto("notas")
+            try:
+                ing.fecha = datetime.strptime(request.form.get("fecha", ""), "%Y-%m-%d").date()
+            except ValueError:
+                ing.fecha = ing.fecha or date.today()
+            if not id:
+                db.session.add(ing)
+            db.session.commit()
+            flash("Ingreso guardado." if id else "Ingreso creado: ahora cargá los repuestos.", "ok")
+            return redirect(url_for(".ingreso", id=ing.id))
+    repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
+    return render_template("stock/ingreso.html", ing=ing, proveedores=_proveedores(), repuestos=repuestos)
+
+
+def _ingreso_editable(id):
+    ing = db.get_or_404(IngresoStock, id)
+    if not ing.editable:
+        flash("El ingreso ya está confirmado.", "error")
+        return None
+    return ing
+
+
+@bp.route("/ingresos/<int:id>/items", methods=["POST"])
+def ingreso_item_agregar(id):
+    ing = _ingreso_editable(id)
+    if ing is None:
+        return redirect(url_for(".ingreso", id=id))
+    texto_repuesto = request.form.get("repuesto", "").strip()
+    codigo = texto_repuesto.split("·")[0].strip()
+    repuesto = db.session.get(Repuesto, int(codigo)) if codigo.isdigit() else None
+    repuesto = repuesto or buscar_repuesto(texto_repuesto)
+    cantidad = numero_ar(request.form.get("cantidad")) or 0
+    costo = numero_ar(request.form.get("costo_unitario"))
+    if repuesto is None or repuesto.id == Repuesto.ID_VARIOS:
+        flash(f"No encontré el repuesto «{texto_repuesto}».", "error")
+    elif cantidad <= 0:
+        flash("La cantidad tiene que ser mayor a cero.", "error")
+    else:
+        item = next((i for i in ing.items if i.repuesto_id == repuesto.id), None)
+        if item:  # el mismo repuesto cargado dos veces: se suma la cantidad
+            item.cantidad += cantidad
+            if costo is not None:
+                item.costo_unitario = costo
+        else:
+            db.session.add(IngresoStockItem(ingreso=ing, repuesto=repuesto, cantidad=cantidad,
+                                            costo_unitario=costo if costo is not None else repuesto.costo_lista))
+        db.session.commit()
+    return redirect(url_for(".ingreso", id=id) + "#items")
+
+
+@bp.route("/ingresos/items/<int:iid>/editar", methods=["POST"])
+def ingreso_item_editar(iid):
+    item = db.get_or_404(IngresoStockItem, iid)
+    if _ingreso_editable(item.ingreso_id) is not None:
+        cantidad = numero_ar(request.form.get("cantidad"))
+        costo = numero_ar(request.form.get("costo_unitario"))
+        if not cantidad or cantidad <= 0:
+            flash("La cantidad tiene que ser mayor a cero.", "error")
+        else:
+            item.cantidad = cantidad
+            item.costo_unitario = costo
+            db.session.commit()
+    return redirect(url_for(".ingreso", id=item.ingreso_id) + "#items")
+
+
+@bp.route("/ingresos/items/<int:iid>/eliminar", methods=["POST"])
+def ingreso_item_eliminar(iid):
+    item = db.get_or_404(IngresoStockItem, iid)
+    ingreso_id = item.ingreso_id
+    if _ingreso_editable(ingreso_id) is not None:
+        db.session.delete(item)
+        db.session.commit()
+    return redirect(url_for(".ingreso", id=ingreso_id) + "#items")
+
+
+@bp.route("/ingresos/<int:id>/confirmar", methods=["POST"])
+def ingreso_confirmar(id):
+    ing = _ingreso_editable(id)
+    if ing is None:
+        return redirect(url_for(".ingreso", id=id))
+    if not ing.items:
+        flash("Cargá al menos un repuesto antes de confirmar.", "error")
+    else:
+        cambios = sum(1 for i in ing.items
+                      if i.costo_unitario and not i.repuesto.costo_manual and i.costo_unitario != i.repuesto.costo_lista)
+        confirmar_ingreso(ing)
+        db.session.commit()
+        aviso = f" Se actualizó el costo de {cambios} repuesto{'s' if cambios != 1 else ''}." if cambios else ""
+        flash(f"Ingreso confirmado: entraron {len(ing.items)} repuestos al stock.{aviso}", "ok")
+    return redirect(url_for(".ingreso", id=id))
+
+
+@bp.route("/ingresos/<int:id>/anular", methods=["POST"])
+def ingreso_anular(id):
+    ing = db.get_or_404(IngresoStock, id)
+    try:
+        anular_ingreso(ing)
+        db.session.commit()
+        flash("Ingreso anulado: se descontó del stock lo que había entrado.", "ok")
+    except ValueError as e:
+        flash(str(e), "error")
+    return redirect(url_for(".ingreso", id=id))
+
+
+@bp.route("/ingresos/<int:id>/eliminar", methods=["POST"])
+def ingreso_eliminar(id):
+    ing = db.get_or_404(IngresoStock, id)
+    if ing.estado == "Confirmado":
+        flash("Un ingreso confirmado no se elimina: primero anulalo.", "error")
+        return redirect(url_for(".ingreso", id=id))
+    db.session.delete(ing)
+    db.session.commit()
+    flash("Ingreso eliminado.", "ok")
+    return redirect(url_for(".ingresos"))

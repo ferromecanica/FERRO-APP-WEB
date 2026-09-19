@@ -46,7 +46,7 @@ def register_cli(app):
         cfg.valor_hora = 84000
 
         varios = Repuesto(id=Repuesto.ID_VARIOS, nombre="Varios / Mano de Obra", marca="N/A")
-        filtros = Categoria(nombre="FILTROS")
+        filtros = Categoria.query.filter_by(nombre="FILTROS").first() or Categoria(nombre="FILTROS")
         db.session.add_all([varios, filtros])
         db.session.add_all([
             Repuesto(id=1000, nombre="Kit filtros Mahle Corolla 1.8", proveedor="RSF", marca="MAHLE",
