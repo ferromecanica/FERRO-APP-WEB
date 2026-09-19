@@ -1,7 +1,7 @@
 """Importa datos del Excel de AppSheet (Taller_Mec.xlsx) a la base de Ferro.
 
-Uso:  python scripts/importar_appsheet.py <ruta al .xlsx> repuestos
-      (por ahora: repuestos + categorías faltantes + proveedores + reglas de markup)
+Uso:  python scripts/importar_appsheet.py <ruta al .xlsx> repuestos   (repuestos, proveedores, markups)
+      python scripts/importar_appsheet.py <ruta al .xlsx> clientes    (clientes y vehículos)
 
 Se puede correr varias veces: actualiza por número de repuesto (no duplica).
 Hace una copia de la base antes de tocar nada.
@@ -15,7 +15,10 @@ from sqlalchemy import func  # noqa: E402
 
 from app import create_app  # noqa: E402
 from app.extensions import db  # noqa: E402
-from app.models import Categoria, ConfigMarkup, MovimientoStock, Proveedor, Repuesto, Subcategoria  # noqa: E402
+from app.models import (  # noqa: E402
+    Categoria, Cliente, ConfigMarkup, MovimientoStock, Proveedor, Repuesto, Subcategoria, Vehiculo,
+)
+from app.validaciones import cuit_valido, formatear_cuit, normalizar_patente  # noqa: E402
 from app.services.backup import hacer_copia  # noqa: E402
 
 
@@ -106,13 +109,77 @@ def importar_markups(libro):
     return ConfigMarkup.query.count()
 
 
+def id_cliente(codigo):
+    """'CLI-003' → 3 (el número de cliente se conserva)."""
+    t = texto(codigo) or ""
+    return int(t.split("-")[-1]) if t.split("-")[-1].isdigit() else None
+
+
+def importar_clientes(libro):
+    nuevos = actualizados = 0
+    for c in filas(libro, "Clientes"):
+        cid = id_cliente(c["ID_Cliente"])
+        if cid is None:
+            continue
+        cli = db.session.get(Cliente, cid)
+        if cli is None:
+            cli = Cliente(id=cid)
+            db.session.add(cli)
+            nuevos += 1
+        else:
+            actualizados += 1
+        cli.nombre = texto(c["Nombre_Completo"]) or f"Cliente {cid}"
+        cli.telefono = texto(c["Telefono"])
+        cli.email = (texto(c["Email"]) or "").lower() or None
+        cli.direccion = texto(c["Direccion"])
+        cli.notas = texto(c["Notas"])
+        cuit = texto(c["CUIT"])
+        cli.cuit = formatear_cuit(cuit) if cuit and cuit_valido(cuit) else cuit
+        cli.condicion_iva = texto(c["Condicion_IVA"]) or "Consumidor Final"
+    return nuevos, actualizados
+
+
+def importar_vehiculos(libro):
+    nuevos = actualizados = 0
+    for v in filas(libro, "Vehiculos"):
+        patente = normalizar_patente(texto(v["ID_Patente"]))
+        if not patente:
+            continue
+        veh = Vehiculo.query.filter_by(patente=patente).first()
+        if veh is None:
+            veh = Vehiculo(patente=patente)
+            db.session.add(veh)
+            nuevos += 1
+        else:
+            actualizados += 1
+        cid = id_cliente(v["ID_Cliente"])
+        veh.cliente_id = cid if cid and db.session.get(Cliente, cid) else None
+        veh.marca, veh.modelo, veh.motor = texto(v["Marca"]), texto(v["Modelo"]), texto(v["Motor"])
+        veh.traccion, veh.color = texto(v["Tracción"]), texto(v["Color"])
+        veh.vin, veh.ecu_marca, veh.ecu_modelo = texto(v["VIN"]), texto(v["ECU_Marca"]), texto(v["ECU_Modelo"])
+        anio, km = v["Año"], v["Kilometraje"]
+        veh.anio = int(anio) if isinstance(anio, (int, float)) else None
+        veh.kilometraje = int(km) if isinstance(km, (int, float)) else None
+        db.session.flush()
+    return nuevos, actualizados
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or sys.argv[2] != "repuestos":
+    if len(sys.argv) < 3 or sys.argv[2] not in ("repuestos", "clientes"):
         sys.exit(__doc__)
     libro = openpyxl.load_workbook(sys.argv[1], data_only=True, read_only=True)
     app = create_app()
     with app.app_context():
         print("Copia de seguridad:", hacer_copia(app.config["SQLALCHEMY_DATABASE_URI"]).name)
+        if sys.argv[2] == "clientes":
+            c_n, c_a = importar_clientes(libro)
+            db.session.flush()
+            v_n, v_a = importar_vehiculos(libro)
+            db.session.commit()
+            sin_dueno = Vehiculo.query.filter(Vehiculo.cliente_id.is_(None)).count()
+            print(f"✓ Clientes: {c_n} nuevos, {c_a} actualizados · Vehículos: {v_n} nuevos, {v_a} actualizados"
+                  f" ({sin_dueno} sin dueño)")
+            sys.exit(0)
         nuevos, actualizados = importar_repuestos(libro)
         reglas = importar_markups(libro)
         db.session.commit()
