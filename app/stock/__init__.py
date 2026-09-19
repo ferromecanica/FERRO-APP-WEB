@@ -23,7 +23,8 @@ from ..models import (
 )
 from ..services import drive
 from ..services.stock import (
-    anular_ingreso, buscar_repuesto, confirmar_ingreso, recalcular_precio_venta, regla_markup, registrar_movimiento,
+    anular_ingreso, buscar_repuesto, confirmar_ingreso, posibles_duplicados, recalcular_precio_venta, regla_markup,
+    registrar_movimiento,
 )
 from ..validaciones import numero_ar
 
@@ -167,7 +168,8 @@ def ficha(id=None):
             errores.append("El markup es un multiplicador: 1,4 = 40 % sobre el costo.")
         if repuesto.descuento_oferta and not 0 < repuesto.descuento_oferta < 1:
             errores.append("El descuento va en porcentaje, entre 0 y 100.")
-        if errores:
+        duplicados = [] if request.form.get("ignorar_duplicados") else posibles_duplicados(repuesto)
+        if errores or duplicados:
             db.session.rollback()
             for e in errores:
                 flash(e, "error")
@@ -189,6 +191,7 @@ def ficha(id=None):
                 return redirect(url_for(".ingreso", id=volver_ingreso, repuesto=repuesto.id) + "#items")
             return redirect(url_for(".ficha", id=repuesto.id))
 
+    duplicados = locals().get("duplicados") or []
     markup, origen = regla_markup(repuesto) if repuesto.proveedor or repuesto.markup else (1.0, "sin regla de markup")
     movimientos = (MovimientoStock.query.filter_by(repuesto_id=repuesto.id).order_by(MovimientoStock.fecha.desc())
                    .limit(50).all() if repuesto.id else [])
@@ -198,7 +201,7 @@ def ficha(id=None):
         proveedores=_proveedores(), marcas=_distintos(Repuesto.marca),
         estanterias=_distintos(Repuesto.estanteria), estantes=_distintos(Repuesto.estante),
         reglas=[{"proveedor": m.proveedor, "marca": m.marca_envase, "markup": m.markup} for m in ConfigMarkup.query.all()],
-        usado=_en_uso(repuesto) if repuesto.id else False,
+        usado=_en_uso(repuesto) if repuesto.id else False, duplicados=duplicados,
     )
 
 

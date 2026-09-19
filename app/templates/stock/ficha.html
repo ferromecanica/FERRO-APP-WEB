@@ -19,6 +19,26 @@
   <a href="{{ url_for('stock.ingreso', id=request.args.get('volver_ingreso')) }}">ingreso #{{ request.args.get('volver_ingreso') }}</a>.
   Al guardarlo volvés ahí con este repuesto ya elegido.</div>
 {% endif %}
+{% if duplicados %}
+<div class="aviso-duplicados">
+  <div class="aviso-titulo"><i class="fa-solid fa-triangle-exclamation"></i>
+    Ojo: {{ 'hay' if duplicados | length == 1 else 'hay' }} {{ duplicados | length }} repuesto{{ 's' if duplicados | length != 1 }} que se parece{{ 'n' if duplicados | length != 1 }} a este</div>
+  <ul class="list">
+    {% for otro, motivo in duplicados %}
+    <li>
+      <div><a href="{{ url_for('stock.ficha', id=otro.id) }}" target="_blank"><strong>#{{ otro.id }} · {{ otro.nombre }}</strong></a>
+        <div class="muted small">Tiene {{ motivo }}{% if otro.nro_parte %} · nº parte {{ otro.nro_parte }}{% endif %}{% if otro.marca %} · {{ otro.marca }}{% endif %}
+          · stock {{ otro.stock_actual | numero(2) | replace(',00', '') }}</div></div>
+      <span class="badge">{{ otro.precio_venta | pesos }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="aviso-pie">
+    <span class="small">Revisalo: si es el mismo repuesto, mejor editá el que ya existe en vez de cargarlo de nuevo.</span>
+    <button class="btn btn-sm" form="form-repuesto" name="ignorar_duplicados" value="1">Es distinto: guardar igual</button>
+  </div>
+</div>
+{% endif %}
 <form method="post" id="form-repuesto" autocomplete="off">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <div class="grid grid-3-1">

@@ -3,6 +3,9 @@
 Las funciones no hacen commit: el que llama decide cuándo confirmar la
 transacción, así una OT con varios consumos entra entera o no entra.
 """
+import re
+from difflib import SequenceMatcher
+
 from flask_login import current_user
 
 from ..extensions import db
@@ -11,6 +14,93 @@ from ..models import ConfigMarkup, ConsumoOT, MovimientoStock, Repuesto
 
 def _usuario_id():
     return current_user.id if current_user and current_user.is_authenticated else None
+
+
+# ─────────────────────── Control de repuestos repetidos ─────────────────────
+
+CAMPOS_CLAVE = [
+    ("nro_parte", "el mismo nº de parte"),
+    ("cod_proveedor", "el mismo código de proveedor"),
+    ("codigo_barras", "el mismo código de barras"),
+]
+
+
+def _normalizar(valor):
+    """Para comparar: sin espacios, guiones ni mayúsculas ('318 105' y '318-105' son lo mismo)."""
+    return re.sub(r"[^A-Z0-9]", "", (valor or "").upper())
+
+
+def _distancia(a, b):
+    """Cuántos caracteres hay que cambiar para pasar de a a b (corta en 2: solo interesa 0 o 1)."""
+    if abs(len(a) - len(b)) > 1:
+        return 2
+    cambios = sum(1 for x, y in zip(a, b) if x != y) if len(a) == len(b) else 1
+    if len(a) != len(b):  # uno tiene un carácter de más: ¿el resto coincide?
+        largo, corto = (a, b) if len(a) > len(b) else (b, a)
+        if not any(largo[:i] + largo[i + 1:] == corto for i in range(len(largo))):
+            return 2
+    return min(cambios, 2)
+
+
+def _misma_marca(a, b):
+    """Dos repuestos son 'de la misma marca' si coinciden o si a alguno le falta la marca."""
+    ma, mb = _normalizar(a.marca), _normalizar(b.marca)
+    return not ma or not mb or ma == mb
+
+
+def _palabras(nombre):
+    return [p for p in re.split(r"[^A-Z0-9]+", (nombre or "").upper()) if p]
+
+
+def _mismo_nombre(a, b):
+    """True si los nombres son el mismo producto: mismas palabras, salvo algún error de tipeo.
+
+    'KIT47 FILTROS MAHLE' y 'KIT47 HAB FILTROS MAHLE' son distintos (HAB cambia el producto);
+    'AMORTIGUADOR' y 'AMORTIGADOR' son el mismo (una letra de diferencia en una palabra larga).
+    """
+    pa, pb = set(_palabras(a)), set(_palabras(b))
+    if not pa or not pb:
+        return False
+    if pa == pb:
+        return True
+    sueltas_a, sueltas_b = sorted(pa - pb), sorted(pb - pa)
+    if len(sueltas_a) != len(sueltas_b) or len(sueltas_a) > 2:
+        return False  # a una le sobra una palabra (HAB, 4L…): es otro producto
+    # cada palabra distinta tiene que ser la misma con un error de tipeo (y ser larga)
+    return all(len(x) >= 4 and len(y) >= 4 and _distancia(x, y) == 1 for x, y in zip(sueltas_a, sueltas_b))
+
+
+def posibles_duplicados(repuesto):
+    """Repuestos ya cargados que probablemente sean el mismo. Devuelve [(repuesto, motivo)].
+
+    Avisa cuando: comparten código de barras; comparten nº de parte o de proveedor **y** la marca;
+    o el nombre es casi idéntico. Un nº de parte parecido (una letra o número de diferencia) solo
+    cuenta si además el nombre casi coincide: los kits KIT01, KIT02… son distintos entre sí.
+    """
+    otros = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS)
+    if repuesto.id:
+        otros = otros.filter(Repuesto.id != repuesto.id)
+    barras = _normalizar(repuesto.codigo_barras)
+    encontrados = {}
+    for otro in otros.all():
+        motivo = None
+        mismo_nombre = _mismo_nombre(repuesto.nombre, otro.nombre)
+        if len(barras) >= 6 and barras == _normalizar(otro.codigo_barras):
+            motivo = "el mismo código de barras"
+        else:
+            for campo, texto in (("nro_parte", "el mismo nº de parte"), ("cod_proveedor", "el mismo código de proveedor")):
+                mio, suyo = _normalizar(getattr(repuesto, campo)), _normalizar(getattr(otro, campo))
+                if len(mio) < 3 or len(suyo) < 3:
+                    continue
+                if mio == suyo and _misma_marca(repuesto, otro):
+                    motivo = motivo or f"{texto} y la misma marca"
+                elif _distancia(mio, suyo) == 1 and mismo_nombre and _misma_marca(repuesto, otro):
+                    motivo = motivo or f"un {texto.replace('el mismo ', '')} muy parecido y un nombre casi igual"
+            if not motivo and mismo_nombre and len(_palabras(repuesto.nombre)) >= 2:
+                motivo = "el mismo nombre" + ("" if _normalizar(repuesto.nombre) == _normalizar(otro.nombre) else " (con alguna letra distinta)")
+        if motivo:
+            encontrados[otro.id] = (otro, motivo)
+    return list(encontrados.values())
 
 
 def registrar_movimiento(repuesto, cantidad, tipo, detalle=None, ot_id=None, venta_id=None, ingreso_id=None):
