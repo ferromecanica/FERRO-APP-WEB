@@ -15,9 +15,12 @@
     {% else %}
       {# ───── Vehículo ───── #}
       <div class="full"><label>Patente *</label>
-        <input id="patente" name="patente" list="lista-vehiculos" required autofocus
-               value="{{ f.get('patente', vehiculo.patente if vehiculo else '') }}" placeholder="Escribí la patente…"
-               style="text-transform:uppercase;font-family:var(--font-display);font-weight:700;letter-spacing:.08em">
+        <div class="input-group">
+          <input id="patente" name="patente" list="lista-vehiculos" required autofocus
+                 value="{{ f.get('patente', vehiculo.patente if vehiculo else '') }}" placeholder="Buscá la patente…"
+                 style="text-transform:uppercase;font-family:var(--font-display);font-weight:700;letter-spacing:.08em">
+          <button type="button" class="btn" id="btn-vehiculo-nuevo" title="Dar de alta un vehículo nuevo"><i class="fa-solid fa-plus"></i> Vehículo nuevo</button>
+        </div>
         <datalist id="lista-vehiculos">
           {% for v in vehiculos %}<option value="{{ v.patente }}">{{ v.marca or '' }} {{ v.modelo or '' }}{% if v.cliente %} · {{ v.cliente.nombre }}{% endif %}</option>{% endfor %}
         </datalist>
@@ -36,9 +39,12 @@
 
       {# ───── Cliente ───── #}
       <div class="full"><label>Cliente *</label>
-        <input id="cliente" name="cliente" list="lista-clientes" required
-               value="{{ f.get('cliente', vehiculo.cliente.etiqueta if vehiculo and vehiculo.cliente else '') }}"
-               placeholder="Se completa con el dueño del vehículo, o buscá / escribí un nombre">
+        <div class="input-group">
+          <input id="cliente" name="cliente" list="lista-clientes" required
+                 value="{{ f.get('cliente', vehiculo.cliente.etiqueta if vehiculo and vehiculo.cliente else '') }}"
+                 placeholder="Se completa con el dueño del vehículo, o buscalo">
+          <button type="button" class="btn" id="btn-cliente-nuevo" title="Dar de alta un cliente nuevo"><i class="fa-solid fa-plus"></i> Cliente nuevo</button>
+        </div>
         <datalist id="lista-clientes">
           {% for c in clientes %}<option value="{{ c.etiqueta }}">{{ c.telefono or '' }}</option>{% endfor %}
         </datalist>
@@ -83,7 +89,7 @@
   function revisarCliente() {
     var v = cliente.value.trim();
     var existe = clientes.indexOf(v) !== -1;
-    cNuevo.hidden = !v || existe;
+    cNuevo.hidden = existe || (!v && cNuevo.hidden);
     if (existe && dueno && v !== dueno) {
       cInfo.innerHTML = '<i class="fa-solid fa-right-left"></i> El vehículo es de <strong>' + esc(dueno.split(' · ')[0]) + '</strong>: al abrir la OT pasa a este cliente.';
     } else if (existe && !dueno && !vNuevo.hidden) {
@@ -97,7 +103,7 @@
 
   function buscarPatente() {
     var p = patente.value.trim();
-    if (p.length < 5) { vInfo.textContent = ''; vNuevo.hidden = true; vInfo.dataset.existe = ''; return; }
+    if (p.length < 5) { vInfo.dataset.existe = ''; return; }
     var n = ++pedido;
     fetch('{{ url_for("ot.vehiculo_info") }}?patente=' + encodeURIComponent(p))
       .then(function (r) { return r.json(); })
@@ -122,6 +128,23 @@
   }
 
   patente.addEventListener('input', function () { clearTimeout(patente._t); patente._t = setTimeout(buscarPatente, 250); });
+
+  // Botones (+): abren el alta sin tener que empezar a tipear
+  document.getElementById('btn-vehiculo-nuevo').addEventListener('click', function () {
+    patente.value = ''; dueno = null; vInfo.dataset.existe = '';
+    vNuevo.hidden = false;
+    vInfo.innerHTML = '<i class="fa-solid fa-plus" style="color:var(--accent)"></i> Escribí la patente del vehículo nuevo y completá sus datos.';
+    patente.placeholder = 'Patente del vehículo nuevo (ej.: AB123CD)';
+    patente.focus();
+    revisarCliente();
+  });
+  document.getElementById('btn-cliente-nuevo').addEventListener('click', function () {
+    cliente.value = '';
+    cliente.placeholder = 'Nombre y apellido del cliente nuevo';
+    cNuevo.hidden = false;
+    cliente.focus();
+    cInfo.textContent = '';
+  });
   cliente.addEventListener('input', revisarCliente);
   if (patente.value) buscarPatente(); else revisarCliente();
 })();
