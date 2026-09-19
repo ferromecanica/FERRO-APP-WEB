@@ -1,43 +1,50 @@
 /**
- * Receptor de backups de Ferro en Google Drive.
+ * Backup diario de Ferro en Google Drive.
+ *
+ * Todos los días le pide a Ferro una copia de la base y la guarda en la
+ * carpeta de Drive indicada en CARPETA_ID. Borra los backups de Ferro de más de
+ * DIAS_A_GUARDAR días (no toca ningún otro archivo de la carpeta).
  *
  * Instalación (una sola vez):
- *  1. script.google.com → Nuevo proyecto → pegar este código.
+ *  1. script.google.com → Nuevo proyecto → borrar lo que haya y pegar este código.
  *  2. Reemplazar SECRETO por el valor de BACKUP_SECRET del .env del servidor.
- *  3. Implementar → Nueva implementación → tipo "Aplicación web":
- *       Ejecutar como: Yo    ·    Quién tiene acceso: Cualquier usuario
- *  4. Autorizar y copiar la URL de la aplicación web (termina en /exec).
- *
- * Guarda cada copia en la carpeta "Ferro - Backups" de tu Drive y borra las
- * que tengan más de DIAS_A_GUARDAR días.
+ *  3. Guardar. Arriba, elegir la función "instalar" → Ejecutar → autorizar con tu cuenta.
+ *     Eso hace un primer backup y deja programado el diario.
  */
 const SECRETO = 'PEGAR_ACA_EL_BACKUP_SECRET';
-const CARPETA = 'Ferro - Backups';
+const URL_FERRO = 'https://lucioroncoroni.pythonanywhere.com/sistema/backup';
+// Carpeta de Drive donde se guardan (el ID es lo que sigue a /folders/ en su dirección)
+const CARPETA_ID = '1l0xUjQPm5LURPoBCUY4hYqJDWQ8G4dVt';
 const DIAS_A_GUARDAR = 60;
+const PREFIJO = 'ferro-backup-';
+const HORA = 3; // 3 de la mañana (hora de la cuenta de Google)
 
-function doPost(e) {
-  const p = e.parameter;
-  if (!p.secreto || p.secreto !== SECRETO) return respuesta({ ok: false, error: 'secreto incorrecto' });
-  if (!p.nombre || !p.contenido) return respuesta({ ok: false, error: 'faltan datos' });
+function instalar() {
+  ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('respaldarFerro').timeBased().everyDays(1).atHour(HORA).create();
+  respaldarFerro();
+  Logger.log('Listo: backup diario programado a las ' + HORA + ' hs.');
+}
 
-  const carpeta = obtenerCarpeta();
-  const bytes = Utilities.base64Decode(p.contenido);
-  const archivo = carpeta.createFile(Utilities.newBlob(bytes, 'application/gzip', p.nombre));
+function respaldarFerro() {
+  const r = UrlFetchApp.fetch(URL_FERRO, {
+    method: 'post',
+    payload: { secreto: SECRETO },
+    muteHttpExceptions: true,
+  });
+  if (r.getResponseCode() !== 200) {
+    throw new Error('Ferro respondió ' + r.getResponseCode() + ' (¿secreto incorrecto o sitio caído?)');
+  }
+  const carpeta = DriveApp.getFolderById(CARPETA_ID);
+  const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmm');
+  const archivo = carpeta.createFile(r.getBlob().setName(PREFIJO + fecha + '.sqlite.gz'));
+  Logger.log('Guardado: ' + archivo.getName() + ' (' + Math.round(archivo.getSize() / 1024) + ' KB)');
 
   const limite = new Date(Date.now() - DIAS_A_GUARDAR * 24 * 3600 * 1000);
-  const viejos = carpeta.getFiles();
-  while (viejos.hasNext()) {
-    const f = viejos.next();
-    if (f.getDateCreated() < limite) f.setTrashed(true);
+  const archivos = carpeta.getFiles();
+  while (archivos.hasNext()) {
+    const f = archivos.next();
+    // Solo backups de Ferro: el resto de la carpeta no se toca
+    if (f.getName().indexOf(PREFIJO) === 0 && f.getDateCreated() < limite) f.setTrashed(true);
   }
-  return respuesta({ ok: true, archivo: archivo.getName() });
-}
-
-function obtenerCarpeta() {
-  const existentes = DriveApp.getFoldersByName(CARPETA);
-  return existentes.hasNext() ? existentes.next() : DriveApp.createFolder(CARPETA);
-}
-
-function respuesta(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }

@@ -19,6 +19,7 @@ def create_app(config_class=Config):
     from .dashboard import bp as dashboard_bp
     from .ot import bp as ot_bp
     from .presupuestos import bp as presupuestos_bp
+    from .sistema import bp as sistema_bp
     from .stock import bp as stock_bp
     from .turnos import bp as turnos_bp
     from .ventas import bp as ventas_bp
@@ -31,6 +32,7 @@ def create_app(config_class=Config):
     app.register_blueprint(presupuestos_bp, url_prefix="/presupuestos")
     app.register_blueprint(stock_bp, url_prefix="/stock")
     app.register_blueprint(ventas_bp, url_prefix="/ventas")
+    app.register_blueprint(sistema_bp, url_prefix="/sistema")
 
     from .cli import register_cli
     from .filters import register_filters
