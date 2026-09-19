@@ -155,7 +155,7 @@
       {% if usado %}
         <p class="muted small" style="margin:0"><i class="fa-solid fa-lock"></i> No se puede eliminar: tiene movimientos u operaciones.</p>
       {% else %}
-        <form method="post" action="{{ url_for('stock.eliminar', id=r.id) }}" onsubmit="return confirm('¿Eliminar el repuesto #{{ r.id }}?')">
+        <form method="post" action="{{ url_for('stock.eliminar', id=r.id) }}" data-confirmar="¿Eliminar el repuesto #{{ r.id }}?" data-confirmar-detalle="{{ r.nombre }}" data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar repuesto</button>
         </form>

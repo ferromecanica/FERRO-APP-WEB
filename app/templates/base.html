@@ -18,7 +18,7 @@
     <div class="brand">
       <img class="brand-mark" src="{{ url_for('static', filename='img/logo.svg') }}" alt="Ferro">
       <div>
-        <div class="brand-name">Ferro Taller</div>
+        <div class="brand-name">Taller Ferro</div>
         <div class="brand-sub">Gestión</div>
       </div>
     </div>
@@ -50,7 +50,7 @@
   <div>
     <header class="topbar">
       <button type="button" aria-label="Menú" onclick="document.body.classList.toggle('nav-open')"><i class="fa-solid fa-bars"></i></button>
-      <img class="brand-mark" src="{{ url_for('static', filename='img/logo.svg') }}" alt="Ferro" style="width:32px;height:32px"><span class="brand-name">Ferro Taller</span>
+      <img class="brand-mark" src="{{ url_for('static', filename='img/logo.svg') }}" alt="Ferro" style="width:32px;height:32px"><span class="brand-name">Taller Ferro</span>
     </header>
     <main class="main" onclick="if(event.target===this)document.body.classList.remove('nav-open')">
       {% with mensajes = get_flashed_messages(with_categories=true) %}
@@ -61,5 +61,6 @@
   </div>
 </div>
 <script src="{{ url_for('static', filename='js/escaner.js') }}"></script>
+<script src="{{ url_for('static', filename='js/confirmar.js') }}"></script>
 </body>
 </html>

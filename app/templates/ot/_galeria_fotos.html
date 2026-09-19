@@ -12,7 +12,7 @@
       <span class="foto-texto">{{ f.descripcion or '' }}{% if f.destino is defined and f.destino == 'ambos' %} <span class="badge badge-info">Ambos</span>{% endif %}</span>
       <span class="acciones-fila">
         <button type="button" class="btn-icon btn-editar" data-editar-foto="{{ f.id }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-        <form method="post" action="{{ url_for(eliminar_ep, fid=f.id) }}" onsubmit="return confirm('¿Eliminar esta foto? Se borra también de Drive.')" style="display:inline">
+        <form method="post" action="{{ url_for(eliminar_ep, fid=f.id) }}" data-confirmar="¿Eliminar esta foto?" data-confirmar-detalle="También se borra de Google Drive." data-confirmar-boton="Eliminar" data-confirmar-tono="peligro" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="volver" value="{{ volver }}">
           <button class="btn-icon" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>
         </form>

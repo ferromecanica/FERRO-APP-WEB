@@ -13,12 +13,12 @@
   <div class="actions">
     {% if ing.id and ing.editable %}
       <form method="post" action="{{ url_for('stock.ingreso_confirmar', id=ing.id) }}"
-            onsubmit="return confirm('¿Confirmar el ingreso? Entra al stock lo cargado y se actualizan los costos.')">
+            data-confirmar="¿Confirmar el ingreso?" data-confirmar-detalle="Entra al stock lo cargado y se actualizan los costos y los precios de venta." data-confirmar-boton="Confirmar ingreso">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-primary"><i class="fa-solid fa-check-double"></i> Confirmar ingreso</button></form>
     {% elif ing.estado == 'Confirmado' %}
       <form method="post" action="{{ url_for('stock.ingreso_anular', id=ing.id) }}"
-            onsubmit="return confirm('¿Anular el ingreso? Se descuenta del stock lo que había entrado.')">
+            data-confirmar="¿Anular el ingreso?" data-confirmar-detalle="Se descuenta del stock lo que había entrado." data-confirmar-boton="Anular" data-confirmar-tono="peligro">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn"><i class="fa-solid fa-rotate-left"></i> Anular</button></form>
     {% endif %}
@@ -78,7 +78,7 @@
             {% if ing.editable %}
             <td class="num"><span class="acciones-fila">
               <button type="button" class="btn-icon btn-editar" data-editar="item-{{ i.id }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-              <form method="post" action="{{ url_for('stock.ingreso_item_eliminar', iid=i.id) }}" onsubmit="return confirm('¿Quitar este repuesto del ingreso?')" style="display:inline">
+              <form method="post" action="{{ url_for('stock.ingreso_item_eliminar', iid=i.id) }}" data-confirmar="¿Quitar este repuesto del ingreso?" data-confirmar-boton="Quitar" data-confirmar-tono="peligro" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn-icon" title="Quitar"><i class="fa-solid fa-xmark"></i></button></form>
             </span></td>
@@ -145,7 +145,7 @@
     </div>
     {% if ing.editable %}
     <div class="card card-body">
-      <form method="post" action="{{ url_for('stock.ingreso_eliminar', id=ing.id) }}" onsubmit="return confirm('¿Eliminar este ingreso en borrador?')">
+      <form method="post" action="{{ url_for('stock.ingreso_eliminar', id=ing.id) }}" data-confirmar="¿Eliminar este ingreso?" data-confirmar-detalle="Está en borrador: no afectó el stock." data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar ingreso</button>
       </form>

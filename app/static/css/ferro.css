@@ -477,3 +477,18 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .pie-ingreso p { margin: 8px 0 0; }
 .fila-ingreso { width: 100%; }
 @media (max-width: 820px) { .fila .c-repuesto { flex-basis: 100%; min-width: 0; } }
+
+/* ── Ventanita de confirmación ─────────────────────────── */
+.confirmar { border: 0; border-radius: 16px; padding: 22px; width: min(430px, calc(100vw - 32px));
+  box-shadow: 0 24px 60px rgba(17, 19, 23, .28); color: var(--text); }
+.confirmar::backdrop { background: rgba(17, 19, 23, .18); backdrop-filter: blur(1.5px); }
+.confirmar-cuerpo { display: flex; gap: 14px; align-items: flex-start; }
+.confirmar-icono { width: 42px; height: 42px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent); font-size: 1.15rem; }
+.confirmar-icono.peligro { background: var(--danger-soft); color: var(--danger); }
+.confirmar-titulo { font-family: var(--font-display); font-size: 1.1rem; margin: 2px 0 0; }
+.confirmar-detalle { margin: 6px 0 0; }
+.confirmar-detalle[hidden] { display: none; }
+.confirmar-botones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.btn-peligro { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn-peligro:hover { background: #991b1b; }

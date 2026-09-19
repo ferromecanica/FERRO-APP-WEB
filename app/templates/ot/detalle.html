@@ -2,7 +2,7 @@
 {% from "partials/macros.html" import estado, vacio %}
 {% block title %}OT {{ ot.id }}{% endblock %}
 {% macro borrar(url, pregunta) -%}
-  <form method="post" action="{{ url }}" onsubmit="return confirm('{{ pregunta }}')" style="display:inline">
+  <form method="post" action="{{ url }}" data-confirmar="{{ pregunta }}" data-confirmar-boton="Quitar" data-confirmar-tono="peligro" style="display:inline">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn-icon" title="Quitar"><i class="fa-solid fa-xmark"></i></button>
   </form>
@@ -48,7 +48,7 @@
           <button class="btn"><i class="fa-solid fa-rotate"></i> <span>{{ 'Regenerar' if ot.link_reporte else 'Generar' }} reporte</span></button></form>
         {% endif %}
       {% endif %}
-      <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" onsubmit="return confirm('¿Reabrir la OT {{ ot.id }}?{{ ' Se anula la venta registrada.' if ot.venta else '' }}')">
+      <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" data-confirmar="¿Reabrir la OT {{ ot.id }}?" data-confirmar-detalle="{{ 'Se anula la venta registrada al cerrarla.' if ot.venta else 'Vuelve a estar en proceso.' }}" data-confirmar-boton="Reabrir">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn"><i class="fa-solid fa-lock-open"></i> Reabrir</button></form>
     {% endif %}
@@ -285,7 +285,7 @@
     {% if editable %}
     <div class="card card-body">
       <form method="post" action="{{ url_for('ot.eliminar', id=ot.id) }}"
-            onsubmit="return confirm('¿Eliminar la OT {{ ot.id }}? Los repuestos del stock vuelven al stock. No se puede deshacer.')">
+            data-confirmar="¿Eliminar la OT {{ ot.id }}?" data-confirmar-detalle="Los repuestos vuelven al stock. No se puede deshacer." data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar OT</button>
       </form>

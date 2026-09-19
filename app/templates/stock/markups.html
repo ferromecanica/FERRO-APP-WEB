@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Stock</div><h1>Markups</h1></div>
-  <form method="post" action="{{ url_for('stock.recalcular') }}" onsubmit="return confirm('¿Recalcular el precio de venta de todos los repuestos con las reglas actuales?')">
+  <form method="post" action="{{ url_for('stock.recalcular') }}" data-confirmar="¿Recalcular todos los precios?" data-confirmar-detalle="Se aplica el markup que corresponde a cada repuesto sobre su costo actual." data-confirmar-boton="Recalcular">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Recalcular precios</button>
   </form>
@@ -31,7 +31,7 @@
           <td class="num">{{ ((m.markup - 1) * 100) | numero(0) }} %</td>
           <td class="num">{{ uso.get(origen, 0) }}</td>
           <td class="num">
-            <form method="post" action="{{ url_for('stock.markup_eliminar', mid=m.id) }}" onsubmit="return confirm('¿Eliminar la regla {{ origen }}?')" style="display:inline">
+            <form method="post" action="{{ url_for('stock.markup_eliminar', mid=m.id) }}" data-confirmar="¿Eliminar la regla?" data-confirmar-detalle="{{ origen }}" data-confirmar-boton="Eliminar" data-confirmar-tono="peligro" style="display:inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon" title="Eliminar"><i class="fa-solid fa-xmark"></i></button></form></td>
         </tr>
       {% endfor %}

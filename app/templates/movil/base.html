@@ -13,7 +13,7 @@
 <body class="movil">
   <header class="movil-top">
     {% block atras %}<span></span>{% endblock %}
-    <a class="movil-marca" href="{{ url_for('movil.inicio') }}"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt=""> Ferro Taller</a>
+    <a class="movil-marca" href="{{ url_for('movil.inicio') }}"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt=""> Taller Ferro</a>
     {% block completa %}<a class="movil-link" href="{{ url_for('dashboard.index') }}" title="Versión completa"><i class="fa-solid fa-desktop"></i></a>{% endblock %}
   </header>
   <main class="movil-main">
@@ -24,5 +24,6 @@
     {% block content %}{% endblock %}
   </main>
 <script src="{{ url_for('static', filename='js/escaner.js') }}"></script>
+<script src="{{ url_for('static', filename='js/confirmar.js') }}"></script>
 </body>
 </html>
