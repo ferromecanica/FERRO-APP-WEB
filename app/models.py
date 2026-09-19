@@ -141,8 +141,8 @@ class Turno(TimestampMixin, db.Model):
 
 # ───────────────────────────── Órdenes de trabajo ───────────────────────────
 
-ESTADOS_OT = ["Ingresado", "En diagnóstico", "Esperando repuestos", "En reparación", "Terminado", "Entregado"]
-ESTADOS_OT_ABIERTA = ESTADOS_OT[:4]
+ESTADOS_OT = ["Pendiente", "En proceso", "Finalizada"]
+ESTADOS_OT_ABIERTA = ESTADOS_OT[:2]
 CLASIFICACIONES_CIERRE = ["Servicio", "Otro"]  # "Servicio" = mantenimiento con reporte
 
 
@@ -156,7 +156,7 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     fecha_ingreso = db.Column(db.Date, default=date.today, nullable=False)
     km_entrada = db.Column(db.Integer)
     detalle = db.Column(db.Text)
-    estado = db.Column(db.String(30), default="Ingresado", nullable=False)
+    estado = db.Column(db.String(30), default="Pendiente", nullable=False)
     presupuesto_cliente = db.Column(db.Float)
     total_cobrado = db.Column(db.Float)
     fecha_fin = db.Column(db.Date)

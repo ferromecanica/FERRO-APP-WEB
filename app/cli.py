@@ -65,9 +65,9 @@ def register_cli(app):
         db.session.add_all([c1, c2, v1, v2])
 
         ot1 = OrdenTrabajo(id=10000, cliente=c1, vehiculo=v1, km_entrada=85000, detalle="Service 10.000 km",
-                           estado="En reparación")
+                           estado="En proceso")
         ot2 = OrdenTrabajo(id=10001, cliente=c2, vehiculo=v2, km_entrada=140000, detalle="Frenos delanteros",
-                           estado="Terminado", fecha_fin=date.today(), total_cobrado=180000)
+                           estado="Finalizada", fecha_fin=date.today(), total_cobrado=180000)
         db.session.add_all([ot1, ot2])
         db.session.add(RegistroHoras(ot=ot1, mecanico="Iván", horas=1.5, detalle="Cambio de aceite y filtros"))
         db.session.add(Turno(fecha=date.today() + timedelta(days=1), hora=time(9, 0), cliente=c2, vehiculo=v2,

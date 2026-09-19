@@ -4,7 +4,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
 from ..extensions import db
-from ..models import ConfigTaller, OrdenTrabajo, Repuesto, Turno, Venta
+from ..models import ESTADOS_OT_ABIERTA, ConfigTaller, OrdenTrabajo, Repuesto, Turno, Venta
 from ..validaciones import numero_ar
 
 bp = Blueprint("dashboard", __name__)
@@ -16,7 +16,7 @@ def index():
     hoy = date.today()
     inicio_mes = hoy.replace(day=1)
     ventas_mes = Venta.query.filter(Venta.fecha >= inicio_mes).all()
-    ots_abiertas = OrdenTrabajo.query.filter(OrdenTrabajo.estado.notin_(["Terminado", "Entregado"])) \
+    ots_abiertas = OrdenTrabajo.query.filter(OrdenTrabajo.estado.in_(ESTADOS_OT_ABIERTA)) \
         .order_by(OrdenTrabajo.fecha_ingreso).all()
     turnos = Turno.query.filter(Turno.fecha >= hoy, Turno.estado != "Cancelado") \
         .order_by(Turno.fecha, Turno.hora).limit(6).all()

@@ -1,0 +1,53 @@
+{# Formulario de cierre de OT (ventana emergente en la ficha, o página si hubo errores) #}
+{% set f = request.form %}
+<form method="post" action="{{ url_for('ot.cerrar', id=ot.id) }}" class="cierre" autocomplete="off">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-grid">
+    {% if not ot.cliente %}
+      {% with valor=f.get('cliente', ''), obligatorio=True %}{% include "ot/_cliente_picker.html" %}{% endwith %}
+    {% endif %}
+    <div class="full"><label>Total cobrado *</label>
+      <input name="total_cobrado" inputmode="decimal" required class="input-grande"
+             value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
+      <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}). Cambialo por lo que realmente se cobró.</div></div>
+    <div><label>Forma de pago *</label>
+      <select name="metodo_pago" required><option value="">Elegí…</option>
+        {% for m in metodos %}<option {{ 'selected' if m == f.get('metodo_pago') }}>{{ m }}</option>{% endfor %}</select></div>
+    <div><label>Fecha de cierre</label><input type="date" name="fecha_fin" value="{{ f.get('fecha_fin', hoy.isoformat()) }}"></div>
+    <div class="full"><label>Tipo de trabajo *</label>
+      <div class="filters">
+        {% for c in clasificaciones %}<label class="chip-radio"><input type="radio" name="clasificacion" value="{{ c }}" required
+          {{ 'checked' if c == f.get('clasificacion') }}> {{ c }}</label>{% endfor %}
+      </div></div>
+  </div>
+
+  <fieldset class="checklist-cierre" {{ '' if f.get('clasificacion') == 'Servicio' else 'hidden' }}>
+    <legend><i class="fa-solid fa-list-check"></i> Checklist de service</legend>
+    {% for campo, nombre, detalle in checklist %}
+      <div class="check-item">
+        <label class="check"><input type="checkbox" name="{{ campo }}" value="1" {{ 'checked' if f.get(campo) }}> {{ nombre }}</label>
+        {% if detalle %}<input name="{{ detalle }}" value="{{ f.get(detalle, '') }}" placeholder="Producto (ej.: Helix Ultra 5W30)">{% endif %}
+      </div>
+    {% endfor %}
+    <div class="form-grid" style="margin-top:10px">
+      <div><label>Km próximo service</label><input name="km_proximo_service" inputmode="numeric" value="{{ f.get('km_proximo_service', '') }}"
+           placeholder="{{ (ot.km_entrada + 10000) | numero if ot.km_entrada else '' }}"></div>
+      <div class="full"><label>Otros / observaciones</label><textarea name="otros">{{ f.get('otros', '') }}</textarea></div>
+    </div>
+  </fieldset>
+
+  <div class="actions" style="margin-top:18px">
+    <button class="btn btn-primary"><i class="fa-solid fa-flag-checkered"></i> Cerrar y registrar venta</button>
+    <button type="button" class="btn" data-cerrar-dialogo>Volver</button>
+  </div>
+</form>
+<script>
+(function () {
+  var form = document.currentScript.previousElementSibling;
+  var checklist = form.querySelector('.checklist-cierre');
+  form.querySelectorAll('input[name="clasificacion"]').forEach(function (r) {
+    r.addEventListener('change', function () { checklist.hidden = r.value !== 'Servicio' || !r.checked; });
+  });
+  if (form.querySelector('#cliente')) FerroClientePicker();
+})();
+</script>

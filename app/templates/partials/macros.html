@@ -1,6 +1,6 @@
 {% macro estado(valor) -%}
   {%- set clases = {
-    'Terminado': 'ok', 'Entregado': 'ok', 'Confirmado': 'ok', 'Aprobado': 'ok', 'Finalizado': 'ok',
+    'Finalizada': 'ok', 'En proceso': 'accent', 'Confirmado': 'ok', 'Aprobado': 'ok', 'Finalizado': 'ok',
     'En reparación': 'accent', 'En diagnóstico': 'info', 'Ingresado': 'info', 'Enviado': 'info',
     'Esperando repuestos': 'warn', 'Pendiente': 'warn', 'Borrador': '',
     'Cancelado': 'danger', 'Rechazado': 'danger'} -%}

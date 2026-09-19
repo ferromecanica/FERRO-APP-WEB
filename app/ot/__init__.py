@@ -53,6 +53,12 @@ def _ot_editable(id):
     return ot
 
 
+def _en_proceso(ot):
+    """Cargar repuestos o mano de obra pone la OT en proceso."""
+    if ot.estado == "Pendiente":
+        ot.estado = "En proceso"
+
+
 def _volver(ot_o_id, seccion=None):
     ot_id = ot_o_id if isinstance(ot_o_id, int) else ot_o_id.id
     return redirect(url_for(".detalle", id=ot_id) + (f"#{seccion}" if seccion else ""))
@@ -151,7 +157,7 @@ def form(id=None):
             if not id:
                 ot.id = OrdenTrabajo.proximo_numero()
                 ot.vehiculo = vehiculo
-                ot.estado = "Ingresado"
+                ot.estado = "Pendiente"
                 db.session.add(ot)
             _asignar_cliente(ot, cliente)
             if ot.km_entrada and ot.km_entrada > (ot.vehiculo.kilometraje or 0):
@@ -237,13 +243,10 @@ def _resolver_cliente(obligatorio):
 @bp.route("/<int:id>")
 def detalle(id):
     ot = db.get_or_404(OrdenTrabajo, id)
-    valor_hora = ConfigTaller.get().valor_hora or 0
-    mano_obra = ot.horas_insumidas * valor_hora
     repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
     return render_template(
-        "ot/detalle.html", ot=ot, estados=ESTADOS_OT_ABIERTA, checklist=CHECKLIST, mecanicos=_mecanicos(),
-        repuestos=repuestos, valor_hora=valor_hora, mano_obra=mano_obra,
-        total_calculado=mano_obra + ot.total_repuestos,
+        "ot/detalle.html", ot=ot, estados=ESTADOS_OT_ABIERTA, mecanicos=_mecanicos(), repuestos=repuestos,
+        **_contexto_cierre(ot),
     )
 
 
@@ -312,6 +315,7 @@ def horas_agregar(id):
     else:
         db.session.add(RegistroHoras(ot=ot, mecanico=mecanico, horas=horas, fecha=_fecha("fecha", date.today()),
                                      detalle=request.form.get("detalle", "").strip() or None))
+        _en_proceso(ot)
         db.session.commit()
     return _volver(ot, "horas")
 
@@ -359,6 +363,7 @@ def repuesto_agregar(id):
         if repuesto.stock_actual < cantidad:
             flash(f"Ojo: {repuesto.nombre} queda con stock negativo ({repuesto.stock_actual - cantidad:g}).", "info")
         consumir_en_ot(ot, repuesto, cantidad)
+    _en_proceso(ot)
     db.session.commit()
     return _volver(ot, "repuestos")
 
@@ -377,24 +382,29 @@ def consumo_eliminar(cid):
 # ────────────────────────────────── Checklist ───────────────────────────────
 
 
-@bp.route("/<int:id>/checklist", methods=["POST"])
-def checklist(id):
-    ot = _ot_editable(id)
-    if ot is None:
-        return redirect(url_for(".detalle", id=id))
-    for campo, _, detalle in CHECKLIST:
-        setattr(ot, campo, bool(request.form.get(campo)))
-        if detalle:
-            setattr(ot, detalle, request.form.get(detalle, "").strip() or None)
-    km = numero_ar(request.form.get("km_proximo_service"))
-    ot.km_proximo_service = int(km) if km else None
-    ot.otros = request.form.get("otros", "").strip() or None
-    db.session.commit()
-    flash("Checklist guardado.", "ok")
-    return _volver(ot, "checklist")
-
-
 # ──────────────────────────────── Cierre de OT ──────────────────────────────
+
+
+def _contexto_cierre(ot):
+    """Lo que necesita el formulario de cierre (ventana emergente en la ficha, o página si hubo errores)."""
+    valor_hora = ConfigTaller.get().valor_hora or 0
+    return dict(
+        valor_hora=valor_hora, mano_obra=ot.horas_insumidas * valor_hora,
+        total_calculado=ot.horas_insumidas * valor_hora + ot.total_repuestos,
+        metodos=METODOS_PAGO, clasificaciones=CLASIFICACIONES_CIERRE, checklist=CHECKLIST,
+        clientes=_clientes() if ot.cliente is None else [],
+    )
+
+
+def _guardar_checklist(ot, es_servicio):
+    """Servicio: toma el checklist del formulario. Otro: todo en NO, sin preguntar."""
+    for campo, _, detalle in CHECKLIST:
+        setattr(ot, campo, es_servicio and bool(request.form.get(campo)))
+        if detalle:
+            setattr(ot, detalle, (request.form.get(detalle, "").strip() or None) if es_servicio else None)
+    km = numero_ar(request.form.get("km_proximo_service")) if es_servicio else None
+    ot.km_proximo_service = int(km) if km else None
+    ot.otros = (request.form.get("otros", "").strip() or None) if es_servicio else None
 
 
 @bp.route("/<int:id>/cerrar", methods=["GET", "POST"])
@@ -402,50 +412,43 @@ def cerrar(id):
     ot = _ot_editable(id)
     if ot is None:
         return redirect(url_for(".detalle", id=id))
-    valor_hora = ConfigTaller.get().valor_hora or 0
-    total_calculado = ot.horas_insumidas * valor_hora + ot.total_repuestos
+    if request.method == "GET":
+        return _volver(ot, "cerrar")  # el cierre se hace desde la ventana de la ficha
 
-    if request.method == "POST":
-        cobrado = numero_ar(request.form.get("total_cobrado"))
-        metodo = request.form.get("metodo_pago")
-        errores = []
-        if ot.cliente is None:
-            cliente, errores = _resolver_cliente(obligatorio=True)
-        if cobrado is None or cobrado < 0 or metodo not in METODOS_PAGO:
-            errores.append("Completá el total cobrado y la forma de pago.")
-        if errores:
-            db.session.rollback()
-            for e in errores:
-                flash(e, "error")
-        else:
-            if ot.cliente is None:
-                _asignar_cliente(ot, cliente)
-            ot.total_cobrado = cobrado
-            ot.fecha_fin = _fecha("fecha_fin", date.today())
-            ot.clasificacion_cierre = request.form.get("clasificacion") or None
-            ot.estado = "Terminado"
-            venta = Venta(fecha=ot.fecha_fin, cliente=ot.cliente, ot=ot, metodo_pago=metodo)
-            venta.items.append(VentaItem(
-                descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
-                precio_unitario=cobrado, costo_unitario=ot.costo_repuestos,
-            ))
-            db.session.add(venta)
-            db.session.commit()
-            flash(f"OT #{ot.id} cerrada. Venta registrada por ${cobrado:,.0f}.".replace(",", "."), "ok")
-            return _volver(ot)
-    es_service = any(getattr(ot, campo) for campo, _, _ in CHECKLIST)
-    return render_template("ot/cerrar.html", ot=ot, total_calculado=total_calculado, valor_hora=valor_hora,
-                           metodos=METODOS_PAGO, clasificaciones=CLASIFICACIONES_CIERRE,
-                           sugerida="Servicio" if es_service else "Otro",
-                           clientes=_clientes() if ot.cliente is None else [])
+    cobrado = numero_ar(request.form.get("total_cobrado"))
+    metodo = request.form.get("metodo_pago")
+    clasificacion = request.form.get("clasificacion")
+    errores = []
+    cliente = None
+    if ot.cliente is None:
+        cliente, errores = _resolver_cliente(obligatorio=True)
+    if cobrado is None or cobrado < 0 or metodo not in METODOS_PAGO:
+        errores.append("Completá el total cobrado y la forma de pago.")
+    if clasificacion not in CLASIFICACIONES_CIERRE:
+        errores.append("Elegí si es Servicio u Otro.")
+    if errores:
+        db.session.rollback()
+        for e in errores:
+            flash(e, "error")
+        return render_template("ot/cerrar.html", ot=ot, **_contexto_cierre(ot))
 
-
-@bp.route("/<int:id>/entregar", methods=["POST"])
-def entregar(id):
-    ot = db.get_or_404(OrdenTrabajo, id)
-    if ot.estado == "Terminado":
-        ot.estado = "Entregado"
-        db.session.commit()
+    if ot.cliente is None:
+        _asignar_cliente(ot, cliente)
+    _guardar_checklist(ot, clasificacion == "Servicio")
+    ot.total_cobrado = cobrado
+    ot.fecha_fin = _fecha("fecha_fin", date.today())
+    ot.clasificacion_cierre = clasificacion
+    ot.estado = "Finalizada"
+    costo = ot.costo_repuestos  # antes de crear la venta (consultar la OT no debe arrastrar objetos a medio armar)
+    venta = Venta(fecha=ot.fecha_fin, cliente=ot.cliente, metodo_pago=metodo)
+    venta.items.append(VentaItem(
+        descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
+        precio_unitario=cobrado, costo_unitario=costo,
+    ))
+    db.session.add(venta)
+    venta.ot = ot
+    db.session.commit()
+    flash(f"OT #{ot.id} cerrada. Venta registrada por ${cobrado:,.0f}.".replace(",", "."), "ok")
     return _volver(ot)
 
 
@@ -455,7 +458,7 @@ def reabrir(id):
     if not ot.abierta:
         for venta in list(ot.ventas):
             db.session.delete(venta)
-        ot.estado = "En reparación"
+        ot.estado = "En proceso"
         ot.fecha_fin = None
         ot.total_cobrado = None
         db.session.commit()

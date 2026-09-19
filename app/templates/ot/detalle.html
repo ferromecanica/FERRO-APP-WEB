@@ -7,6 +7,9 @@
     <button class="btn-icon" title="Quitar"><i class="fa-solid fa-xmark"></i></button>
   </form>
 {%- endmacro %}
+{% macro encabezado(icono, titulo, extra='') -%}
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2><span class="muted small">{{ extra }}</span></div>
+{%- endmacro %}
 {% block content %}
 {% set editable = ot.abierta %}
 <div class="page-head">
@@ -18,12 +21,8 @@
   <div class="actions">
     {% if editable %}
       <a class="btn" href="{{ url_for('ot.form', id=ot.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
-      <a class="btn btn-primary" href="{{ url_for('ot.cerrar', id=ot.id) }}"><i class="fa-solid fa-flag-checkered"></i> Cerrar OT</a>
+      <button type="button" class="btn btn-primary" id="abrir-cierre"><i class="fa-solid fa-flag-checkered"></i> Cerrar OT</button>
     {% else %}
-      {% if ot.estado == 'Terminado' %}
-      <form method="post" action="{{ url_for('ot.entregar', id=ot.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-primary"><i class="fa-solid fa-car-side"></i> Marcar entregado</button></form>
-      {% endif %}
       <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" onsubmit="return confirm('¿Reabrir la OT {{ ot.id }}? Se anula la venta registrada al cerrarla.')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn"><i class="fa-solid fa-lock-open"></i> Reabrir</button></form>
@@ -37,11 +36,11 @@
   {% for e in estados %}
     <button name="estado" value="{{ e }}" class="step {{ 'active' if e == ot.estado }}">{{ e }}</button>
   {% endfor %}
-  <span class="step disabled"><i class="fa-solid fa-flag-checkered"></i> Terminado</span>
+  <span class="step disabled"><i class="fa-solid fa-flag-checkered"></i> Finalizada</span>
 </form>
 {% else %}
 <div class="flash flash-ok" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
-  <span><i class="fa-solid fa-circle-check"></i> {{ ot.estado }} el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
+  <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
   <span>Cobrado <strong>{{ ot.total_cobrado | pesos }}</strong>{% if ot.venta %} · {{ ot.venta.metodo_pago }}{% endif %}</span>
 </div>
 {% endif %}
@@ -49,14 +48,14 @@
 <div class="grid grid-3-1">
   <div class="stack">
 
-    <div class="card card-body">
-      <h2 style="margin-bottom:6px">Motivo de ingreso</h2>
-      <p style="margin:0;white-space:pre-line">{{ ot.detalle or '—' }}</p>
+    <div class="card">
+      {{ encabezado('fa-comment-dots', 'Motivo de ingreso') }}
+      <div class="card-body"><p style="margin:0;white-space:pre-line">{{ ot.detalle or '—' }}</p></div>
     </div>
 
     {# ───── Tareas realizadas ───── #}
     <div class="card" id="tareas">
-      <div class="card-head"><h2>Tareas realizadas</h2><span class="muted small">{{ ot.tareas | length }}</span></div>
+      {{ encabezado('fa-list-check', 'Tareas realizadas', ot.tareas | length) }}
       {% if ot.tareas %}
       <ul class="list">{% for t in ot.tareas %}
         <li><span style="white-space:pre-line">{{ t.descripcion }}</span>
@@ -67,14 +66,14 @@
       <form method="post" action="{{ url_for('ot.tarea_agregar', id=ot.id) }}" class="add-row">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input name="descripcion" placeholder="Ej.: Cambio de pastillas de freno delanteras" required>
-        <button class="btn"><i class="fa-solid fa-plus"></i> Agregar</button>
+        <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button>
       </form>
       {% endif %}
     </div>
 
     {# ───── Repuestos e insumos ───── #}
     <div class="card" id="repuestos">
-      <div class="card-head"><h2>Repuestos e insumos</h2><span class="muted small">{{ ot.consumos | length }} ítems</span></div>
+      {{ encabezado('fa-box-open', 'Repuestos e insumos', (ot.consumos | length) ~ ' ítems') }}
       {% if ot.consumos %}
       <div class="table-wrap"><table>
         <thead><tr><th>Artículo</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th><th class="num hide-sm">Costo</th>{% if editable %}<th></th>{% endif %}</tr></thead>
@@ -97,34 +96,33 @@
 
       {% if editable %}
       <div class="add-box">
-        <div class="tabs" role="tablist">
-          <button type="button" class="tab active" data-tab="varios">Varios (a mano)</button>
-          <button type="button" class="tab" data-tab="stock">Del stock</button>
+        <div class="segmented" role="tablist">
+          <button type="button" class="seg active" data-tab="varios"><i class="fa-solid fa-pen-to-square"></i> Varios (Manual)</button>
+          <button type="button" class="seg" data-tab="stock"><i class="fa-solid fa-boxes-stacked"></i> Del stock</button>
         </div>
-        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel form-grid-4" data-panel="varios">
+        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-repuesto" data-panel="varios">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="varios">
-          <div class="span-2"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Pastillas de freno delanteras" required></div>
-          <div><label>Cantidad</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div><label>Precio unitario</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
-          <div><label>Costo unitario</label><input name="costo" inputmode="decimal" placeholder="$ (lo que pagamos)"></div>
-          <div class="span-3 end"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+          <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Pastillas de freno delanteras" required></div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" placeholder="$"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
-        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel form-grid-4" data-panel="stock" hidden>
+        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-stock" data-panel="stock" hidden>
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="stock">
-          <div class="span-2"><label>Repuesto (nombre, código o escáner)</label>
+          <div class="c-desc"><label>Repuesto (nombre, código o escáner)</label>
             <input name="repuesto" list="lista-repuestos" autocomplete="off" required placeholder="{{ 'Escribí para buscar…' if repuestos else 'Todavía no hay repuestos en el stock' }}">
             <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}">stock {{ r.stock_actual | numero(1) }} · {{ r.precio_venta | pesos }}</option>{% endfor %}</datalist></div>
-          <div><label>Cantidad</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div class="end"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
-          <div class="span-4 muted small">Se descuenta del stock y toma el precio de venta y el costo del repuesto.</div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
       </div>
       {% endif %}
     </div>
 
-    {# ───── Horas ───── #}
+    {# ───── Mano de obra ───── #}
     <div class="card" id="horas">
-      <div class="card-head"><h2>Mano de obra</h2><span class="muted small">{{ ot.horas_insumidas | numero(1) }} h</span></div>
+      {{ encabezado('fa-screwdriver-wrench', 'Mano de obra', (ot.horas_insumidas | numero(1)) ~ ' h') }}
       {% if ot.horas %}
       <ul class="list">{% for h in ot.horas %}
         <li><div><strong>{{ h.mecanico }}</strong> <span class="muted small">{{ h.fecha | fecha }}</span>
@@ -134,42 +132,39 @@
       {% endfor %}</ul>
       {% elif not editable %}{{ vacio('fa-clock', 'Sin horas registradas.') }}{% endif %}
       {% if editable %}
-      <form method="post" action="{{ url_for('ot.horas_agregar', id=ot.id) }}" class="add-box form-grid-4">
+      <form method="post" action="{{ url_for('ot.horas_agregar', id=ot.id) }}" class="add-box fila fila-horas">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div><label>Mecánico</label><input name="mecanico" list="lista-mecanicos" value="{{ mecanicos[0] if mecanicos }}" required>
-          <datalist id="lista-mecanicos">{% for m in mecanicos %}<option value="{{ m }}">{% endfor %}</datalist></div>
-        <div><label>Horas</label><input name="horas" inputmode="decimal" placeholder="1,5" required></div>
-        <div><label>Fecha</label><input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
-        <div class="end"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
-        <div class="span-4"><input name="detalle" placeholder="Qué se hizo (opcional)"></div>
+        <div class="c-mec"><label>Mecánico</label>
+          <select name="mecanico" required>{% for m in mecanicos %}<option>{{ m }}</option>{% endfor %}</select></div>
+        <div class="c-cant"><label>Horas</label><input name="horas" inputmode="decimal" placeholder="1,5" required></div>
+        <div class="c-fecha"><label>Fecha</label><input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
+        <div class="c-desc"><label>Qué se hizo</label><input name="detalle" placeholder="Opcional"></div>
+        <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
       </form>
       {% endif %}
     </div>
 
-    {# ───── Checklist de service ───── #}
-    <form class="card" id="checklist" method="post" action="{{ url_for('ot.checklist', id=ot.id) }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="card-head"><h2>Checklist de service</h2><span class="muted small">para el reporte de mantenimiento</span></div>
-      <div class="card-body checklist">
+    {# ───── Checklist (solo lectura, en OT cerradas como Servicio) ───── #}
+    {% if not editable and ot.clasificacion_cierre == 'Servicio' %}
+    <div class="card">
+      {{ encabezado('fa-clipboard-check', 'Checklist de service') }}
+      <div class="card-body">
         {% for campo, nombre, detalle in checklist %}
-          <div class="check-item">
-            <label class="check"><input type="checkbox" name="{{ campo }}" value="1" {{ 'checked' if ot[campo] }} {{ 'disabled' if not editable }}> {{ nombre }}</label>
-            {% if detalle %}<input name="{{ detalle }}" value="{{ ot[detalle] or '' }}" placeholder="Producto (ej.: Helix Ultra 5W30)" {{ 'disabled' if not editable }}>{% endif %}
-          </div>
+          <div style="padding:3px 0"><i class="fa-{{ 'solid fa-circle-check' if ot[campo] else 'regular fa-circle' }}" style="color:{{ 'var(--ok)' if ot[campo] else '#cbd0d8' }}"></i>
+            {{ nombre }}{% if detalle and ot[detalle] %} <span class="muted">· {{ ot[detalle] }}</span>{% endif %}</div>
         {% endfor %}
-        <div class="form-grid" style="margin-top:8px">
-          <div><label>Km próximo service</label><input name="km_proximo_service" inputmode="numeric" value="{{ ot.km_proximo_service | numero if ot.km_proximo_service else '' }}"
-               placeholder="{{ (ot.km_entrada + 10000) | numero if ot.km_entrada else '' }}" {{ 'disabled' if not editable }}></div>
-          <div class="full"><label>Otros / observaciones</label><textarea name="otros" {{ 'disabled' if not editable }}>{{ ot.otros or '' }}</textarea></div>
-        </div>
+        {% if ot.km_proximo_service %}<p style="margin:10px 0 0">Próximo service: <strong>{{ ot.km_proximo_service | numero }} km</strong></p>{% endif %}
+        {% if ot.otros %}<p class="muted" style="margin:8px 0 0;white-space:pre-line">{{ ot.otros }}</p>{% endif %}
       </div>
-      {% if editable %}<div class="card-body" style="border-top:1px solid var(--border)"><button class="btn"><i class="fa-solid fa-check"></i> Guardar checklist</button></div>{% endif %}
-    </form>
+    </div>
+    {% endif %}
   </div>
 
   {# ───── Columna derecha ───── #}
   <div class="stack">
-    <div class="card card-body">
+    <div class="card">
+      {{ encabezado('fa-car-side', 'Cliente y vehículo') }}
+      <div class="card-body">
       <dl class="props">
         <dt>Cliente</dt><dd>{% if ot.cliente %}<a href="{{ url_for('clientes.detalle', id=ot.cliente.id) }}">{{ ot.cliente.nombre }}</a>
           {% set wa = ot.cliente.telefono | whatsapp %}{% if wa %} <a href="https://wa.me/{{ wa }}" target="_blank" rel="noopener" title="WhatsApp"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i></a>{% endif %}
@@ -178,10 +173,11 @@
         <dt>Km entrada</dt><dd>{{ ot.km_entrada | numero }}</dd>
         <dt>Presupuesto</dt><dd>{{ ot.presupuesto_cliente | pesos if ot.presupuesto_cliente else '—' }}</dd>
       </dl>
+      </div>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Números</h2></div>
+      {{ encabezado('fa-calculator', 'Números') }}
       <div class="card-body">
         <dl class="props totales">
           <dt>Mano de obra</dt><dd class="num">{{ mano_obra | pesos }}<div class="muted small">{{ ot.horas_insumidas | numero(1) }} h × {{ valor_hora | pesos }}</div></dd>
@@ -209,13 +205,44 @@
   </div>
 </div>
 
+{% if editable %}
+<dialog id="dialogo-cierre" class="dialogo">
+  <div class="dialogo-head">
+    <div><div class="eyebrow">OT {{ ot.id }} · {{ ot.vehiculo.patente }}</div><h2>Cerrar OT</h2></div>
+    <button type="button" class="btn-icon" data-cerrar-dialogo title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="dialogo-resumen">
+    <span>Mano de obra <strong>{{ mano_obra | pesos }}</strong></span>
+    <span>Repuestos <strong>{{ ot.total_repuestos | pesos }}</strong></span>
+    <span>Calculado <strong>{{ total_calculado | pesos }}</strong></span>
+    <span>Costo mat. <strong>{{ ot.costo_repuestos | pesos }}</strong></span>
+  </div>
+  {% if not ot.tareas or not ot.horas %}
+  <div class="dialogo-avisos">
+    {% if not ot.tareas %}<span><i class="fa-solid fa-triangle-exclamation"></i> No cargaste tareas realizadas.</span>{% endif %}
+    {% if not ot.horas %}<span><i class="fa-solid fa-triangle-exclamation"></i> No hay horas registradas.</span>{% endif %}
+  </div>
+  {% endif %}
+  <div class="dialogo-body">{% include "ot/_form_cierre.html" %}</div>
+</dialog>
+{% endif %}
+
 <script>
-  document.querySelectorAll('.tabs .tab').forEach(function (b) {
+  document.querySelectorAll('.segmented .seg').forEach(function (b) {
     b.addEventListener('click', function () {
       var caja = b.closest('.add-box');
-      caja.querySelectorAll('.tab').forEach(function (t) { t.classList.toggle('active', t === b); });
+      caja.querySelectorAll('.seg').forEach(function (t) { t.classList.toggle('active', t === b); });
       caja.querySelectorAll('.tab-panel').forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
     });
   });
+  (function () {
+    var dialogo = document.getElementById('dialogo-cierre');
+    if (!dialogo) return;
+    document.getElementById('abrir-cierre').addEventListener('click', function () { dialogo.showModal(); });
+    dialogo.querySelectorAll('[data-cerrar-dialogo]').forEach(function (b) {
+      b.addEventListener('click', function () { dialogo.close(); });
+    });
+    if (location.hash === '#cerrar') dialogo.showModal();
+  })();
 </script>
 {% endblock %}
