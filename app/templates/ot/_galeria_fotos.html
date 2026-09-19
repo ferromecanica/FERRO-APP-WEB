@@ -3,7 +3,8 @@
 <div class="galeria">
   {% for f in fotos %}
   <figure class="foto" id="foto-{{ f.id }}">
-    <a href="{{ f.url or '#' }}" target="_blank" rel="noopener">
+    <a href="{{ f.url or '#' }}" target="_blank" rel="noopener" data-visor="{{ f.grande or '' }}"
+       data-visor-texto="{{ f.descripcion or '' }}" data-visor-drive="{{ f.url or '' }}">
       {% if f.miniatura %}<img src="{{ f.miniatura }}" alt="{{ f.descripcion or 'Foto' }}" loading="lazy">{% else %}<div class="sin-miniatura"><i class="fa-regular fa-image"></i></div>{% endif %}
     </a>
     <figcaption>

@@ -83,3 +83,68 @@ document.addEventListener('click', function (e) {
     f.querySelector('figcaption').hidden = false;
   }
 });
+
+/* Visor de fotos: tocar una miniatura la abre grande; flechas, teclado (← → Esc) y deslizar con el dedo.
+   Recorre las fotos del mismo apartado (Para el reporte / Del taller). */
+(function () {
+  var visor, img, texto, contador, linkDrive, fotos = [], actual = 0, inicioX = null;
+
+  function armar() {
+    visor = document.createElement('div');
+    visor.className = 'visor';
+    visor.hidden = true;
+    visor.innerHTML =
+      '<button type="button" class="visor-cerrar" title="Cerrar (Esc)"><i class="fa-solid fa-xmark"></i></button>' +
+      '<button type="button" class="visor-flecha visor-ant" title="Anterior (←)"><i class="fa-solid fa-chevron-left"></i></button>' +
+      '<figure class="visor-foto"><img alt=""><figcaption><span class="visor-texto"></span>' +
+      '<span class="visor-pie"><span class="visor-contador"></span>' +
+      '<a class="visor-drive" target="_blank" rel="noopener"><i class="fa-brands fa-google-drive"></i> Abrir en Drive</a></span></figcaption></figure>' +
+      '<button type="button" class="visor-flecha visor-sig" title="Siguiente (→)"><i class="fa-solid fa-chevron-right"></i></button>';
+    document.body.appendChild(visor);
+    img = visor.querySelector('img');
+    texto = visor.querySelector('.visor-texto');
+    contador = visor.querySelector('.visor-contador');
+    linkDrive = visor.querySelector('.visor-drive');
+    visor.querySelector('.visor-cerrar').addEventListener('click', cerrar);
+    visor.querySelector('.visor-ant').addEventListener('click', function () { mover(-1); });
+    visor.querySelector('.visor-sig').addEventListener('click', function () { mover(1); });
+    visor.addEventListener('click', function (e) { if (e.target === visor) cerrar(); });
+    visor.addEventListener('touchstart', function (e) { inicioX = e.touches[0].clientX; }, { passive: true });
+    visor.addEventListener('touchend', function (e) {
+      if (inicioX === null) return;
+      var dx = e.changedTouches[0].clientX - inicioX;
+      if (Math.abs(dx) > 40) mover(dx < 0 ? 1 : -1);
+      inicioX = null;
+    });
+  }
+
+  function mostrar() {
+    var f = fotos[actual];
+    img.src = f.dataset.visor;
+    texto.textContent = f.dataset.visorTexto || '';
+    contador.textContent = (actual + 1) + ' / ' + fotos.length;
+    linkDrive.href = f.dataset.visorDrive || '#';
+    visor.classList.toggle('una-sola', fotos.length < 2);
+  }
+  function mover(paso) { actual = (actual + paso + fotos.length) % fotos.length; mostrar(); }
+  function cerrar() { visor.hidden = true; img.src = ''; document.body.classList.remove('visor-abierto'); }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[data-visor]');
+    if (!a || !a.dataset.visor) return;
+    e.preventDefault();
+    if (!visor) armar();
+    fotos = Array.prototype.slice.call(a.closest('.galeria').querySelectorAll('a[data-visor]'))
+      .filter(function (x) { return x.dataset.visor; });
+    actual = fotos.indexOf(a);
+    mostrar();
+    visor.hidden = false;
+    document.body.classList.add('visor-abierto');
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!visor || visor.hidden) return;
+    if (e.key === 'Escape') cerrar();
+    if (e.key === 'ArrowLeft') mover(-1);
+    if (e.key === 'ArrowRight') mover(1);
+  });
+})();

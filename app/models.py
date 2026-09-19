@@ -292,6 +292,10 @@ class FotoOT(db.Model):
         return f"https://drive.google.com/thumbnail?id={self.drive_id}&sz=w600" if self.drive_id else None
 
     @property
+    def grande(self):
+        return f"https://drive.google.com/thumbnail?id={self.drive_id}&sz=w1600" if self.drive_id else None
+
+    @property
     def url(self):
         return f"https://drive.google.com/file/d/{self.drive_id}/view" if self.drive_id else None
 
