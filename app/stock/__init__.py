@@ -184,6 +184,9 @@ def ficha(id=None):
             recalcular_precio_venta(repuesto)
             db.session.commit()
             flash(f"Repuesto #{repuesto.id} {'creado' if nuevo else 'guardado'}.", "ok")
+            volver_ingreso = request.args.get("volver_ingreso", type=int)
+            if volver_ingreso:
+                return redirect(url_for(".ingreso", id=volver_ingreso, repuesto=repuesto.id) + "#items")
             return redirect(url_for(".ficha", id=repuesto.id))
 
     markup, origen = regla_markup(repuesto) if repuesto.proveedor or repuesto.markup else (1.0, "sin regla de markup")
@@ -435,7 +438,9 @@ def ingreso(id=None):
             flash("Ingreso guardado." if id else "Ingreso creado: ahora cargá los repuestos.", "ok")
             return redirect(url_for(".ingreso", id=ing.id))
     repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
-    return render_template("stock/ingreso.html", ing=ing, proveedores=_proveedores(), repuestos=repuestos)
+    elegido = db.session.get(Repuesto, request.args.get("repuesto", type=int) or 0)
+    return render_template("stock/ingreso.html", ing=ing, proveedores=_proveedores(), repuestos=repuestos,
+                           elegido=elegido)
 
 
 def _ingreso_editable(id):

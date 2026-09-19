@@ -104,16 +104,24 @@
       {% else %}{{ vacio('fa-boxes-stacked', 'Todavía no cargaste repuestos.') }}{% endif %}
 
       {% if ing.editable %}
-      <form method="post" action="{{ url_for('stock.ingreso_item_agregar', id=ing.id) }}" class="add-box fila">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="c-desc"><label>Repuesto (nombre, código o escáner)</label>
-          <input name="repuesto" id="repuesto-ingreso" list="lista-repuestos" autocomplete="off" required data-escaner placeholder="Escribí para buscar…">
-          <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}" data-costo="{{ r.costo_lista or 0 }}">stock {{ r.stock_actual | numero(1) }} · costo {{ r.precio_costo | pesos(2) }}</option>{% endfor %}</datalist></div>
-        <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
-        <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" id="costo-ingreso" inputmode="decimal" placeholder="$ (deja el actual)"></div>
-        <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
-        <div class="span-4 muted small">Al confirmar el ingreso, el costo cargado pasa a ser el costo de lista del repuesto y se recalcula su precio de venta (salvo los marcados como "costo fijo").</div>
-      </form>
+      <div class="add-box">
+        <form method="post" action="{{ url_for('stock.ingreso_item_agregar', id=ing.id) }}" class="fila fila-ingreso">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="c-repuesto"><label>Repuesto (nombre, código o escáner)</label>
+            <input name="repuesto" id="repuesto-ingreso" list="lista-repuestos" autocomplete="off" required data-escaner
+                   value="{{ (elegido.id ~ ' · ' ~ elegido.nombre) if elegido else '' }}" placeholder="Escribí para buscar…">
+            <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}" data-costo="{{ r.costo_lista or 0 }}">stock {{ r.stock_actual | numero(1) }} · costo {{ r.precio_costo | pesos(2) }}</option>{% endfor %}</datalist></div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" id="costo-ingreso" inputmode="decimal"
+               value="{{ (elegido.costo_lista | numero(2)) if elegido and elegido.costo_lista else '' }}" placeholder="$ (deja el actual)"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+        </form>
+        <div class="pie-ingreso">
+          <a class="btn btn-sm" href="{{ url_for('stock.ficha', volver_ingreso=ing.id) }}"><i class="fa-solid fa-plus"></i> Repuesto nuevo</a>
+          <span class="muted small">¿No está en el stock? Lo cargás y volvés acá con el repuesto elegido.
+            Al confirmar el ingreso, el costo cargado pasa a ser el costo de lista del repuesto y se recalcula su precio de venta (salvo los marcados como "costo fijo").</span>
+        </div>
+      </div>
       {% endif %}
     </div>
     {% endif %}
@@ -156,7 +164,7 @@
   if (campoRepuesto) campoRepuesto.addEventListener('input', function () {
     var op = Array.prototype.find.call(document.querySelectorAll('#lista-repuestos option'), function (o) { return o.value === campoRepuesto.value; });
     var costo = document.getElementById('costo-ingreso');
-    if (op && !costo.value) costo.value = (parseFloat(op.dataset.costo) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (op && (!costo.value || costo.dataset.sugerido)) costo.value = (parseFloat(op.dataset.costo) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   });
   /* Editar un renglón en el lugar */
   document.querySelectorAll('[data-editar]').forEach(function (b) {
