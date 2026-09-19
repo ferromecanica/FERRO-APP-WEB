@@ -14,7 +14,7 @@
 const SECRETO = 'PEGAR_ACA_EL_BACKUP_SECRET';
 const URL_FERRO = 'https://lucioroncoroni.pythonanywhere.com/sistema/backup';
 // Carpeta de Drive donde se guardan (el ID es lo que sigue a /folders/ en su dirección)
-const CARPETA_ID = '1l0xUjQPm5LURPoBCUY4hYqJDWQ8G4dVt';
+const CARPETA_ID = '1Mimm6jGOAwV0iV_nCtq7wnC_k5aohcSq';
 const DIAS_A_GUARDAR = 60;
 const PREFIJO = 'ferro-backup-';
 const HORA = 3; // 3 de la mañana (hora de la cuenta de Google)
