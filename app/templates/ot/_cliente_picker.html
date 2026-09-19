@@ -1,9 +1,10 @@
 {# Selector de cliente con alta rápida. Variables: clientes, valor, obligatorio #}
+{% set c_nuevo = request.form.get('c_nuevo') %}
 <div class="full"><label>Cliente{{ ' *' if obligatorio else '' }}</label>
   <div class="input-group">
-    <input id="cliente" name="cliente" list="lista-clientes" {{ 'required' if obligatorio }} value="{{ valor }}"
+    <input id="cliente" name="cliente" list="lista-clientes" value="{{ valor }}"
            placeholder="{{ 'Buscá el cliente' if obligatorio else 'Opcional: se completa con el dueño, o se pide al cerrar' }}"
-           data-opcional="{{ '' if obligatorio else '1' }}">
+           data-obligatorio="{{ '1' if obligatorio else '' }}" {{ 'disabled' if c_nuevo else ('required' if obligatorio) }}>
     <button type="button" class="btn" id="btn-cliente-nuevo" title="Dar de alta un cliente nuevo"><i class="fa-solid fa-plus"></i> Cliente nuevo</button>
   </div>
   <datalist id="lista-clientes">
@@ -11,11 +12,14 @@
   </datalist>
   <div id="cliente-info" class="hint"></div>
 </div>
-<div id="cliente-nuevo" class="full sub-alta" hidden>
-  <div class="sub-alta-titulo"><i class="fa-solid fa-user-plus"></i> Cliente nuevo: se da de alta con este nombre</div>
+<div id="cliente-nuevo" class="full sub-alta" {{ '' if c_nuevo else 'hidden' }}>
+  <input type="hidden" name="c_nuevo" value="1" {{ '' if c_nuevo else 'disabled' }}>
+  <div class="sub-alta-titulo"><span><i class="fa-solid fa-user-plus"></i> Cliente nuevo</span>
+    <button type="button" class="btn-icon" id="cerrar-cliente-nuevo" title="Cancelar y buscar un cliente existente"><i class="fa-solid fa-xmark"></i></button></div>
   <div class="form-grid-4">
+    <div class="span-2"><label>Nombre y apellido *</label><input name="c_nombre" value="{{ request.form.get('c_nombre', '') }}"></div>
     <div class="span-2"><label>Teléfono</label><input name="c_telefono" type="tel" value="{{ request.form.get('c_telefono', '') }}" placeholder="341 555-1234"></div>
-    <div class="span-2 muted small" style="align-self:center">El resto de los datos (CUIT, email…) se completan después en su ficha.</div>
   </div>
+  <div class="muted small" style="margin-top:8px">El resto de los datos se completa en Clientes.</div>
 </div>
 <script src="{{ url_for('static', filename='js/cliente_picker.js') }}"></script>

@@ -15,11 +15,11 @@
       {% with valor=f.get('cliente', ot.cliente.etiqueta if ot.cliente else ''), obligatorio=False %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% else %}
       {# ───── Vehículo ───── #}
+      {% set v_nuevo = f.get('v_nuevo') %}
       <div class="full"><label>Patente *</label>
         <div class="input-group">
-          <input id="patente" name="patente" list="lista-vehiculos" required autofocus
-                 value="{{ f.get('patente', vehiculo.patente if vehiculo else '') }}" placeholder="Buscá la patente…"
-                 style="text-transform:uppercase;font-family:var(--font-display);font-weight:700;letter-spacing:.08em">
+          <input id="patente" name="patente" list="lista-vehiculos" {{ 'disabled' if v_nuevo else 'required autofocus' }}
+                 value="{{ f.get('patente', vehiculo.patente if vehiculo else '') }}" placeholder="Buscá la patente…" class="input-patente">
           <button type="button" class="btn" id="btn-vehiculo-nuevo" title="Dar de alta un vehículo nuevo"><i class="fa-solid fa-plus"></i> Vehículo nuevo</button>
         </div>
         <datalist id="lista-vehiculos">
@@ -27,15 +27,20 @@
         </datalist>
         <div id="vehiculo-info" class="hint"></div>
       </div>
-      <div id="vehiculo-nuevo" class="full sub-alta" hidden>
-        <div class="sub-alta-titulo"><i class="fa-solid fa-car-side"></i> Vehículo nuevo: se da de alta con esta patente</div>
+      <div id="vehiculo-nuevo" class="full sub-alta" {{ '' if v_nuevo else 'hidden' }}>
+        <input type="hidden" name="v_nuevo" value="1" {{ '' if v_nuevo else 'disabled' }}>
+        <div class="sub-alta-titulo"><span><i class="fa-solid fa-car-side"></i> Vehículo nuevo</span>
+          <button type="button" class="btn-icon" id="cerrar-vehiculo-nuevo" title="Cancelar y buscar una patente cargada"><i class="fa-solid fa-xmark"></i></button></div>
         <div class="form-grid-4">
+          <div><label>Patente *</label><input id="v_patente" name="v_patente" value="{{ f.get('v_patente', '') }}" placeholder="AB123CD" class="input-patente"></div>
           <div><label>Marca</label><input name="v_marca" list="lista-marcas" value="{{ f.get('v_marca', '') }}">
             <datalist id="lista-marcas">{% for m in marcas %}<option value="{{ m }}">{% endfor %}</datalist></div>
           <div><label>Modelo</label><input name="v_modelo" value="{{ f.get('v_modelo', '') }}"></div>
-          <div><label>Motor</label><input name="v_motor" value="{{ f.get('v_motor', '') }}" placeholder="1.6"></div>
           <div><label>Año</label><input name="v_anio" inputmode="numeric" maxlength="4" value="{{ f.get('v_anio', '') }}"></div>
+          <div><label>Motor</label><input name="v_motor" value="{{ f.get('v_motor', '') }}" placeholder="1.6"></div>
         </div>
+        <div id="v_patente-info" class="hint"></div>
+        <div class="muted small">El resto de los datos se completa en Vehículos.</div>
       </div>
 
       {# ───── Cliente ───── #}
@@ -62,52 +67,76 @@
   var cliente = picker.input;
   var patente = document.getElementById('patente');
   if (!patente) return;  // edición: solo el cliente
-  var vInfo = document.getElementById('vehiculo-info'), vNuevo = document.getElementById('vehiculo-nuevo');
+  var vInfo = document.getElementById('vehiculo-info'), caja = document.getElementById('vehiculo-nuevo');
+  var marca = caja.querySelector('input[name="v_nuevo"]');
+  var vPatente = document.getElementById('v_patente'), vPatenteInfo = document.getElementById('v_patente-info');
   var km = document.getElementById('km');
   var pedido = 0;
 
   function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+  function consultar(p) {
+    return fetch('{{ url_for("ot.vehiculo_info") }}?patente=' + encodeURIComponent(p)).then(function (r) { return r.json(); });
+  }
 
-  function actualizarEstado(existe, dueno) {
+  function estadoCliente(existe, dueno) {
     picker.estado.dueno = dueno || null;
-    picker.estado.vehiculoNuevo = !vNuevo.hidden;
+    picker.estado.vehiculoNuevo = !caja.hidden;
     picker.estado.vehiculoSinDueno = existe && !dueno;
     picker.revisar();
   }
 
+  // Buscar una patente ya cargada
   function buscarPatente() {
     var p = patente.value.trim();
-    if (p.length < 5) return;
+    if (p.length < 5) { vInfo.textContent = ''; return; }
     var n = ++pedido;
-    fetch('{{ url_for("ot.vehiculo_info") }}?patente=' + encodeURIComponent(p))
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (n !== pedido) return;
-        if (d.existe) {
-          vNuevo.hidden = true;
-          vInfo.innerHTML = '<i class="fa-solid fa-circle-check" style="color:var(--ok)"></i> ' + esc(d.descripcion || 'Vehículo cargado') +
-            (d.km ? ' · ' + d.km.toLocaleString('es-AR') + ' km' : '') + (d.cliente ? '' : ' · <em>sin dueño asignado</em>');
-          if (d.cliente && (!cliente.value || picker.existe(cliente.value))) cliente.value = d.cliente;
-          if (d.km) km.placeholder = d.km;
-        } else {
-          vNuevo.hidden = !d.valida;
-          vInfo.innerHTML = d.valida ? '<i class="fa-solid fa-plus" style="color:var(--accent)"></i> Patente nueva: completá los datos del vehículo.'
-                                     : 'La patente no parece válida.';
-        }
-        actualizarEstado(d.existe, d.cliente);
-      });
+    consultar(p).then(function (d) {
+      if (n !== pedido) return;
+      if (d.existe) {
+        vInfo.innerHTML = '<i class="fa-solid fa-circle-check" style="color:var(--ok)"></i> ' + esc(d.descripcion || 'Vehículo cargado') +
+          (d.km ? ' · ' + d.km.toLocaleString('es-AR') + ' km' : '') + (d.cliente ? '' : ' · <em>sin dueño asignado</em>');
+        if (d.cliente && !picker.enAlta() && (!cliente.value || picker.existe(cliente.value))) cliente.value = d.cliente;
+        if (d.km) km.placeholder = d.km;
+      } else {
+        vInfo.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="color:var(--warn)"></i> No está cargada. Si es un auto nuevo, tocá <strong>+ Vehículo nuevo</strong>.';
+      }
+      estadoCliente(d.existe, d.cliente);
+    });
+  }
+
+  // Alta: avisar si la patente escrita en el recuadro ya existe
+  function revisarPatenteNueva() {
+    var p = vPatente.value.trim();
+    if (p.length < 5) { vPatenteInfo.textContent = ''; return; }
+    consultar(p).then(function (d) {
+      if (vPatente.value.trim() !== p) return;
+      vPatenteInfo.innerHTML = d.existe
+        ? '<i class="fa-solid fa-circle-exclamation" style="color:var(--danger)"></i> Esa patente ya está cargada (' + esc(d.descripcion || '') + '): cerrá este recuadro y buscala arriba.'
+        : (d.valida ? '' : 'La patente no parece válida.');
+    });
+  }
+
+  function modoNuevo(activo) {
+    caja.hidden = !activo;
+    marca.disabled = !activo;
+    vPatente.required = activo;
+    patente.disabled = activo;
+    patente.required = !activo;
+    if (activo) {
+      patente.value = ''; vInfo.textContent = '';
+      vPatente.focus();
+    } else {
+      patente.focus();
+    }
+    estadoCliente(false, null);
   }
 
   patente.addEventListener('input', function () { clearTimeout(patente._t); patente._t = setTimeout(buscarPatente, 250); });
-  document.getElementById('btn-vehiculo-nuevo').addEventListener('click', function () {
-    patente.value = '';
-    vNuevo.hidden = false;
-    vInfo.innerHTML = '<i class="fa-solid fa-plus" style="color:var(--accent)"></i> Escribí la patente del vehículo nuevo y completá sus datos.';
-    patente.placeholder = 'Patente del vehículo nuevo (ej.: AB123CD)';
-    patente.focus();
-    actualizarEstado(false, null);
-  });
-  if (patente.value) buscarPatente();
+  vPatente.addEventListener('input', function () { clearTimeout(vPatente._t); vPatente._t = setTimeout(revisarPatenteNueva, 250); });
+  document.getElementById('btn-vehiculo-nuevo').addEventListener('click', function () { modoNuevo(true); });
+  document.getElementById('cerrar-vehiculo-nuevo').addEventListener('click', function () { modoNuevo(false); });
+  if (patente.value && !patente.disabled) buscarPatente();
+  if (!caja.hidden) { vPatente.required = true; estadoCliente(false, null); }
 })();
 </script>
 {% endblock %}

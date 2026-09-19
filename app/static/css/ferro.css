@@ -236,3 +236,7 @@ dl.props.totales dd { text-align: right; }
 .input-group input { flex: 1; min-width: 0; }
 @media (max-width: 520px) { .input-group .btn { padding: 9px 11px; font-size: 0; gap: 0; } .input-group .btn i { font-size: .95rem; } }
 #patente::placeholder, input[name$="patente"]::placeholder { text-transform: none; font-family: var(--font-body); font-weight: 400; letter-spacing: normal; }
+.sub-alta-titulo { display: flex; justify-content: space-between; align-items: center; }
+.input-patente { text-transform: uppercase; font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; }
+.input-patente::placeholder { text-transform: none; font-family: var(--font-body); font-weight: 400; letter-spacing: normal; }
+input:disabled { background: var(--surface-2); color: var(--muted); }

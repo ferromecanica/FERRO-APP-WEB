@@ -188,37 +188,49 @@ def _asignar_cliente(ot, cliente):
 
 
 def _resolver_vehiculo():
-    """Del formulario de nueva OT: busca el vehículo por patente o lo da de alta (solo el vehículo)."""
-    patente = normalizar_patente(request.form.get("patente"))
-    vehiculo = Vehiculo.query.filter_by(patente=patente).first() if patente else None
-    if vehiculo is not None:
+    """Del formulario de nueva OT: el vehículo buscado, o el alta del recuadro 'Vehículo nuevo'."""
+    if request.form.get("v_nuevo"):
+        patente = normalizar_patente(request.form.get("v_patente"))
+        if not patente_valida(patente):
+            return None, [f"Escribí una patente válida para el vehículo nuevo («{request.form.get('v_patente', '')}»)."]
+        if Vehiculo.query.filter_by(patente=patente).first():
+            return None, [f"La patente {patente} ya está cargada: buscala en el campo Patente."]
+        anio = request.form.get("v_anio", "").strip()
+        vehiculo = Vehiculo(
+            patente=patente,
+            marca=request.form.get("v_marca", "").strip() or None,
+            modelo=request.form.get("v_modelo", "").strip() or None,
+            motor=request.form.get("v_motor", "").strip() or None,
+            anio=int(anio) if anio.isdigit() else None,
+        )
+        db.session.add(vehiculo)
         return vehiculo, []
-    if not patente_valida(patente):
-        return None, [f"La patente «{request.form.get('patente', '')}» no parece válida."]
-    anio = request.form.get("v_anio", "").strip()
-    vehiculo = Vehiculo(
-        patente=patente,
-        marca=request.form.get("v_marca", "").strip() or None,
-        modelo=request.form.get("v_modelo", "").strip() or None,
-        motor=request.form.get("v_motor", "").strip() or None,
-        anio=int(anio) if anio.isdigit() else None,
-    )
-    db.session.add(vehiculo)
+
+    patente = normalizar_patente(request.form.get("patente"))
+    if not patente:
+        return None, ["Buscá la patente, o tocá «+ Vehículo nuevo» si el auto no está cargado."]
+    vehiculo = Vehiculo.query.filter_by(patente=patente).first()
+    if vehiculo is None:
+        return None, [f"No encontré la patente {patente}. Si es un auto nuevo, tocá «+ Vehículo nuevo»."]
     return vehiculo, []
 
 
 def _resolver_cliente(obligatorio):
-    """Del campo Cliente: uno existente, uno nuevo (alta solo del cliente) o ninguno."""
+    """Del campo Cliente: uno existente, el alta del recuadro 'Cliente nuevo', o ninguno."""
+    if request.form.get("c_nuevo"):
+        nombre = request.form.get("c_nombre", "").strip()
+        if not nombre:
+            return None, ["Escribí nombre y apellido del cliente nuevo."]
+        cliente = Cliente(nombre=nombre, telefono=request.form.get("c_telefono", "").strip() or None)
+        db.session.add(cliente)
+        return cliente, []
+
     texto = request.form.get("cliente", "").strip()
     if not texto:
         return None, (["Indicá el cliente."] if obligatorio else [])
     cliente = _buscar_cliente(texto)
-    if cliente is not None:
-        return cliente, []
-    if "CLI-" in texto:
-        return None, [f"No encontré el cliente «{texto}»."]
-    cliente = Cliente(nombre=texto, telefono=request.form.get("c_telefono", "").strip() or None)
-    db.session.add(cliente)
+    if cliente is None:
+        return None, [f"No encontré el cliente «{texto}». Si es nuevo, tocá «+ Cliente nuevo»."]
     return cliente, []
 
 
