@@ -264,14 +264,36 @@ class ConsumoOT(db.Model):
 
 
 class FotoOT(db.Model):
+    """Foto de una OT, guardada en la carpeta de fotos de Drive.
+
+    Cada foto puede ir al reporte (registro fotográfico del PDF), al taller
+    (uso interno) o a ambos.
+    """
+
     id = db.Column(db.Integer, primary_key=True)
     ot_id = db.Column(db.Integer, db.ForeignKey("orden_trabajo.id"), nullable=False)
-    tipo = db.Column(db.String(20), default="reparacion")  # reparacion | taller
-    archivo = db.Column(db.String(300), nullable=False)  # ruta local o URL de Drive
+    archivo = db.Column(db.String(300), nullable=False)  # nombre del archivo en la carpeta de fotos de Drive
+    drive_id = db.Column(db.String(100))  # id del archivo en Drive (para mostrarla)
+    en_reporte = db.Column(db.Boolean, default=True, nullable=False)
+    en_taller = db.Column(db.Boolean, default=False, nullable=False)
     descripcion = db.Column(db.String(200))
     fecha_hora = db.Column(db.DateTime, default=datetime.now)
 
     ot = db.relationship("OrdenTrabajo", back_populates="fotos")
+
+    @property
+    def destino(self):
+        if self.en_reporte and self.en_taller:
+            return "ambos"
+        return "reporte" if self.en_reporte else "taller"
+
+    @property
+    def miniatura(self):
+        return f"https://drive.google.com/thumbnail?id={self.drive_id}&sz=w600" if self.drive_id else None
+
+    @property
+    def url(self):
+        return f"https://drive.google.com/file/d/{self.drive_id}/view" if self.drive_id else None
 
 
 # ─────────────────────────────────── Stock ──────────────────────────────────

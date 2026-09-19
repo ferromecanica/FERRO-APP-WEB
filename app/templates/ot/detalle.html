@@ -220,6 +220,19 @@
       {% endif %}
     </div>
 
+    {# ───── Fotos ───── #}
+    <div class="card" id="fotos">
+      {{ encabezado('fa-camera', 'Fotos', (ot.fotos | length) ~ ' fotos') }}
+      <div class="card-body">{% with grande=False %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
+      <div class="sub-seccion"><i class="fa-solid fa-file-pdf"></i> Para el reporte <span class="muted small">({{ ot.fotos | selectattr('en_reporte') | list | length }})</span></div>
+      {% with fotos=ot.fotos | selectattr('en_reporte') | list, vacio_texto='Sin fotos para el reporte.', volver='' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
+      <div class="sub-seccion"><i class="fa-solid fa-warehouse"></i> Del taller <span class="muted small">({{ ot.fotos | selectattr('en_taller') | list | length }})</span></div>
+      {% with fotos=ot.fotos | selectattr('en_taller') | list, vacio_texto='Sin fotos del taller.', volver='' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
+      {% if not editable and ot.clasificacion_cierre == 'Servicio' and ot.fotos %}
+      <div class="card-body muted small" style="border-top:1px solid var(--border)"><i class="fa-solid fa-circle-info"></i> Si agregaste o cambiaste fotos después de cerrar, tocá "Regenerar reporte".</div>
+      {% endif %}
+    </div>
+
     {# ───── Checklist (solo lectura, en OT cerradas como Servicio) ───── #}
     {% if not editable and ot.clasificacion_cierre == 'Servicio' %}
     <div class="card">
@@ -351,4 +364,5 @@
   var porHash = { '#cerrar': 'dialogo-cierre', '#cobrar': 'dialogo-cobro' }[location.hash];
   if (porHash && document.getElementById(porHash)) document.getElementById(porHash).showModal();
 </script>
+<script src="{{ url_for('static', filename='js/fotos.js') }}"></script>
 {% endblock %}

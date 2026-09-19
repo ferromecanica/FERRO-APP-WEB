@@ -1,0 +1,17 @@
+{# Subir fotos a una OT. Variables: ot, grande (bool, vista celular) #}
+<div class="subir-fotos {{ 'grande' if grande }}" data-subir-fotos data-url="{{ url_for('ot.foto_subir', id=ot.id) }}">
+  <div class="destinos">
+    <span class="destinos-label">¿Dónde van?</span>
+    <label class="destino"><input type="radio" name="destino_foto" value="reporte" checked><span><i class="fa-solid fa-file-pdf"></i> Reporte</span></label>
+    <label class="destino"><input type="radio" name="destino_foto" value="taller"><span><i class="fa-solid fa-warehouse"></i> Taller</span></label>
+    <label class="destino"><input type="radio" name="destino_foto" value="ambos"><span><i class="fa-solid fa-clone"></i> Ambos</span></label>
+  </div>
+  <input name="descripcion_foto" placeholder="Descripción (opcional): ej. Pastillas gastadas" maxlength="200">
+  <div class="botones-foto">
+    <label class="btn btn-primary btn-foto"><i class="fa-solid fa-camera"></i> Sacar foto
+      <input type="file" accept="image/*" capture="environment" hidden></label>
+    <label class="btn btn-foto"><i class="fa-solid fa-images"></i> Elegir de la galería
+      <input type="file" accept="image/*" multiple hidden></label>
+  </div>
+  <div class="cola-fotos"></div>
+</div>

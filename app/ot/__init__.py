@@ -1,3 +1,5 @@
+import base64
+import secrets
 from datetime import date, datetime
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
@@ -13,6 +15,7 @@ from ..models import (
     Cliente,
     ConfigTaller,
     ConsumoOT,
+    FotoOT,
     OrdenTrabajo,
     RegistroHoras,
     Repuesto,
@@ -21,7 +24,7 @@ from ..models import (
     Venta,
     VentaItem,
 )
-from ..services import reporte
+from ..services import drive, reporte
 from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
 from ..validaciones import MARCAS_COMUNES, normalizar_patente, numero_ar, patente_valida
 
@@ -62,7 +65,8 @@ def _en_proceso(ot):
 
 def _volver(ot_o_id, seccion=None):
     ot_id = ot_o_id if isinstance(ot_o_id, int) else ot_o_id.id
-    return redirect(url_for(".detalle", id=ot_id) + (f"#{seccion}" if seccion else ""))
+    destino = "movil.ot" if request.values.get("volver") == "movil" else ".detalle"
+    return redirect(url_for(destino, id=ot_id) + (f"#{seccion}" if seccion else ""))
 
 
 def _fecha(campo, defecto=None):
@@ -256,7 +260,7 @@ def detalle(id):
 def cambiar_estado(id):
     ot = _ot_editable(id)
     if ot is None:
-        return redirect(url_for(".detalle", id=id))
+        return _volver(id)
     nuevo = request.form.get("estado")
     if nuevo in ESTADOS_OT_ABIERTA:
         ot.estado = nuevo
@@ -268,7 +272,7 @@ def cambiar_estado(id):
 def eliminar(id):
     ot = _ot_editable(id)
     if ot is None:
-        return redirect(url_for(".detalle", id=id))
+        return _volver(id)
     for consumo in list(ot.consumos):
         revertir_consumo(consumo)
     db.session.flush()
@@ -286,7 +290,7 @@ def eliminar(id):
 def tarea_agregar(id):
     ot = _ot_editable(id)
     if ot is None:
-        return redirect(url_for(".detalle", id=id))
+        return _volver(id)
     texto = request.form.get("descripcion", "").strip()
     if texto:
         db.session.add(TareaOT(ot=ot, descripcion=texto))
@@ -309,7 +313,7 @@ def tarea_eliminar(tid):
 def horas_agregar(id):
     ot = _ot_editable(id)
     if ot is None:
-        return redirect(url_for(".detalle", id=id))
+        return _volver(id)
     horas = numero_ar(request.form.get("horas"))
     mecanico = request.form.get("mecanico", "").strip()
     if not horas or horas <= 0 or not mecanico:
@@ -340,7 +344,7 @@ def horas_eliminar(hid):
 def repuesto_agregar(id):
     ot = _ot_editable(id)
     if ot is None:
-        return redirect(url_for(".detalle", id=id))
+        return _volver(id)
     cantidad = numero_ar(request.form.get("cantidad")) or 1
     if cantidad <= 0:
         flash("La cantidad tiene que ser mayor a cero.", "error")
@@ -434,6 +438,67 @@ def consumo_editar(cid):
     return _volver(consumo.ot_id, "repuestos")
 
 
+# ──────────────────────────────────── Fotos ─────────────────────────────────
+
+DESTINOS_FOTO = {"reporte": (True, False), "taller": (False, True), "ambos": (True, True)}
+
+
+@bp.route("/<int:id>/fotos", methods=["POST"])
+def foto_subir(id):
+    """Recibe una foto ya achicada en el navegador (JPEG en base64) y la guarda en Drive."""
+    ot = db.get_or_404(OrdenTrabajo, id)
+    destino = request.form.get("destino", "reporte")
+    if destino not in DESTINOS_FOTO:
+        return jsonify(ok=False, error="Destino inválido."), 400
+    imagen = request.form.get("imagen", "")
+    contenido = imagen.split(",", 1)[1] if imagen.startswith("data:") else imagen
+    try:
+        datos = base64.b64decode(contenido, validate=True)
+    except ValueError:
+        datos = b""
+    if not datos.startswith(b"\xff\xd8"):
+        return jsonify(ok=False, error="La imagen no llegó bien. Probá de nuevo."), 400
+
+    nombre = f"OT{ot.id}_{datetime.now():%Y%m%d_%H%M%S}_{secrets.token_hex(3)}.jpg"
+    try:
+        guardada = drive.llamar("foto", nombre=nombre, contenido=contenido)
+    except drive.ErrorDrive as e:
+        return jsonify(ok=False, error=str(e)), 502
+    en_reporte, en_taller = DESTINOS_FOTO[destino]
+    foto = FotoOT(ot=ot, archivo=guardada.get("nombre", nombre), drive_id=guardada["id"], en_reporte=en_reporte,
+                  en_taller=en_taller, descripcion=request.form.get("descripcion", "").strip()[:200] or None)
+    db.session.add(foto)
+    db.session.commit()
+    return jsonify(ok=True, id=foto.id, miniatura=foto.miniatura, destino=foto.destino)
+
+
+@bp.route("/fotos/<int:fid>/editar", methods=["POST"])
+def foto_editar(fid):
+    foto = db.get_or_404(FotoOT, fid)
+    destino = request.form.get("destino")
+    if destino in DESTINOS_FOTO:
+        foto.en_reporte, foto.en_taller = DESTINOS_FOTO[destino]
+    foto.descripcion = request.form.get("descripcion", "").strip()[:200] or None
+    db.session.commit()
+    return _volver(foto.ot_id, "fotos")
+
+
+@bp.route("/fotos/<int:fid>/eliminar", methods=["POST"])
+def foto_eliminar(fid):
+    foto = db.get_or_404(FotoOT, fid)
+    ot_id = foto.ot_id
+    if foto.drive_id:
+        try:
+            drive.llamar("borrar_foto", id=foto.drive_id)
+        except drive.ErrorDrive as e:
+            flash(f"No pude borrar la foto en Drive: {e}", "error")
+            return _volver(ot_id, "fotos")
+    db.session.delete(foto)
+    db.session.commit()
+    flash("Foto eliminada.", "ok")
+    return _volver(ot_id, "fotos")
+
+
 # ──────────────────────────────── Cierre de OT ──────────────────────────────
 
 
@@ -488,7 +553,7 @@ def _datos_cobro(ot):
 def cerrar(id):
     ot = _ot_editable(id)
     if ot is None:
-        return redirect(url_for(".detalle", id=id))
+        return _volver(id)
     if request.method == "GET":
         return _volver(ot, "cerrar")  # el cierre se hace desde la ventana de la ficha
 

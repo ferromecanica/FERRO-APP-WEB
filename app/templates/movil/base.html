@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>{% block title %}Taller{% endblock %} · Ferro</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ferro.css') }}">
+</head>
+<body class="movil">
+  <header class="movil-top">
+    {% block atras %}<span></span>{% endblock %}
+    <a class="movil-marca" href="{{ url_for('movil.inicio') }}"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt=""> Ferro Taller</a>
+    {% block completa %}<a class="movil-link" href="{{ url_for('dashboard.index') }}" title="Versión completa"><i class="fa-solid fa-desktop"></i></a>{% endblock %}
+  </header>
+  <main class="movil-main">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in mensajes %}<div class="flash flash-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

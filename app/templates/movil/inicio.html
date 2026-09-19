@@ -1,0 +1,20 @@
+{% extends "movil/base.html" %}
+{% from "partials/macros.html" import estado %}
+{% block content %}
+<form class="movil-buscar" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input name="q" value="{{ q }}" placeholder="Buscar patente…" autocomplete="off" class="input-patente" enterkeyhint="search">
+</form>
+
+<h2 class="movil-titulo">En el taller <span>{{ abiertas | length }}</span></h2>
+{% for ot in abiertas %}
+  {% include "movil/_tarjeta_ot.html" %}
+{% else %}
+  <div class="empty"><i class="fa-solid fa-mug-hot"></i>{{ 'No hay OT abiertas con esa patente.' if q else 'No hay OT abiertas.' }}</div>
+{% endfor %}
+
+{% if recientes %}
+<h2 class="movil-titulo">Terminadas esta semana</h2>
+{% for ot in recientes %}{% include "movil/_tarjeta_ot.html" %}{% endfor %}
+{% endif %}
+{% endblock %}

@@ -4,15 +4,12 @@ Ferro arma el HTML (mismo diseño que el reporte de AppSheet) y lo manda al
 Apps Script de docs/reportes_gdrive.gs, que agrega logo, firma y fotos desde
 Drive, lo convierte a PDF, lo guarda en la carpeta de reportes y devuelve el link.
 """
-import json
-import os
 import posixpath
-import urllib.parse
-import urllib.request
 
 from flask import render_template
 
 from ..models import ConfigTaller
+from . import drive
 
 # Datos del membrete (los de AppSheet) si no están cargados en Configuración
 TALLER_POR_DEFECTO = {
@@ -40,15 +37,10 @@ def armar_html(ot):
     if cfg.telefono:
         taller["telefono"] = cfg.telefono
 
-    fotos = []
-    for foto in ot.fotos:
-        if foto.tipo != "reparacion":
-            continue
-        if foto.archivo.startswith("http"):
-            src = foto.archivo
-        else:
-            src = f"__FOTO:{posixpath.basename(foto.archivo)}__"
-        fotos.append({"src": src, "descripcion": foto.descripcion})
+    fotos = [
+        {"src": f"__FOTO:{posixpath.basename(foto.archivo)}__", "descripcion": foto.descripcion}
+        for foto in ot.fotos if foto.en_reporte
+    ]
 
     return render_template(
         "reportes/mantenimiento.html",
@@ -81,28 +73,14 @@ def nombre_archivo(ot):
 
 
 def configurado():
-    return bool(os.environ.get("REPORTES_URL") and os.environ.get("BACKUP_SECRET"))
+    return drive.configurado()
 
 
 def generar_pdf(ot):
     """Genera el PDF en Drive y devuelve su link (lo guarda también en la OT)."""
-    if not configurado():
-        raise ErrorReporte("Falta configurar el generador de reportes (REPORTES_URL en el servidor).")
-    datos = urllib.parse.urlencode({
-        "secreto": os.environ["BACKUP_SECRET"],
-        "nombre": nombre_archivo(ot),
-        "html": armar_html(ot),
-    }).encode()
     try:
-        with urllib.request.urlopen(os.environ["REPORTES_URL"], data=datos, timeout=120) as r:
-            respuesta = r.read().decode()
-    except OSError as e:
-        raise ErrorReporte(f"No pude comunicarme con Google para generar el PDF ({e}).")
-    try:
-        resultado = json.loads(respuesta)
-    except ValueError:
-        raise ErrorReporte("Google respondió algo inesperado al generar el PDF.")
-    if not resultado.get("ok"):
-        raise ErrorReporte(f"Google no pudo generar el PDF: {resultado.get('error', 'error desconocido')}.")
+        resultado = drive.llamar("reporte", nombre=nombre_archivo(ot), html=armar_html(ot))
+    except drive.ErrorDrive as e:
+        raise ErrorReporte(str(e).replace("Google Drive", "Google"))
     ot.link_reporte = resultado["url"]
     return ot.link_reporte

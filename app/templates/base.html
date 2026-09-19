@@ -37,6 +37,7 @@
       <a href="{{ url_for('stock.ingresos') }}" class="{{ 'active' if ep == 'stock.ingresos' }}"><i class="fa-solid fa-truck-ramp-box"></i> Ingreso Stock</a>
       <a href="{{ url_for('stock.movimientos') }}" class="{{ 'active' if ep == 'stock.movimientos' }}"><i class="fa-solid fa-barcode"></i> Control de Stock</a>
       <div class="nav-label">Sistema</div>
+      <a href="{{ url_for('movil.inicio') }}"><i class="fa-solid fa-mobile-screen"></i> Modo celular</a>
       <a href="{{ url_for('dashboard.configuracion') }}" class="{{ 'active' if ep == 'dashboard.configuracion' }}"><i class="fa-solid fa-gear"></i> Configuración</a>
     </nav>
     <div class="sidebar-foot">

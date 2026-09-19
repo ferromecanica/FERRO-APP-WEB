@@ -1,0 +1,55 @@
+{% extends "movil/base.html" %}
+{% from "partials/macros.html" import estado %}
+{% block title %}{{ ot.vehiculo.patente }}{% endblock %}
+{% block atras %}<a class="movil-link" href="{{ url_for('movil.inicio') }}" title="Volver"><i class="fa-solid fa-chevron-left"></i></a>{% endblock %}
+{% block completa %}<a class="movil-link" href="{{ url_for('ot.detalle', id=ot.id) }}" title="Ver en versión completa"><i class="fa-solid fa-desktop"></i></a>{% endblock %}
+{% block content %}
+{% set abierta = ot.abierta %}
+<div class="movil-cabecera">
+  <span class="plate plate-grande">{{ ot.vehiculo.patente }}</span>
+  <div><strong>{{ ot.vehiculo.descripcion or 'Vehículo' }}</strong><div class="muted small">OT {{ ot.id }} · {{ ot.cliente.nombre if ot.cliente else 'Sin cliente' }}</div></div>
+  {{ estado(ot.estado) }}
+</div>
+{% if ot.detalle %}<div class="movil-motivo"><i class="fa-solid fa-comment-dots"></i> {{ ot.detalle }}</div>{% endif %}
+
+<section class="movil-seccion" id="fotos">
+  <h2><i class="fa-solid fa-camera"></i> Fotos</h2>
+  {% with grande=True %}{% include "ot/_subir_fotos.html" %}{% endwith %}
+  <h3 class="movil-sub"><i class="fa-solid fa-file-pdf"></i> Para el reporte</h3>
+  {% with fotos=ot.fotos | selectattr('en_reporte') | list, vacio_texto='Todavía no hay fotos para el reporte.', volver='movil' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
+  <h3 class="movil-sub"><i class="fa-solid fa-warehouse"></i> Del taller</h3>
+  {% with fotos=ot.fotos | selectattr('en_taller') | list, vacio_texto='Todavía no hay fotos del taller.', volver='movil' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
+</section>
+
+<section class="movil-seccion" id="tareas">
+  <h2><i class="fa-solid fa-list-check"></i> Tareas realizadas</h2>
+  {% for t in ot.tareas %}<div class="movil-item">{{ t.descripcion }}</div>{% else %}<div class="muted small">Sin tareas cargadas.</div>{% endfor %}
+  {% if abierta %}
+  <form method="post" action="{{ url_for('ot.tarea_agregar', id=ot.id) }}" class="movil-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="volver" value="movil">
+    <textarea name="descripcion" rows="2" placeholder="Ej.: Cambio de pastillas de freno delanteras" required></textarea>
+    <button class="btn btn-primary btn-grande"><i class="fa-solid fa-plus"></i> Agregar tarea</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="movil-seccion" id="horas">
+  <h2><i class="fa-solid fa-screwdriver-wrench"></i> Horas <span class="muted small">{{ ot.horas_insumidas | numero(1) }} h</span></h2>
+  {% for h in ot.horas %}
+    <div class="movil-item"><strong>{{ h.mecanico }}</strong> · {{ h.horas | numero(1) }} h · <span class="muted">{{ h.fecha | fecha('%d/%m') }}</span>{% if h.detalle %}<div class="muted small">{{ h.detalle }}</div>{% endif %}</div>
+  {% else %}<div class="muted small">Sin horas cargadas.</div>{% endfor %}
+  {% if abierta %}
+  <form method="post" action="{{ url_for('ot.horas_agregar', id=ot.id) }}" class="movil-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="volver" value="movil">
+    <div class="movil-fila">
+      <select name="mecanico">{% for m in mecanicos %}<option {{ 'selected' if loop.first }}>{{ m }}</option>{% endfor %}</select>
+      <input name="horas" inputmode="decimal" placeholder="Horas (1,5)" required>
+    </div>
+    <input name="detalle" placeholder="Qué se hizo (opcional)">
+    <input type="hidden" name="fecha" value="{{ hoy.isoformat() }}">
+    <button class="btn btn-primary btn-grande"><i class="fa-solid fa-plus"></i> Cargar horas</button>
+  </form>
+  {% endif %}
+</section>
+<script src="{{ url_for('static', filename='js/fotos.js') }}"></script>
+{% endblock %}
