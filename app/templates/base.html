@@ -24,7 +24,7 @@
     </div>
     {% set ep = request.endpoint %}
     <nav class="nav">
-      <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if seccion == 'dashboard' }}"><i class="fa-solid fa-gauge-high"></i> Tablero</a>
+      <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if ep == 'dashboard.index' }}"><i class="fa-solid fa-gauge-high"></i> Tablero</a>
       <div class="nav-label">Taller</div>
       <a href="{{ url_for('ot.lista') }}" class="{{ 'active' if seccion == 'ot' }}"><i class="fa-solid fa-warehouse"></i> Taller (OT)</a>
       <a href="{{ url_for('turnos.lista') }}" class="{{ 'active' if seccion == 'turnos' }}"><i class="fa-regular fa-calendar-check"></i> Turnos</a>
@@ -36,6 +36,8 @@
       <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if ep == 'stock.lista' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
       <a href="{{ url_for('stock.ingresos') }}" class="{{ 'active' if ep == 'stock.ingresos' }}"><i class="fa-solid fa-truck-ramp-box"></i> Ingreso Stock</a>
       <a href="{{ url_for('stock.movimientos') }}" class="{{ 'active' if ep == 'stock.movimientos' }}"><i class="fa-solid fa-barcode"></i> Control de Stock</a>
+      <div class="nav-label">Sistema</div>
+      <a href="{{ url_for('dashboard.configuracion') }}" class="{{ 'active' if ep == 'dashboard.configuracion' }}"><i class="fa-solid fa-gear"></i> Configuración</a>
     </nav>
     <div class="sidebar-foot">
       <div class="avatar">{{ current_user.nombre[:1] }}</div>

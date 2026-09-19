@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ 'OT #' ~ ot.id if ot.id else 'Nueva OT' }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Órdenes de trabajo</div>
+    <h1>{{ 'Editar OT #' ~ ot.id if ot.id else 'Nueva OT #' ~ proximo }}</h1></div>
+</div>
+<form class="card" method="post" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-body form-grid">
+    {% if ot.id %}
+      <div class="full"><label>Vehículo</label>
+        <div><span class="plate">{{ ot.vehiculo.patente }}</span> {{ ot.vehiculo.descripcion }} · {{ ot.cliente.nombre }}</div></div>
+    {% else %}
+      <div class="full"><label>Patente *</label>
+        <input name="patente" list="lista-vehiculos" required autofocus autocomplete="off"
+               value="{{ request.form.get('patente', vehiculo.patente if vehiculo else '') }}" placeholder="Escribí la patente…"
+               style="text-transform:uppercase;font-family:var(--font-display);font-weight:700;letter-spacing:.08em">
+        <datalist id="lista-vehiculos">
+          {% for v in vehiculos %}<option value="{{ v.patente }}">{{ v.marca or '' }} {{ v.modelo or '' }} · {{ v.cliente.nombre }}</option>{% endfor %}
+        </datalist>
+        <div class="muted small" style="margin-top:5px">¿Auto nuevo? <a href="{{ url_for('clientes.form', siguiente='ot') }}">Cargá el cliente y su vehículo</a> y volvés acá.</div>
+      </div>
+    {% endif %}
+    <div><label>Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ (ot.fecha_ingreso or hoy).isoformat() }}"></div>
+    <div><label>Km de entrada</label><input name="km_entrada" inputmode="numeric" value="{{ request.form.get('km_entrada', ot.km_entrada or '') }}"
+         placeholder="{{ vehiculo.kilometraje if vehiculo and vehiculo.kilometraje else '' }}"></div>
+    <div class="full"><label>Qué trae / trabajo a realizar *</label>
+      <textarea name="detalle" required placeholder="Ej.: Service 10.000 km, ruido en tren delantero…">{{ request.form.get('detalle', ot.detalle or '') }}</textarea></div>
+    <div><label>Presupuesto inicial</label><input name="presupuesto_cliente" inputmode="decimal"
+         value="{{ request.form.get('presupuesto_cliente', (ot.presupuesto_cliente | numero) if ot.presupuesto_cliente else '') }}" placeholder="$"></div>
+  </div>
+  <div class="card-body actions" style="border-top:1px solid var(--border)">
+    <button class="btn btn-primary"><i class="fa-solid fa-check"></i> {{ 'Guardar' if ot.id else 'Abrir OT' }}</button>
+    <a class="btn" href="{{ url_for('ot.detalle', id=ot.id) if ot.id else url_for('ot.lista') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

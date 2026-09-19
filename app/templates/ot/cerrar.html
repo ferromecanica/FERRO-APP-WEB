@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Cerrar OT {{ ot.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">OT {{ ot.id }} · {{ ot.vehiculo.patente }} · {{ ot.cliente.nombre }}</div><h1>Cerrar OT</h1></div>
+</div>
+<div class="grid grid-3-1" style="max-width:1000px">
+  <form class="card" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card-body form-grid">
+      <div class="full"><label>Total cobrado *</label>
+        <input name="total_cobrado" inputmode="decimal" required autofocus value="{{ request.form.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}"
+               style="font-family:var(--font-display);font-size:1.4rem;font-weight:800">
+        <div class="muted small" style="margin-top:4px">Sugerido: el total calculado. Cambialo por lo que realmente se cobró.</div></div>
+      <div><label>Forma de pago *</label>
+        <select name="metodo_pago" required><option value="">Elegí…</option>
+          {% for m in metodos %}<option {{ 'selected' if m == request.form.get('metodo_pago') }}>{{ m }}</option>{% endfor %}</select></div>
+      <div><label>Fecha de cierre</label><input type="date" name="fecha_fin" value="{{ hoy.isoformat() }}"></div>
+      <div class="full"><label>Tipo de trabajo</label>
+        <div class="filters">
+          {% for c in clasificaciones %}<label class="chip-radio"><input type="radio" name="clasificacion" value="{{ c }}" {{ 'checked' if c == sugerida }}> {{ c }}</label>{% endfor %}
+        </div>
+        <div class="muted small" style="margin-top:4px">"Servicio" es mantenimiento: después va a generar el reporte con el checklist.</div></div>
+    </div>
+    <div class="card-body actions" style="border-top:1px solid var(--border)">
+      <button class="btn btn-primary"><i class="fa-solid fa-flag-checkered"></i> Cerrar y registrar venta</button>
+      <a class="btn" href="{{ url_for('ot.detalle', id=ot.id) }}">Volver</a>
+    </div>
+  </form>
+
+  <div class="card card-body">
+    <dl class="props totales">
+      <dt>Mano de obra</dt><dd class="num">{{ (ot.horas_insumidas * valor_hora) | pesos }}</dd>
+      <dt>Repuestos</dt><dd class="num">{{ ot.total_repuestos | pesos }}</dd>
+      <dt><strong>Calculado</strong></dt><dd class="num"><strong>{{ total_calculado | pesos }}</strong></dd>
+      <dt>Costo materiales</dt><dd class="num muted">{{ ot.costo_repuestos | pesos }}</dd>
+    </dl>
+    {% if not ot.tareas %}<p class="small" style="margin:14px 0 0;color:var(--warn)"><i class="fa-solid fa-triangle-exclamation"></i> No cargaste tareas realizadas.</p>{% endif %}
+    {% if not ot.horas %}<p class="small" style="margin:6px 0 0;color:var(--warn)"><i class="fa-solid fa-triangle-exclamation"></i> No hay horas registradas.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

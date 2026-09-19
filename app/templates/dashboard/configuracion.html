@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Configuración{% endblock %}
+{% block content %}
+<div class="page-head"><div><div class="eyebrow">Sistema</div><h1>Configuración</h1></div></div>
+<form class="card" method="post" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-head"><h2>Taller</h2></div>
+  <div class="card-body form-grid">
+    <div><label>Valor de la hora de taller *</label>
+      <input name="valor_hora" inputmode="decimal" required value="{{ cfg.valor_hora | numero if cfg.valor_hora else '' }}" placeholder="$ 84.000">
+      <div class="muted small" style="margin-top:4px">Se usa para calcular la mano de obra de las OT y presupuestos.</div></div>
+    <div></div>
+    <div><label>Razón social</label><input name="razon_social" value="{{ cfg.razon_social or '' }}"></div>
+    <div><label>CUIT</label><input name="cuit" value="{{ cfg.cuit or '' }}"></div>
+    <div><label>Dirección</label><input name="direccion" value="{{ cfg.direccion or '' }}"></div>
+    <div><label>Teléfono</label><input name="telefono" value="{{ cfg.telefono or '' }}"></div>
+  </div>
+  <div class="card-body" style="border-top:1px solid var(--border)"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button></div>
+</form>
+{% endblock %}

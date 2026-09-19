@@ -58,3 +58,24 @@ def whatsapp_numero(telefono):
             d = d[:largo_area] + d[largo_area + 2:]
             break
     return "549" + d if len(d) == 10 else None
+
+
+def numero_ar(texto):
+    """Interpreta números como se escriben acá: '12.500', '1.234,50', '0,5' o '0.5'.
+
+    Devuelve float, o None si está vacío o no es un número.
+    """
+    t = (texto or "").strip().replace("$", "").replace(" ", "")
+    if not t:
+        return None
+    if "," in t:
+        t = t.replace(".", "").replace(",", ".")
+    elif t.count(".") >= 1:
+        partes = t.split(".")
+        # '12.500' o '1.250.000' son miles; '0.5' o '2.75' son decimales
+        if len(partes) > 2 or (len(partes[1]) == 3 and partes[0] not in ("", "0")):
+            t = t.replace(".", "")
+    try:
+        return float(t)
+    except ValueError:
+        return None

@@ -137,6 +137,8 @@ class Turno(TimestampMixin, db.Model):
 # ───────────────────────────── Órdenes de trabajo ───────────────────────────
 
 ESTADOS_OT = ["Ingresado", "En diagnóstico", "Esperando repuestos", "En reparación", "Terminado", "Entregado"]
+ESTADOS_OT_ABIERTA = ESTADOS_OT[:4]
+CLASIFICACIONES_CIERRE = ["Servicio", "Otro"]  # "Servicio" = mantenimiento con reporte
 
 
 class OrdenTrabajo(TimestampMixin, db.Model):
@@ -178,6 +180,7 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     horas = db.relationship("RegistroHoras", back_populates="ot", cascade="all, delete-orphan")
     consumos = db.relationship("ConsumoOT", back_populates="ot", cascade="all, delete-orphan")
     fotos = db.relationship("FotoOT", back_populates="ot", cascade="all, delete-orphan")
+    ventas = db.relationship("Venta", back_populates="ot")
 
     @property
     def horas_insumidas(self):
@@ -193,7 +196,16 @@ class OrdenTrabajo(TimestampMixin, db.Model):
 
     @property
     def abierta(self):
-        return self.estado not in ("Terminado", "Entregado")
+        return self.estado in ESTADOS_OT_ABIERTA
+
+    @property
+    def venta(self):
+        return self.ventas[0] if self.ventas else None
+
+    @classmethod
+    def proximo_numero(cls):
+        ultimo = db.session.query(db.func.max(cls.id)).scalar()
+        return (ultimo or 9999) + 1
 
 
 class TareaOT(db.Model):
@@ -444,7 +456,7 @@ class Venta(TimestampMixin, db.Model):
     link_comprobante = db.Column(db.String(300))
 
     cliente = db.relationship("Cliente")
-    ot = db.relationship("OrdenTrabajo")
+    ot = db.relationship("OrdenTrabajo", back_populates="ventas")
     items = db.relationship("VentaItem", back_populates="venta", cascade="all, delete-orphan")
 
     @property

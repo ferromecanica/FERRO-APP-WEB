@@ -31,14 +31,14 @@ def registrar_movimiento(repuesto, cantidad, tipo, detalle=None, ot_id=None, ven
     return mov
 
 
-def consumir_en_ot(ot, repuesto, cantidad, precio_unitario=None, descripcion=None):
+def consumir_en_ot(ot, repuesto, cantidad, precio_unitario=None, descripcion=None, precio_costo=None):
     """Agrega un consumo a la OT y descuenta stock. Congela precio de venta y costo."""
     consumo = ConsumoOT(
         ot=ot,
         repuesto=repuesto,
         cantidad=cantidad,
         precio_unitario=repuesto.precio_venta if precio_unitario is None else precio_unitario,
-        precio_costo=repuesto.precio_costo or 0,
+        precio_costo=(repuesto.precio_costo or 0) if precio_costo is None else precio_costo,
         descripcion=descripcion or repuesto.nombre,
     )
     db.session.add(consumo)
@@ -93,6 +93,16 @@ def recalcular_precio_venta(repuesto):
         precio *= 1 - repuesto.descuento_oferta
     repuesto.precio_venta = round(precio, 2)
     return repuesto.precio_venta
+
+
+def repuesto_varios():
+    """El ítem genérico 'Varios / Mano de Obra' (id 99): se crea si no existe."""
+    varios = db.session.get(Repuesto, Repuesto.ID_VARIOS)
+    if varios is None:
+        varios = Repuesto(id=Repuesto.ID_VARIOS, nombre="Varios / Mano de Obra", marca="N/A")
+        db.session.add(varios)
+        db.session.flush()
+    return varios
 
 
 def buscar_repuesto(codigo):

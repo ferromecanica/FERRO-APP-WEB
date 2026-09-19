@@ -115,6 +115,8 @@ def form(id=None):
                 db.session.add(vehiculo)
             db.session.commit()
             flash("Cliente guardado." + (f" Vehículo {vehiculo.patente} agregado." if vehiculo else ""), "ok")
+            if request.args.get("siguiente") == "ot" and vehiculo:
+                return redirect(url_for("ot.form", vehiculo_id=vehiculo.id))
             return redirect(url_for(".detalle", id=cliente.id))
     return render_template("clientes/form.html", cliente=cliente, condiciones=CONDICIONES_IVA, marcas=_marcas())
 

@@ -1,32 +1,21 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import estado as badge, vacio %}
-{% block title %}Órdenes de trabajo{% endblock %}
+{% block title %}Taller{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><div class="eyebrow">Taller</div><h1>Órdenes de trabajo</h1></div>
-  <div class="actions"><button class="btn btn-primary" disabled title="Próximamente"><i class="fa-solid fa-plus"></i> Nueva OT</button></div>
+  <div><div class="eyebrow">Órdenes de trabajo</div><h1>Taller</h1></div>
+  <div class="actions">
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Nº, patente, cliente o trabajo…"
+             hx-get="{{ url_for('ot.lista') }}" hx-trigger="input changed delay:250ms, search" hx-include="[name=estado]"
+             hx-target="#tabla-ot" hx-push-url="true">
+      <input type="hidden" name="estado" value="{{ estado or '' }}"></div>
+    <a class="btn btn-primary" href="{{ url_for('ot.form') }}"><i class="fa-solid fa-plus"></i> Nueva OT</a>
+  </div>
 </div>
 <div class="filters" style="margin-bottom:14px">
-  <a class="chip {{ 'active' if not estado }}" href="{{ url_for('ot.lista') }}">Todas</a>
-  {% for e in estados %}<a class="chip {{ 'active' if e == estado }}" href="{{ url_for('ot.lista', estado=e) }}">{{ e }}</a>{% endfor %}
+  <a class="chip {{ 'active' if not estado }}" href="{{ url_for('ot.lista', q=q or None) }}">Todas</a>
+  <a class="chip {{ 'active' if estado == 'abiertas' }}" href="{{ url_for('ot.lista', estado='abiertas', q=q or None) }}">En el taller</a>
+  {% for e in estados %}<a class="chip {{ 'active' if e == estado }}" href="{{ url_for('ot.lista', estado=e, q=q or None) }}">{{ e }}</a>{% endfor %}
 </div>
-<div class="card">
-  {% if ordenes %}
-  <div class="table-wrap"><table>
-    <thead><tr><th>OT</th><th>Vehículo</th><th class="hide-sm">Cliente</th><th>Estado</th><th class="num hide-sm">Horas</th><th class="num">Cobrado</th></tr></thead>
-    <tbody>
-    {% for ot in ordenes %}
-      <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
-        <td><strong>#{{ ot.id }}</strong><div class="muted small">{{ ot.fecha_ingreso | fecha }} · {{ ot.detalle or '' }}</div></td>
-        <td><span class="plate">{{ ot.vehiculo.patente }}</span><div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
-        <td class="hide-sm">{{ ot.cliente.nombre }}</td>
-        <td>{{ badge(ot.estado) }}</td>
-        <td class="num hide-sm">{{ ot.horas_insumidas | numero(1) }}</td>
-        <td class="num">{{ ot.total_cobrado | pesos }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table></div>
-  {% else %}{{ vacio('fa-clipboard-list', 'No hay órdenes de trabajo' ~ (' en estado ' ~ estado if estado else '') ~ '.') }}{% endif %}
-</div>
+<div class="card" id="tabla-ot">{% include "ot/_tabla.html" %}</div>
 {% endblock %}

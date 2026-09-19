@@ -1,9 +1,11 @@
 from datetime import date
 
-from flask import Blueprint, render_template
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
-from ..models import OrdenTrabajo, Repuesto, Turno, Venta
+from ..extensions import db
+from ..models import ConfigTaller, OrdenTrabajo, Repuesto, Turno, Venta
+from ..validaciones import numero_ar
 
 bp = Blueprint("dashboard", __name__)
 
@@ -32,3 +34,21 @@ def index():
         bajo_stock=bajo_stock[:8],
         cant_bajo_stock=len(bajo_stock),
     )
+
+
+@bp.route("/configuracion", methods=["GET", "POST"])
+@login_required
+def configuracion():
+    cfg = ConfigTaller.get()
+    if request.method == "POST":
+        valor = numero_ar(request.form.get("valor_hora"))
+        if valor is None or valor < 0:
+            flash("Poné un valor de hora válido.", "error")
+        else:
+            cfg.valor_hora = valor
+            for campo in ("razon_social", "cuit", "direccion", "telefono"):
+                setattr(cfg, campo, request.form.get(campo, "").strip() or None)
+            db.session.commit()
+            flash("Configuración guardada.", "ok")
+            return redirect(url_for(".configuracion"))
+    return render_template("dashboard/configuracion.html", cfg=cfg)
