@@ -1,4 +1,5 @@
-{# Galería de fotos de una OT. Variables: fotos, vacio_texto, volver ('' o 'movil') #}
+{# Galería de fotos. Variables: fotos, vacio_texto, volver ('' o 'movil'), editar_ep / eliminar_ep (rutas; por defecto las de OT) #}
+{% set editar_ep = editar_ep or 'ot.foto_editar' %}{% set eliminar_ep = eliminar_ep or 'ot.foto_eliminar' %}
 {% if fotos %}
 <div class="galeria">
   {% for f in fotos %}
@@ -8,20 +9,20 @@
       {% if f.miniatura %}<img src="{{ f.miniatura }}" alt="{{ f.descripcion or 'Foto' }}" loading="lazy">{% else %}<div class="sin-miniatura"><i class="fa-regular fa-image"></i></div>{% endif %}
     </a>
     <figcaption>
-      <span class="foto-texto">{{ f.descripcion or '' }}{% if f.destino == 'ambos' %} <span class="badge badge-info">Ambos</span>{% endif %}</span>
+      <span class="foto-texto">{{ f.descripcion or '' }}{% if f.destino is defined and f.destino == 'ambos' %} <span class="badge badge-info">Ambos</span>{% endif %}</span>
       <span class="acciones-fila">
         <button type="button" class="btn-icon btn-editar" data-editar-foto="{{ f.id }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
-        <form method="post" action="{{ url_for('ot.foto_eliminar', fid=f.id) }}" onsubmit="return confirm('¿Eliminar esta foto? Se borra también de Drive.')" style="display:inline">
+        <form method="post" action="{{ url_for(eliminar_ep, fid=f.id) }}" onsubmit="return confirm('¿Eliminar esta foto? Se borra también de Drive.')" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="volver" value="{{ volver }}">
           <button class="btn-icon" title="Eliminar"><i class="fa-solid fa-xmark"></i></button>
         </form>
       </span>
     </figcaption>
-    <form method="post" action="{{ url_for('ot.foto_editar', fid=f.id) }}" class="foto-edicion" hidden>
+    <form method="post" action="{{ url_for(editar_ep, fid=f.id) }}" class="foto-edicion" hidden>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="volver" value="{{ volver }}">
-      <select name="destino">
+      {% if f.destino is defined %}<select name="destino">
         {% for valor, texto in [('reporte', 'Reporte'), ('taller', 'Taller'), ('ambos', 'Ambos')] %}<option value="{{ valor }}" {{ 'selected' if f.destino == valor }}>{{ texto }}</option>{% endfor %}
-      </select>
+      </select>{% endif %}
       <input name="descripcion" value="{{ f.descripcion or '' }}" placeholder="Descripción" maxlength="200">
       <span class="acciones-edicion"><button class="btn btn-primary btn-sm">Guardar</button><button type="button" class="btn btn-sm" data-cancelar-foto>Cancelar</button></span>
     </form>

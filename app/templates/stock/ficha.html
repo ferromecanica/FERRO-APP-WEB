@@ -27,10 +27,16 @@
         <div><label>Nº de parte original</label><input name="nro_parte" value="{{ v('nro_parte', r.nro_parte) }}"></div>
         <div><label>Código de barras</label><input name="codigo_barras" value="{{ v('codigo_barras', r.codigo_barras) }}" placeholder="Escaneá o escribí"></div>
         <div><label>Detalle / contenido</label><input name="detalle" value="{{ v('detalle', r.detalle) }}" placeholder="Ej.: 5W-30, OX416D1 LX2792"></div>
-        <div><label>Categoría</label><input name="categoria" list="lista-categorias" value="{{ v('categoria', r.categoria.nombre if r.categoria else '') }}" style="text-transform:uppercase">
-          <datalist id="lista-categorias">{% for c in categorias %}<option value="{{ c.nombre }}">{% endfor %}</datalist></div>
-        <div><label>Subcategoría</label><input name="subcategoria" list="lista-subcategorias" value="{{ v('subcategoria', r.subcategoria.nombre if r.subcategoria else '') }}" style="text-transform:uppercase">
-          <datalist id="lista-subcategorias">{% for s in subcategorias %}<option value="{{ s.nombre }}" data-categoria="{{ s.categoria.nombre }}">{{ s.categoria.nombre }}</option>{% endfor %}</datalist></div>
+        <div><label>Categoría</label>
+          <div class="input-group">
+            <select name="categoria_id" id="sel-categoria" data-valor="{{ f.get('categoria_id', r.categoria_id or '') }}"></select>
+            <button type="button" class="btn btn-sm" id="nueva-categoria" title="Agregar una categoría"><i class="fa-solid fa-plus"></i></button>
+          </div></div>
+        <div><label>Subcategoría</label>
+          <div class="input-group">
+            <select name="subcategoria_id" id="sel-subcategoria" data-valor="{{ f.get('subcategoria_id', r.subcategoria_id or '') }}"></select>
+            <button type="button" class="btn btn-sm" id="nueva-subcategoria" title="Agregar una subcategoría a la categoría elegida"><i class="fa-solid fa-plus"></i></button>
+          </div></div>
       </div>
     </div>
 
@@ -46,8 +52,15 @@
     <div class="card">
       {{ encabezado('fa-truck', 'Proveedor') }}
       <div class="card-body form-grid-3">
-        <div><label>Proveedor</label><input name="proveedor" id="proveedor" list="lista-proveedores" value="{{ v('proveedor', r.proveedor) }}">
-          <datalist id="lista-proveedores">{% for p in proveedores %}<option value="{{ p }}">{% endfor %}</datalist></div>
+        <div><label>Proveedor</label>
+          <div class="input-group">
+            <select name="proveedor" id="proveedor">
+              <option value="">Sin proveedor</option>
+              {% set prov_actual = f.get('proveedor', r.proveedor or '') %}
+              {% for p in proveedores %}<option {{ 'selected' if p == prov_actual }}>{{ p }}</option>{% endfor %}
+            </select>
+            <button type="button" class="btn btn-sm" id="nuevo-proveedor" title="Agregar un proveedor"><i class="fa-solid fa-plus"></i></button>
+          </div></div>
         <div><label>Cód. proveedor</label><input name="cod_proveedor" value="{{ v('cod_proveedor', r.cod_proveedor) }}"></div>
         <div><label>Marca proveedor / envase</label><input name="marca_proveedor" id="marca_proveedor" value="{{ v('marca_proveedor', r.marca_proveedor) }}" placeholder="Ej.: BOSFI, MAHFI · FGC: 4, 20, 204">
           <div class="muted small" style="margin-top:4px">Define qué markup se aplica.</div></div>
@@ -78,6 +91,12 @@
     <div class="card" id="stock">
       {{ encabezado('fa-boxes-stacked', 'Stock') }}
       <div class="card-body stack-form">
+        <div class="form-grid" style="gap:10px">
+          <div><label>Estantería</label><input name="estanteria" list="lista-estanterias" value="{{ v('estanteria', r.estanteria) }}" placeholder="Opcional">
+            <datalist id="lista-estanterias">{% for e in estanterias %}<option value="{{ e }}">{% endfor %}</datalist></div>
+          <div><label>Estante</label><input name="estante" list="lista-estantes" value="{{ v('estante', r.estante) }}" placeholder="Opcional">
+            <datalist id="lista-estantes">{% for e in estantes %}<option value="{{ e }}">{% endfor %}</datalist></div>
+        </div>
         {% if not r.id %}
         <div><label>Stock inicial</label><input name="stock_inicial" inputmode="decimal" value="{{ f.get('stock_inicial', '') }}" placeholder="0"></div>
         {% endif %}
@@ -94,6 +113,12 @@
 </form>
 
 {% if r.id %}
+<div class="card" id="fotos" style="margin-top:16px">
+  {{ encabezado('fa-camera', 'Fotos') }}
+  <div class="card-body">{% with grande=False, destinos=False, url_subida=url_for('stock.foto_subir', id=r.id) %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
+  {% with fotos=r.fotos, vacio_texto='Sin fotos del repuesto.', volver='', editar_ep='stock.foto_editar', eliminar_ep='stock.foto_eliminar' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
+</div>
+
 <div class="grid grid-3-1" style="margin-top:16px">
   <div class="card">
     {{ encabezado('fa-right-left', 'Movimientos') }}
@@ -135,6 +160,17 @@
 </div>
 {% endif %}
 
+<script src="{{ url_for('static', filename='js/fotos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+<script>
+FerroAltaEnSelect('proveedor', 'nuevo-proveedor', '{{ url_for("stock.proveedor_nuevo") }}', 'Nombre del proveedor nuevo:');
+FerroCategorias({{ arbol | tojson }}, {
+  categoria: 'sel-categoria', subcategoria: 'sel-subcategoria',
+  nuevaCategoria: 'nueva-categoria', nuevaSubcategoria: 'nueva-subcategoria',
+  urlCategoria: '{{ url_for("stock.categoria_nueva") }}', urlSubcategoria: '{{ url_for("stock.subcategoria_nueva") }}',
+  vacioCategoria: 'Sin categoría', vacioSubcategoria: 'Sin subcategoría'
+});
+</script>
 <script>
 /* Precio en vivo, con la misma lógica que el servidor (y que la fórmula de AppSheet) */
 (function () {

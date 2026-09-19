@@ -318,6 +318,38 @@ class Subcategoria(db.Model):
     categoria = db.relationship("Categoria", back_populates="subcategorias")
 
 
+class Proveedor(db.Model):
+    """Proveedores de repuestos (el nombre es lo que usan repuestos, markups e ingresos)."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(120), unique=True, nullable=False)
+
+
+class FotoRepuesto(db.Model):
+    """Foto de un repuesto, guardada en Drive (subcarpeta Repuestos de la carpeta de fotos)."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    repuesto_id = db.Column(db.Integer, db.ForeignKey("repuesto.id"), nullable=False)
+    archivo = db.Column(db.String(300), nullable=False)
+    drive_id = db.Column(db.String(100))
+    descripcion = db.Column(db.String(200))
+    fecha_hora = db.Column(db.DateTime, default=datetime.now)
+
+    repuesto = db.relationship("Repuesto", back_populates="fotos")
+
+    @property
+    def miniatura(self):
+        return f"https://drive.google.com/thumbnail?id={self.drive_id}&sz=w600" if self.drive_id else None
+
+    @property
+    def grande(self):
+        return f"https://drive.google.com/thumbnail?id={self.drive_id}&sz=w1600" if self.drive_id else None
+
+    @property
+    def url(self):
+        return f"https://drive.google.com/file/d/{self.drive_id}/view" if self.drive_id else None
+
+
 class ConfigMarkup(db.Model):
     """Markup por proveedor + marca/envase (ex Config_Markups)."""
 
@@ -354,11 +386,20 @@ class Repuesto(TimestampMixin, db.Model):
     comp_modelo = db.Column(db.String(120))
     comp_motor = db.Column(db.String(60))
     detalle = db.Column(db.Text)
+    estanteria = db.Column(db.String(30))  # ubicación en el taller (opcional)
+    estante = db.Column(db.String(30))
     foto = db.Column(db.String(300))
 
     categoria = db.relationship("Categoria")
     subcategoria = db.relationship("Subcategoria")
     movimientos = db.relationship("MovimientoStock", back_populates="repuesto", order_by="MovimientoStock.fecha.desc()")
+    fotos = db.relationship("FotoRepuesto", back_populates="repuesto", order_by="FotoRepuesto.id",
+                            cascade="all, delete-orphan")
+
+    @property
+    def ubicacion(self):
+        partes = [p for p in (self.estanteria, self.estante) if p]
+        return " · ".join(partes)
 
     @property
     def controla_stock(self):

@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Markups{% endblock %}
+{% block title %}Markups<script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+<script>FerroAltaEnSelect('proveedor-markup', 'nuevo-proveedor', '{{ url_for("stock.proveedor_nuevo") }}', 'Nombre del proveedor nuevo:');</script>
+{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Stock</div><h1>Markups</h1></div>
@@ -38,8 +40,11 @@
     {% else %}<div class="empty">Todavía no hay reglas de markup.</div>{% endif %}
     <form method="post" class="add-box fila">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="c-desc"><label>Proveedor</label><input name="proveedor" list="lista-prov" required>
-        <datalist id="lista-prov">{% for p in proveedores %}<option value="{{ p }}">{% endfor %}</datalist></div>
+      <div class="c-desc"><label>Proveedor</label>
+        <div class="input-group">
+          <select name="proveedor" id="proveedor-markup" required><option value="">Elegí…</option>{% for p in proveedores %}<option>{{ p }}</option>{% endfor %}</select>
+          <button type="button" class="btn btn-sm" id="nuevo-proveedor" title="Agregar un proveedor"><i class="fa-solid fa-plus"></i></button>
+        </div></div>
       <div class="c-desc"><label>Marca / envase (vacío = general)</label><input name="marca_envase" list="lista-marca">
         <datalist id="lista-marca">{% for m in marcas %}<option value="{{ m }}">{% endfor %}</datalist></div>
       <div class="c-cant"><label>Markup</label><input name="markup" inputmode="decimal" placeholder="1,4" required></div>

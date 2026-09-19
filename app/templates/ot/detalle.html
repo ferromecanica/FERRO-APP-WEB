@@ -223,7 +223,7 @@
     {# ───── Fotos ───── #}
     <div class="card" id="fotos">
       {{ encabezado('fa-camera', 'Fotos', (ot.fotos | length) ~ ' fotos') }}
-      <div class="card-body">{% with grande=False %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
+      <div class="card-body">{% with grande=False, url_subida=url_for('ot.foto_subir', id=ot.id) %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
       <div class="sub-seccion"><i class="fa-solid fa-file-pdf"></i> Para el reporte <span class="muted small">({{ ot.fotos | selectattr('en_reporte') | list | length }})</span></div>
       {% with fotos=ot.fotos | selectattr('en_reporte') | list, vacio_texto='Sin fotos para el reporte.', volver='' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
       <div class="sub-seccion"><i class="fa-solid fa-warehouse"></i> Del taller <span class="muted small">({{ ot.fotos | selectattr('en_taller') | list | length }})</span></div>

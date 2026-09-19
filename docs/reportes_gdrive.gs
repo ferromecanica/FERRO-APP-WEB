@@ -5,7 +5,8 @@
  *   __LOGO__, __FIRMA__ y __FOTO:archivo__ por las imágenes de Drive, lo convierte a PDF,
  *   lo guarda en la carpeta de reportes (reemplazando uno anterior con el mismo nombre)
  *   y devuelve el link.
- * accion=foto: guarda una foto (JPEG en base64) en la carpeta de fotos y devuelve su id.
+ * accion=foto: guarda una foto (JPEG en base64) en la carpeta de fotos (o en una subcarpeta,
+ *   p. ej. "Repuestos", que se crea sola) y devuelve su id.
  * accion=borrar_foto: manda una foto a la papelera.
  *
  * Instalación (una sola vez), en el MISMO proyecto "Ferro Backup":
@@ -59,7 +60,12 @@ function generarReporte(p) {
 function guardarFoto(p) {
   if (!p.nombre || !p.contenido) return json({ ok: false, error: 'faltan datos' });
   const blob = Utilities.newBlob(Utilities.base64Decode(p.contenido), 'image/jpeg', p.nombre);
-  const archivo = DriveApp.getFolderById(FOLDER_FOTOS_ID).createFile(blob);
+  let carpeta = DriveApp.getFolderById(FOLDER_FOTOS_ID);
+  if (p.subcarpeta) {
+    const existentes = carpeta.getFoldersByName(p.subcarpeta);
+    carpeta = existentes.hasNext() ? existentes.next() : carpeta.createFolder(p.subcarpeta);
+  }
+  const archivo = carpeta.createFile(blob);
   try {
     // Para poder ver la miniatura desde Ferro (el link no es público ni se puede adivinar)
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);

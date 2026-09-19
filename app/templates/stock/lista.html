@@ -9,11 +9,9 @@
 <form class="barra-filtros" hx-get="{{ url_for('stock.lista') }}" hx-target="#tabla-stock" hx-push-url="true"
       hx-trigger="input changed delay:250ms from:input[name=q], change from:select, search">
   <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
-    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código, compatibilidad…" autocomplete="off"></div>
-  <select name="categoria">
-    <option value="">Todas las categorías</option>
-    {% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if c.id == categoria_id }}>{{ c.nombre }}</option>{% endfor %}
-  </select>
+    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código, compatibilidad, estantería…" autocomplete="off"></div>
+  <select name="categoria" id="filtro-categoria" data-valor="{{ categoria_id or '' }}"></select>
+  <select name="subcategoria" id="filtro-subcategoria" data-valor="{{ subcategoria_id or '' }}"></select>
   <select name="filtro">
     <option value="">Todo el stock</option>
     <option value="con_stock" {{ 'selected' if filtro == 'con_stock' }}>Con stock</option>
@@ -22,4 +20,11 @@
   </select>
 </form>
 <div class="card" id="tabla-stock">{% include "stock/_tabla.html" %}</div>
+<script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+<script>
+FerroCategorias({{ arbol | tojson }}, {
+  categoria: 'filtro-categoria', subcategoria: 'filtro-subcategoria',
+  vacioCategoria: 'Todas las categorías', vacioSubcategoria: 'Todas las subcategorías'
+});
+</script>
 {% endblock %}

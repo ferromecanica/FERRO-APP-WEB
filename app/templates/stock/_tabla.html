@@ -2,7 +2,7 @@
 {% if repuestos %}
 <div class="tabla-scroll"><table class="tabla-densa">
   <thead><tr>
-    <th>Material</th><th>Marca</th><th>Nº parte</th><th class="num">Stock</th><th class="num">Costo</th><th class="num">Venta</th>
+    <th>Material</th><th>Marca</th><th>Nº parte</th><th class="num">Stock</th><th>Ubicación</th><th class="num">Costo</th><th class="num">Venta</th>
     <th>Comp. marca</th><th>Comp. modelo</th><th>Comp. motor</th><th>Detalle</th><th class="num">Desc.</th>
     <th>Cód. prov.</th><th>Categoría</th><th>Subcategoría</th>
   </tr></thead>
@@ -13,6 +13,7 @@
       <td>{{ r.marca or '' }}</td>
       <td class="mono">{{ r.nro_parte or '' }}</td>
       <td class="num"><span class="stock {{ 'stock-cero' if r.stock_actual <= 0 else ('stock-bajo' if r.bajo_stock else '') }}">{{ r.stock_actual | numero(2) | replace(',00', '') }}</span></td>
+      <td>{{ r.ubicacion }}</td>
       <td class="num">{{ r.precio_costo | pesos(2) }}</td>
       <td class="num"><strong>{{ r.precio_venta | pesos(2) }}</strong></td>
       <td>{{ r.comp_marca or '' }}</td>
