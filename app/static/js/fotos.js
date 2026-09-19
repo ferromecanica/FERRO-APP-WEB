@@ -14,7 +14,7 @@
         lienzo.height = Math.round(img.naturalHeight * escala);
         lienzo.getContext('2d').drawImage(img, 0, 0, lienzo.width, lienzo.height);
         URL.revokeObjectURL(url);
-        ok(lienzo.toDataURL('image/jpeg', CALIDAD));
+        lienzo.toBlob(function (blob) { blob ? ok(blob) : mal(new Error('No se pudo procesar la imagen')); }, 'image/jpeg', CALIDAD);
       };
       img.onerror = function () { URL.revokeObjectURL(url); mal(new Error('No se pudo leer la imagen')); };
       img.src = url;
@@ -43,11 +43,14 @@
         cola.appendChild(fila);
         try {
           var datos = new FormData();
-          datos.append('imagen', await achicar(archivos[n]));
+          datos.append('imagen', await achicar(archivos[n]), 'foto.jpg');
           datos.append('destino', destino());
           datos.append('descripcion', descripcion ? descripcion.value : '');
           var r = await fetch(caja.dataset.url, { method: 'POST', body: datos, headers: { 'X-CSRFToken': csrf() } });
-          var j = await r.json();
+          var j;
+          try { j = await r.json(); } catch (e) {
+            throw new Error(r.status === 413 ? 'la foto es demasiado grande' : 'el servidor respondió un error (' + r.status + ')');
+          }
           if (!j.ok) throw new Error(j.error || 'Error al subir');
           fila.innerHTML = '<i class="fa-solid fa-circle-check" style="color:var(--ok)"></i> Foto ' + (n + 1) + ' subida';
         } catch (e) {

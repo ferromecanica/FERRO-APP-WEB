@@ -445,19 +445,16 @@ DESTINOS_FOTO = {"reporte": (True, False), "taller": (False, True), "ambos": (Tr
 
 @bp.route("/<int:id>/fotos", methods=["POST"])
 def foto_subir(id):
-    """Recibe una foto ya achicada en el navegador (JPEG en base64) y la guarda en Drive."""
+    """Recibe una foto ya achicada en el navegador (archivo JPEG) y la guarda en Drive."""
     ot = db.get_or_404(OrdenTrabajo, id)
     destino = request.form.get("destino", "reporte")
     if destino not in DESTINOS_FOTO:
         return jsonify(ok=False, error="Destino inválido."), 400
-    imagen = request.form.get("imagen", "")
-    contenido = imagen.split(",", 1)[1] if imagen.startswith("data:") else imagen
-    try:
-        datos = base64.b64decode(contenido, validate=True)
-    except ValueError:
-        datos = b""
+    archivo = request.files.get("imagen")
+    datos = archivo.read() if archivo else b""
     if not datos.startswith(b"\xff\xd8"):
         return jsonify(ok=False, error="La imagen no llegó bien. Probá de nuevo."), 400
+    contenido = base64.b64encode(datos).decode()
 
     nombre = f"OT{ot.id}_{datetime.now():%Y%m%d_%H%M%S}_{secrets.token_hex(3)}.jpg"
     try:
