@@ -14,7 +14,6 @@
 </div>
 <div class="filters" style="margin-bottom:14px">
   <a class="chip {{ 'active' if not estado }}" href="{{ url_for('ot.lista', q=q or None) }}">Todas</a>
-  <a class="chip {{ 'active' if estado == 'abiertas' }}" href="{{ url_for('ot.lista', estado='abiertas', q=q or None) }}">En el taller</a>
   {% for e in estados %}<a class="chip {{ 'active' if e == estado }}" href="{{ url_for('ot.lista', estado=e, q=q or None) }}">{{ e }}</a>{% endfor %}
 </div>
 <div class="card" id="tabla-ot">{% include "ot/_tabla.html" %}</div>
