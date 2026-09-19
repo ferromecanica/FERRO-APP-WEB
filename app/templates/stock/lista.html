@@ -6,10 +6,11 @@
   <div class="actions"><a class="btn btn-primary" href="{{ url_for('stock.ficha') }}"><i class="fa-solid fa-plus"></i> Repuesto</a></div>
 </div>
 {% include "stock/_tabs.html" %}
-<form class="barra-filtros" hx-get="{{ url_for('stock.lista') }}" hx-target="#tabla-stock" hx-push-url="true"
-      hx-trigger="input changed delay:250ms from:input[name=q], change from:select, search">
+<form class="barra-filtros" id="filtros-stock" hx-get="{{ url_for('stock.lista') }}" hx-target="#tabla-stock" hx-push-url="true"
+      hx-trigger="input changed delay:250ms from:input[name=q], change from:select, search, ordenar">
+  <input type="hidden" name="orden" value="{{ orden }}"><input type="hidden" name="dir" value="{{ direccion }}">
   <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
-    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código, compatibilidad, estantería…" autocomplete="off"></div>
+    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código, compatibilidad, estantería…" autocomplete="off" data-escaner></div>
   <select name="categoria" id="filtro-categoria" data-valor="{{ categoria_id or '' }}"></select>
   <select name="subcategoria" id="filtro-subcategoria" data-valor="{{ subcategoria_id or '' }}"></select>
   <select name="filtro">
@@ -26,6 +27,18 @@
 <div class="card" id="tabla-stock">{% include "stock/_tabla.html" %}</div>
 <script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tabla-config.js') }}"></script>
+<script>
+/* Clic en un título: ordena por esa columna; otro clic invierte (ascendente / descendente) */
+document.addEventListener('click', function (e) {
+  var th = e.target.closest('th[data-orden]');
+  if (!th || e.target.closest('.asa')) return;
+  var form = document.getElementById('filtros-stock');
+  var orden = form.querySelector('[name=orden]'), dir = form.querySelector('[name=dir]');
+  dir.value = (orden.value === th.dataset.orden && dir.value === 'asc') ? 'desc' : 'asc';
+  orden.value = th.dataset.orden;
+  htmx.trigger(form, 'ordenar');
+});
+</script>
 <script>
 FerroCategorias({{ arbol | tojson }}, {
   categoria: 'filtro-categoria', subcategoria: 'filtro-subcategoria',

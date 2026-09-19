@@ -57,12 +57,40 @@ def _arbol_categorias():
 # ─────────────────────────────────── Repuestos ──────────────────────────────
 
 
+# Columnas por las que se puede ordenar el listado (clave del encabezado → columna)
+ORDENES = {
+    "material": Repuesto.nombre, "marca": Repuesto.marca, "parte": Repuesto.nro_parte, "stock": Repuesto.stock_actual,
+    "ubicacion": Repuesto.estanteria, "costo": Repuesto.precio_costo, "venta": Repuesto.precio_venta,
+    "comp_marca": Repuesto.comp_marca, "comp_modelo": Repuesto.comp_modelo, "comp_motor": Repuesto.comp_motor,
+    "detalle": Repuesto.detalle, "descuento": Repuesto.descuento_oferta, "cod_prov": Repuesto.cod_proveedor,
+    "proveedor": Repuesto.proveedor, "categoria": Categoria.nombre, "subcategoria": Subcategoria.nombre,
+}
+
+
+def _ordenar(consulta, orden, direccion):
+    """Ordena por la columna elegida; los vacíos siempre al final. Desempata por número de repuesto."""
+    columna = ORDENES.get(orden)
+    if columna is None:
+        return consulta.order_by(Repuesto.id)
+    if orden == "categoria":
+        consulta = consulta.outerjoin(Categoria, Repuesto.categoria_id == Categoria.id)
+    elif orden == "subcategoria":
+        consulta = consulta.outerjoin(Subcategoria, Repuesto.subcategoria_id == Subcategoria.id)
+    valor = func.lower(columna) if orden in ("material", "marca", "proveedor", "detalle") else columna
+    extra = [Repuesto.estante] if orden == "ubicacion" else []
+    if direccion == "desc":
+        return consulta.order_by(columna.is_(None), valor.desc(), *[e.desc() for e in extra], Repuesto.id)
+    return consulta.order_by(columna.is_(None), valor, *extra, Repuesto.id)
+
+
 @bp.route("/")
 def lista():
     q = request.args.get("q", "").strip()
     categoria_id = request.args.get("categoria", type=int)
     subcategoria_id = request.args.get("subcategoria", type=int)
     filtro = request.args.get("filtro", "")
+    orden = request.args.get("orden", "")
+    direccion = "desc" if request.args.get("dir") == "desc" else "asc"
     consulta = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS)
     if q:
         for palabra in q.split():  # todas las palabras tienen que aparecer en algún campo
@@ -84,10 +112,11 @@ def lista():
         consulta = consulta.filter(Repuesto.stock_actual > 0)
     elif filtro == "bajo":
         consulta = consulta.filter(Repuesto.stock_actual <= func.coalesce(Repuesto.stock_minimo, 0))
-    repuestos = consulta.order_by(Repuesto.id).all()
+    repuestos = _ordenar(consulta, orden, direccion).all()
     plantilla = "stock/_tabla.html" if request.headers.get("HX-Request") else "stock/lista.html"
     return render_template(plantilla, repuestos=repuestos, q=q, arbol=_arbol_categorias(),
-                           categoria_id=categoria_id, subcategoria_id=subcategoria_id, filtro=filtro)
+                           categoria_id=categoria_id, subcategoria_id=subcategoria_id, filtro=filtro,
+                           orden=orden if orden in ORDENES else "", direccion=direccion)
 
 
 @bp.route("/nuevo", methods=["GET", "POST"])

@@ -25,7 +25,7 @@
         <div><label>Marca</label><input name="marca" list="lista-marcas" value="{{ v('marca', r.marca) }}">
           <datalist id="lista-marcas">{% for m in marcas %}<option value="{{ m }}">{% endfor %}</datalist></div>
         <div><label>Nº de parte original</label><input name="nro_parte" value="{{ v('nro_parte', r.nro_parte) }}"></div>
-        <div><label>Código de barras</label><input name="codigo_barras" value="{{ v('codigo_barras', r.codigo_barras) }}" placeholder="Escaneá o escribí"></div>
+        <div><label>Código de barras</label><input name="codigo_barras" value="{{ v('codigo_barras', r.codigo_barras) }}" placeholder="Escaneá o escribí" data-escaner autocomplete="off"></div>
         <div><label>Detalle / contenido</label><input name="detalle" value="{{ v('detalle', r.detalle) }}" placeholder="Ej.: 5W-30, OX416D1 LX2792"></div>
         <div><label>Categoría</label>
           <div class="input-group">
@@ -115,7 +115,7 @@
 {% if r.id %}
 <div class="card" id="fotos" style="margin-top:16px">
   {{ encabezado('fa-camera', 'Fotos') }}
-  <div class="card-body">{% with grande=False, destinos=False, url_subida=url_for('stock.foto_subir', id=r.id) %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
+  <div class="card-body">{% with grande=False, destinos=False, url_subida=url_for('stock.foto_subir', id=r.id), placeholder_foto='Descripción (opcional): ej. vista frontal, lateral, etiqueta' %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
   {% with fotos=r.fotos, vacio_texto='Sin fotos del repuesto.', volver='', editar_ep='stock.foto_editar', eliminar_ep='stock.foto_eliminar' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
 </div>
 

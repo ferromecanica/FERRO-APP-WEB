@@ -2,22 +2,10 @@
 {% if repuestos %}
 <div class="tabla-scroll"><table class="tabla-densa tabla-config" data-tabla="stock">
   <thead><tr>
-    <th data-col="material" class="izq">Material</th>
-    <th data-col="marca">Marca</th>
-    <th data-col="parte">Nº parte</th>
-    <th data-col="stock">Stock</th>
-    <th data-col="ubicacion">Ubicación</th>
-    <th data-col="costo">Costo</th>
-    <th data-col="venta">Venta</th>
-    <th data-col="comp_marca">Comp. marca</th>
-    <th data-col="comp_modelo">Comp. modelo</th>
-    <th data-col="comp_motor">Comp. motor</th>
-    <th data-col="detalle">Detalle</th>
-    <th data-col="descuento">Desc.</th>
-    <th data-col="cod_prov">Cód. prov.</th>
-    <th data-col="proveedor">Proveedor</th>
-    <th data-col="categoria">Categoría</th>
-    <th data-col="subcategoria">Subcategoría</th>
+  {%- for col, texto, izq in [('material', 'Material', True), ('marca', 'Marca', False), ('parte', 'Nº parte', False), ('stock', 'Stock', False), ('ubicacion', 'Ubicación', False), ('costo', 'Costo', False), ('venta', 'Venta', False), ('comp_marca', 'Comp. marca', False), ('comp_modelo', 'Comp. modelo', False), ('comp_motor', 'Comp. motor', False), ('detalle', 'Detalle', False), ('descuento', 'Desc.', False), ('cod_prov', 'Cód. prov.', False), ('proveedor', 'Proveedor', False), ('categoria', 'Categoría', False), ('subcategoria', 'Subcategoría', False)] %}
+    <th data-col="{{ col }}" data-orden="{{ col }}" class="ordenable{{ ' izq' if izq }}{{ ' ordenada' if orden == col }}"
+        title="Ordenar por {{ texto | lower }}">{{ texto }}<i class="fa-solid {{ ('fa-arrow-down-long' if direccion == 'desc' else 'fa-arrow-up-long') if orden == col else 'fa-sort' }} flecha"></i></th>
+  {%- endfor %}
   </tr></thead>
   <tbody>
   {% for r in repuestos %}

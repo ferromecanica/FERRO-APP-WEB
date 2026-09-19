@@ -8,7 +8,7 @@
     <label class="destino"><input type="radio" name="destino_foto" value="ambos"><span><i class="fa-solid fa-clone"></i> Ambos</span></label>
   </div>
   {% endif %}
-  <input name="descripcion_foto" placeholder="Descripción (opcional): ej. Pastillas gastadas" maxlength="200">
+  <input name="descripcion_foto" placeholder="{{ placeholder_foto or 'Descripción (opcional): ej. Pastillas gastadas' }}" maxlength="200">
   <div class="botones-foto">
     <label class="btn btn-primary btn-foto"><i class="fa-solid fa-camera"></i> Sacar foto
       <input type="file" accept="image/*" capture="environment" hidden></label>

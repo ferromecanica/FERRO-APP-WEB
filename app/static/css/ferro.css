@@ -449,3 +449,18 @@ body.redimensionando { cursor: col-resize; user-select: none; }
 .tabla-config td, .tabla-config th { max-width: 170px; }
 .tabla-config [data-col="parte"], .tabla-config [data-col="cod_prov"], .tabla-config [data-col="marca"] { max-width: 130px; }
 .tabla-config [data-col="stock"], .tabla-config [data-col="descuento"] { max-width: 80px; }
+th.ordenable { cursor: pointer; user-select: none; }
+th.ordenable:hover { background: #ffe6cc; }
+th .flecha { margin-left: 6px; font-size: .7rem; opacity: .35; }
+th.ordenada .flecha { opacity: 1; color: var(--accent); }
+
+/* ── Lector de códigos de barras ─────────────────────────── */
+.btn-escaner { padding: 9px 12px; flex: none; }
+.search .input-group input { padding-left: 34px; }
+.escaner { position: fixed; inset: 0; z-index: 110; background: rgba(12, 13, 16, .8); display: grid; place-items: center; padding: 16px; }
+.escaner[hidden] { display: none; }
+.escaner-caja { background: var(--surface); border-radius: 16px; padding: 14px; width: min(480px, 100%); display: grid; gap: 10px; }
+.escaner-top { display: flex; justify-content: space-between; align-items: center; }
+.escaner-top i { color: var(--accent); }
+#escaner-video { width: 100%; min-height: 240px; background: #111; border-radius: 10px; overflow: hidden; }
+#escaner-video video { width: 100% !important; border-radius: 10px; }

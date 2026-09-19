@@ -165,7 +165,7 @@
         <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-stock" data-panel="stock" hidden>
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="stock">
           <div class="c-desc"><label>Repuesto (nombre, código o escáner)</label>
-            <input name="repuesto" list="lista-repuestos" autocomplete="off" required placeholder="{{ 'Escribí para buscar…' if repuestos else 'Todavía no hay repuestos en el stock' }}">
+            <input name="repuesto" list="lista-repuestos" autocomplete="off" required data-escaner="enviar" placeholder="{{ 'Escribí para buscar…' if repuestos else 'Todavía no hay repuestos en el stock' }}">
             <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}">stock {{ r.stock_actual | numero(1) }} · {{ r.precio_venta | pesos }}</option>{% endfor %}</datalist></div>
           <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
