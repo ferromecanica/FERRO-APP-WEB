@@ -473,7 +473,7 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .btn-escaner i { position: static !important; transform: none !important; color: var(--text); font-size: 1rem; }
 .btn-escaner { display: inline-flex; align-items: center; gap: 6px; }
 .fila .c-repuesto { flex: 1 1 380px; min-width: 300px; }
-.pie-ingreso { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
-.pie-ingreso .btn { flex: none; }
-.pie-ingreso .small { flex: 1 1 320px; }
+.pie-ingreso { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.pie-ingreso p { margin: 8px 0 0; }
+.fila-ingreso { width: 100%; }
 @media (max-width: 820px) { .fila .c-repuesto { flex-basis: 100%; min-width: 0; } }

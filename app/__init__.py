@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 
 from config import Config
@@ -38,6 +40,15 @@ def create_app(config_class=Config):
     app.register_blueprint(sistema_bp, url_prefix="/sistema")
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(movil_bp, url_prefix="/movil")
+
+    @app.url_defaults
+    def _version_de_archivos(endpoint, valores):
+        """Agrega ?v=<fecha del archivo> a css/js: PythonAnywhere los cachea mucho tiempo."""
+        if endpoint == "static" and "filename" in valores:
+            try:
+                valores["v"] = int(os.stat(os.path.join(app.static_folder, valores["filename"])).st_mtime)
+            except OSError:
+                pass
 
     from .cli import register_cli
     from .filters import register_filters
