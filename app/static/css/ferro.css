@@ -499,3 +499,9 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .aviso-duplicados .list li { padding: 10px 16px; }
 .aviso-pie { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
   padding: 12px 16px; border-top: 1px solid #f5b56b; background: #fff4e6; }
+
+/* ── Cotizador ─────────────────────────────────────────── */
+.resultado .precio-final { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+  margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); border: 1px solid #f5b56b; }
+.resultado .precio-final span { font-weight: 600; color: var(--accent-ink); }
+.resultado .precio-final strong { font-family: var(--font-display); font-size: 1.6rem; color: var(--accent-ink); font-variant-numeric: tabular-nums; }

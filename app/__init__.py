@@ -20,6 +20,7 @@ def create_app(config_class=Config):
     from .api import bp as api_bp
     from .auth import bp as auth_bp
     from .clientes import bp as clientes_bp
+    from .cotizador import bp as cotizador_bp
     from .dashboard import bp as dashboard_bp
     from .movil import bp as movil_bp
     from .ot import bp as ot_bp
@@ -40,6 +41,7 @@ def create_app(config_class=Config):
     app.register_blueprint(sistema_bp, url_prefix="/sistema")
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(movil_bp, url_prefix="/movil")
+    app.register_blueprint(cotizador_bp, url_prefix="/cotizador")
 
     @app.url_defaults
     def _version_de_archivos(endpoint, valores):

@@ -28,6 +28,7 @@
       <div class="nav-label">Taller</div>
       <a href="{{ url_for('ot.lista') }}" class="{{ 'active' if seccion == 'ot' }}"><i class="fa-solid fa-warehouse"></i> Taller (OT)</a>
       <a href="{{ url_for('turnos.lista') }}" class="{{ 'active' if seccion == 'turnos' }}"><i class="fa-regular fa-calendar-check"></i> Turnos</a>
+      <a href="{{ url_for('cotizador.inicio') }}" class="{{ 'active' if seccion == 'cotizador' }}"><i class="fa-solid fa-calculator"></i> Cotizador</a>
       <a href="{{ url_for('presupuestos.lista') }}" class="{{ 'active' if seccion == 'presupuestos' }}"><i class="fa-solid fa-file-invoice-dollar"></i> Presupuestos</a>
       <a href="{{ url_for('clientes.lista') }}" class="{{ 'active' if seccion == 'clientes' and not (ep or '').startswith('clientes.vehiculo') }}"><i class="fa-solid fa-user-group"></i> Clientes</a>
       <a href="{{ url_for('clientes.vehiculos') }}" class="{{ 'active' if (ep or '').startswith('clientes.vehiculo') }}"><i class="fa-solid fa-car-side"></i> Vehículos</a>
