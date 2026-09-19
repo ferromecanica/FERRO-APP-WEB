@@ -464,3 +464,6 @@ th.ordenada .flecha { opacity: 1; color: var(--accent); }
 .escaner-top i { color: var(--accent); }
 #escaner-video { width: 100%; min-height: 240px; background: #111; border-radius: 10px; overflow: hidden; }
 #escaner-video video { width: 100% !important; border-radius: 10px; }
+th[draggable="true"] { cursor: grab; }
+th.arrastrando { opacity: .45; }
+th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !important; }

@@ -1,12 +1,16 @@
 /* Tablas configurables (table.tabla-config[data-tabla]):
+   - columnas movibles: se arrastra el título y se suelta en otra posición (Material queda primera)
    - ancho de columna ajustable arrastrando el borde del título (doble clic: vuelve al ancho automático)
    - botón "Columnas" para elegir cuáles ver ([data-columnas-para="<nombre de tabla>"])
    La configuración se recuerda en este navegador. Se aplica con reglas CSS, así sobrevive
    a las recargas de la tabla por el buscador. */
 (function () {
   function leer(clave) {
-    try { return JSON.parse(localStorage.getItem('ferro-tabla-' + clave)) || { ocultas: [], anchos: {} }; }
-    catch (e) { return { ocultas: [], anchos: {} }; }
+    var cfg;
+    try { cfg = JSON.parse(localStorage.getItem('ferro-tabla-' + clave)); } catch (e) { cfg = null; }
+    cfg = cfg || {};
+    cfg.ocultas = cfg.ocultas || []; cfg.anchos = cfg.anchos || {}; cfg.orden = cfg.orden || [];
+    return cfg;
   }
   function guardar(clave, cfg) {
     try { localStorage.setItem('ferro-tabla-' + clave, JSON.stringify(cfg)); } catch (e) { /* modo privado */ }
@@ -24,11 +28,54 @@
     estilo.textContent = reglas.join('\n');
   }
 
+  function reordenar(tabla, orden) {
+    if (!orden.length) return;
+    var filas = tabla.querySelectorAll('tr');
+    filas.forEach(function (fila) {
+      var celdas = {};
+      Array.prototype.forEach.call(fila.children, function (c) { celdas[c.dataset.col] = c; });
+      orden.forEach(function (col) { if (celdas[col]) fila.appendChild(celdas[col]); });
+      // columnas nuevas que no estaban en el orden guardado: al final, en su orden original
+    });
+  }
+
   function prepararTabla(tabla) {
     var clave = tabla.dataset.tabla, cfg = leer(clave);
     aplicar(clave, cfg);  // cfg se vuelve a leer antes de cada cambio de ancho
+    reordenar(tabla, cfg.orden);
     tabla.querySelectorAll('thead th[data-col]').forEach(function (th) {
       if (th.querySelector('.asa')) return;
+      if (th.dataset.col !== 'material') {
+        th.draggable = true;
+        th.addEventListener('dragstart', function (e) {
+          if (document.body.classList.contains('redimensionando')) { e.preventDefault(); return; }
+          e.dataTransfer.setData('text/plain', th.dataset.col);
+          e.dataTransfer.effectAllowed = 'move';
+          th.classList.add('arrastrando');
+        });
+        th.addEventListener('dragend', function () {
+          th.classList.remove('arrastrando');
+          tabla.querySelectorAll('.soltar-aca').forEach(function (x) { x.classList.remove('soltar-aca'); });
+        });
+      }
+      th.addEventListener('dragover', function (e) {
+        if (th.dataset.col === 'material') return;
+        e.preventDefault(); e.dataTransfer.dropEffect = 'move'; th.classList.add('soltar-aca');
+      });
+      th.addEventListener('dragleave', function () { th.classList.remove('soltar-aca'); });
+      th.addEventListener('drop', function (e) {
+        e.preventDefault();
+        var movida = e.dataTransfer.getData('text/plain'), destino = th.dataset.col;
+        if (!movida || movida === destino || destino === 'material') return;
+        var actual = Array.prototype.map.call(tabla.querySelectorAll('thead th[data-col]'), function (x) { return x.dataset.col; });
+        actual.splice(actual.indexOf(movida), 1);
+        var i = actual.indexOf(destino);
+        var desdeIzq = Array.prototype.indexOf.call(th.parentNode.children, th) >
+          Array.prototype.indexOf.call(th.parentNode.children, tabla.querySelector('thead th[data-col="' + movida + '"]'));
+        actual.splice(desdeIzq ? i + 1 : i, 0, movida);
+        var c = leer(clave); c.orden = actual; guardar(clave, c);
+        reordenar(tabla, actual);
+      });
       var asa = document.createElement('span');
       asa.className = 'asa';
       asa.title = 'Arrastrá para cambiar el ancho · doble clic: automático';
@@ -81,8 +128,12 @@
         menu.appendChild(label);
       });
       var reset = document.createElement('button');
-      reset.type = 'button'; reset.className = 'btn btn-sm'; reset.textContent = 'Restablecer columnas y anchos';
-      reset.addEventListener('click', function () { guardar(clave, { ocultas: [], anchos: {} }); aplicar(clave, leer(clave)); armar(); });
+      reset.type = 'button'; reset.className = 'btn btn-sm'; reset.textContent = 'Restablecer columnas, orden y anchos';
+      var ayuda = document.createElement('div');
+      ayuda.className = 'muted small';
+      ayuda.textContent = 'Para mover una columna, arrastrá su título a otra posición.';
+      menu.appendChild(ayuda);
+      reset.addEventListener('click', function () { guardar(clave, {}); location.reload(); });
       menu.appendChild(reset);
     }
     boton.addEventListener('click', function (e) { e.stopPropagation(); armar(); menu.hidden = !menu.hidden; });

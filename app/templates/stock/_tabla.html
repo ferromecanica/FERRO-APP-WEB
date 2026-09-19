@@ -31,5 +31,5 @@
   </tbody>
 </table></div>
 <div class="tabla-pie">{{ repuestos | length }} repuesto{{ 's' if repuestos | length != 1 }}
-  <span class="muted"> · Arrastrá el borde de un título para cambiar el ancho de la columna.</span></div>
+  <span class="muted"> · Clic en un título: ordena · Arrastrá un título: mueve la columna · Arrastrá su borde: cambia el ancho.</span></div>
 {% else %}{{ vacio('fa-boxes-stacked', 'No hay repuestos' ~ (' que coincidan con la búsqueda' if q or categoria_id or subcategoria_id or filtro else ' cargados todavía') ~ '.') }}{% endif %}
