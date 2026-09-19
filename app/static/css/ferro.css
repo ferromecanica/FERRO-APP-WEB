@@ -367,3 +367,9 @@ body.movil { background: var(--bg); font-size: 16px; }
 .subir-fotos.grande .destinos-label { flex-basis: 100%; font-size: .9rem; }
 .subir-fotos.grande .destino { flex: 1 1 0; }
 .subir-fotos.grande .destino span { width: 100%; justify-content: center; padding: 12px 6px; }
+/* Destinos de foto en el celular: siempre los tres en un renglón */
+.subir-fotos.grande .destinos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.subir-fotos.grande .destinos-label { grid-column: 1 / -1; }
+.subir-fotos.grande .destino span { padding: 10px 4px; font-size: .9rem; gap: 5px; white-space: nowrap; }
+.subir-fotos.grande .destino span i { font-size: .85rem; }
+@media (max-width: 340px) { .subir-fotos.grande .destino span i { display: none; } }
