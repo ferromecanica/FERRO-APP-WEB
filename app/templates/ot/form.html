@@ -11,7 +11,8 @@
   <div class="card-body form-grid">
     {% if ot.id %}
       <div class="full"><label>Vehículo</label>
-        <div><span class="plate">{{ ot.vehiculo.patente }}</span> {{ ot.vehiculo.descripcion }} · {{ ot.cliente.nombre }}</div></div>
+        <div><span class="plate">{{ ot.vehiculo.patente }}</span> {{ ot.vehiculo.descripcion }}</div></div>
+      {% with valor=f.get('cliente', ot.cliente.etiqueta if ot.cliente else ''), obligatorio=False %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% else %}
       {# ───── Vehículo ───── #}
       <div class="full"><label>Patente *</label>
@@ -38,25 +39,7 @@
       </div>
 
       {# ───── Cliente ───── #}
-      <div class="full"><label>Cliente *</label>
-        <div class="input-group">
-          <input id="cliente" name="cliente" list="lista-clientes" required
-                 value="{{ f.get('cliente', vehiculo.cliente.etiqueta if vehiculo and vehiculo.cliente else '') }}"
-                 placeholder="Se completa con el dueño del vehículo, o buscalo">
-          <button type="button" class="btn" id="btn-cliente-nuevo" title="Dar de alta un cliente nuevo"><i class="fa-solid fa-plus"></i> Cliente nuevo</button>
-        </div>
-        <datalist id="lista-clientes">
-          {% for c in clientes %}<option value="{{ c.etiqueta }}">{{ c.telefono or '' }}</option>{% endfor %}
-        </datalist>
-        <div id="cliente-info" class="hint"></div>
-      </div>
-      <div id="cliente-nuevo" class="full sub-alta" hidden>
-        <div class="sub-alta-titulo"><i class="fa-solid fa-user-plus"></i> Cliente nuevo: se da de alta con este nombre</div>
-        <div class="form-grid-4">
-          <div class="span-2"><label>Teléfono</label><input name="c_telefono" type="tel" value="{{ f.get('c_telefono', '') }}" placeholder="341 555-1234"></div>
-          <div class="span-2 muted small" style="align-self:center">El resto de los datos (CUIT, email…) se completan después en su ficha.</div>
-        </div>
-      </div>
+      {% with valor=f.get('cliente', vehiculo.cliente.etiqueta if vehiculo and vehiculo.cliente else ''), obligatorio=False %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% endif %}
 
     <div><label>Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ f.get('fecha_ingreso', (ot.fecha_ingreso or hoy).isoformat()) }}"></div>
@@ -73,81 +56,58 @@
   </div>
 </form>
 
-{% if not ot.id %}
 <script>
 (function () {
+  var picker = FerroClientePicker();
+  var cliente = picker.input;
   var patente = document.getElementById('patente');
-  var cliente = document.getElementById('cliente');
+  if (!patente) return;  // edición: solo el cliente
   var vInfo = document.getElementById('vehiculo-info'), vNuevo = document.getElementById('vehiculo-nuevo');
-  var cInfo = document.getElementById('cliente-info'), cNuevo = document.getElementById('cliente-nuevo');
   var km = document.getElementById('km');
-  var clientes = Array.prototype.map.call(document.querySelectorAll('#lista-clientes option'), function (o) { return o.value; });
-  var dueno = null, pedido = 0;
+  var pedido = 0;
 
   function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
-  function revisarCliente() {
-    var v = cliente.value.trim();
-    var existe = clientes.indexOf(v) !== -1;
-    cNuevo.hidden = existe || (!v && cNuevo.hidden);
-    if (existe && dueno && v !== dueno) {
-      cInfo.innerHTML = '<i class="fa-solid fa-right-left"></i> El vehículo es de <strong>' + esc(dueno.split(' · ')[0]) + '</strong>: al abrir la OT pasa a este cliente.';
-    } else if (existe && !dueno && !vNuevo.hidden) {
-      cInfo.textContent = 'El vehículo nuevo queda asociado a este cliente.';
-    } else if (existe && !dueno && vInfo.dataset.existe === '1') {
-      cInfo.textContent = 'El vehículo no tenía dueño: queda asociado a este cliente.';
-    } else {
-      cInfo.textContent = '';
-    }
+  function actualizarEstado(existe, dueno) {
+    picker.estado.dueno = dueno || null;
+    picker.estado.vehiculoNuevo = !vNuevo.hidden;
+    picker.estado.vehiculoSinDueno = existe && !dueno;
+    picker.revisar();
   }
 
   function buscarPatente() {
     var p = patente.value.trim();
-    if (p.length < 5) { vInfo.dataset.existe = ''; return; }
+    if (p.length < 5) return;
     var n = ++pedido;
     fetch('{{ url_for("ot.vehiculo_info") }}?patente=' + encodeURIComponent(p))
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (n !== pedido) return;
-        vInfo.dataset.existe = d.existe ? '1' : '';
         if (d.existe) {
           vNuevo.hidden = true;
           vInfo.innerHTML = '<i class="fa-solid fa-circle-check" style="color:var(--ok)"></i> ' + esc(d.descripcion || 'Vehículo cargado') +
             (d.km ? ' · ' + d.km.toLocaleString('es-AR') + ' km' : '') + (d.cliente ? '' : ' · <em>sin dueño asignado</em>');
-          dueno = d.cliente;
-          if (d.cliente && (!cliente.value || clientes.indexOf(cliente.value) !== -1)) cliente.value = d.cliente;
+          if (d.cliente && (!cliente.value || picker.existe(cliente.value))) cliente.value = d.cliente;
           if (d.km) km.placeholder = d.km;
         } else {
-          dueno = null;
           vNuevo.hidden = !d.valida;
           vInfo.innerHTML = d.valida ? '<i class="fa-solid fa-plus" style="color:var(--accent)"></i> Patente nueva: completá los datos del vehículo.'
                                      : 'La patente no parece válida.';
         }
-        revisarCliente();
+        actualizarEstado(d.existe, d.cliente);
       });
   }
 
   patente.addEventListener('input', function () { clearTimeout(patente._t); patente._t = setTimeout(buscarPatente, 250); });
-
-  // Botones (+): abren el alta sin tener que empezar a tipear
   document.getElementById('btn-vehiculo-nuevo').addEventListener('click', function () {
-    patente.value = ''; dueno = null; vInfo.dataset.existe = '';
+    patente.value = '';
     vNuevo.hidden = false;
     vInfo.innerHTML = '<i class="fa-solid fa-plus" style="color:var(--accent)"></i> Escribí la patente del vehículo nuevo y completá sus datos.';
     patente.placeholder = 'Patente del vehículo nuevo (ej.: AB123CD)';
     patente.focus();
-    revisarCliente();
+    actualizarEstado(false, null);
   });
-  document.getElementById('btn-cliente-nuevo').addEventListener('click', function () {
-    cliente.value = '';
-    cliente.placeholder = 'Nombre y apellido del cliente nuevo';
-    cNuevo.hidden = false;
-    cliente.focus();
-    cInfo.textContent = '';
-  });
-  cliente.addEventListener('input', revisarCliente);
-  if (patente.value) buscarPatente(); else revisarCliente();
+  if (patente.value) buscarPatente();
 })();
 </script>
-{% endif %}
 {% endblock %}

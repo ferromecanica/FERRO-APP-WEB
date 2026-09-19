@@ -14,7 +14,7 @@
       <td>{{ badge(ot.estado) }}</td>
       <td style="white-space:nowrap"><span class="plate">{{ ot.vehiculo.patente }}</span>
         <div class="muted small">{{ ((ot.vehiculo.marca or '') ~ ' ' ~ (ot.vehiculo.modelo or '')).strip() }}</div></td>
-      <td class="hide-sm" style="max-width:320px">{{ ot.detalle or '' }}<div class="muted small">{{ ot.cliente.nombre }}</div></td>
+      <td class="hide-sm" style="max-width:320px">{{ ot.detalle or '' }}<div class="muted small">{{ ot.cliente.nombre if ot.cliente else 'Sin cliente' }}</div></td>
       <td class="hide-sm" style="white-space:nowrap">{{ ot.fecha_ingreso | fecha }}</td>
       <td class="hide-sm" style="white-space:nowrap">{{ ot.fecha_fin | fecha }}</td>
       <td class="num hide-sm">{{ (ot.horas_insumidas * valor_hora + ot.total_repuestos) | pesos }}</td>

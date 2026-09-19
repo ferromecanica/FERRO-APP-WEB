@@ -24,7 +24,7 @@
           <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
             <td><strong>#{{ ot.id }}</strong></td><td>{{ ot.fecha_ingreso | fecha }}</td>
             <td class="num">{{ ot.km_entrada | numero }}</td>
-            <td>{{ ot.detalle or '' }}{% if ot.cliente_id != vehiculo.cliente_id %}<div class="muted small">Dueño anterior: {{ ot.cliente.nombre }}</div>{% endif %}</td>
+            <td>{{ ot.detalle or '' }}{% if ot.cliente and ot.cliente_id != vehiculo.cliente_id %}<div class="muted small">Dueño anterior: {{ ot.cliente.nombre }}</div>{% endif %}</td>
             <td>{{ estado(ot.estado) }}</td>
           </tr>
         {% endfor %}

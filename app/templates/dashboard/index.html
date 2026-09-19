@@ -47,7 +47,7 @@
         <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
           <td><strong>#{{ ot.id }}</strong><div class="muted small">{{ ot.detalle or '' }}</div></td>
           <td><span class="plate">{{ ot.vehiculo.patente }}</span><div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
-          <td class="hide-sm">{{ ot.cliente.nombre }}</td>
+          <td class="hide-sm">{{ ot.cliente.nombre if ot.cliente else "—" }}</td>
           <td>{{ estado(ot.estado) }}</td>
           <td class="num hide-sm">{{ ot.fecha_ingreso | fecha }}</td>
         </tr>

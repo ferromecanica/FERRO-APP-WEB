@@ -150,7 +150,7 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     __tablename__ = "orden_trabajo"
 
     id = db.Column(db.Integer, primary_key=True)  # número de OT (10000…)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"))  # se puede completar al cerrar
     vehiculo_id = db.Column(db.Integer, db.ForeignKey("vehiculo.id"), nullable=False)
     turno_id = db.Column(db.Integer, db.ForeignKey("turno.id"))
     fecha_ingreso = db.Column(db.Date, default=date.today, nullable=False)

@@ -1,0 +1,21 @@
+{# Selector de cliente con alta rápida. Variables: clientes, valor, obligatorio #}
+<div class="full"><label>Cliente{{ ' *' if obligatorio else '' }}</label>
+  <div class="input-group">
+    <input id="cliente" name="cliente" list="lista-clientes" {{ 'required' if obligatorio }} value="{{ valor }}"
+           placeholder="{{ 'Buscá el cliente' if obligatorio else 'Opcional: se completa con el dueño, o se pide al cerrar' }}"
+           data-opcional="{{ '' if obligatorio else '1' }}">
+    <button type="button" class="btn" id="btn-cliente-nuevo" title="Dar de alta un cliente nuevo"><i class="fa-solid fa-plus"></i> Cliente nuevo</button>
+  </div>
+  <datalist id="lista-clientes">
+    {% for c in clientes %}<option value="{{ c.etiqueta }}">{{ c.telefono or '' }}</option>{% endfor %}
+  </datalist>
+  <div id="cliente-info" class="hint"></div>
+</div>
+<div id="cliente-nuevo" class="full sub-alta" hidden>
+  <div class="sub-alta-titulo"><i class="fa-solid fa-user-plus"></i> Cliente nuevo: se da de alta con este nombre</div>
+  <div class="form-grid-4">
+    <div class="span-2"><label>Teléfono</label><input name="c_telefono" type="tel" value="{{ request.form.get('c_telefono', '') }}" placeholder="341 555-1234"></div>
+    <div class="span-2 muted small" style="align-self:center">El resto de los datos (CUIT, email…) se completan después en su ficha.</div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/cliente_picker.js') }}"></script>

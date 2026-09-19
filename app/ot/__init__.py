@@ -77,7 +77,7 @@ def _mecanicos():
 def lista():
     estado = request.args.get("estado")
     q = request.args.get("q", "").strip()
-    consulta = OrdenTrabajo.query.join(Vehiculo).join(Cliente, OrdenTrabajo.cliente_id == Cliente.id)
+    consulta = OrdenTrabajo.query.join(Vehiculo).outerjoin(Cliente, OrdenTrabajo.cliente_id == Cliente.id)
     if estado == "abiertas":
         consulta = consulta.filter(OrdenTrabajo.estado.in_(ESTADOS_OT_ABIERTA))
     elif estado:
@@ -123,6 +123,9 @@ def vehiculo_info():
 @bp.route("/<int:id>/editar", methods=["GET", "POST"])
 def form(id=None):
     ot = db.get_or_404(OrdenTrabajo, id) if id else OrdenTrabajo(fecha_ingreso=date.today())
+    if id and not ot.abierta:
+        flash("La OT está cerrada. Reabrila para modificarla.", "error")
+        return _volver(ot)
     vehiculo = ot.vehiculo
     if not id and request.args.get("vehiculo_id", type=int):
         vehiculo = db.session.get(Vehiculo, request.args.get("vehiculo_id", type=int))
@@ -130,7 +133,9 @@ def form(id=None):
     if request.method == "POST":
         errores = []
         if not id:
-            vehiculo, cliente, errores = _resolver_vehiculo_y_cliente()
+            vehiculo, errores = _resolver_vehiculo()
+        cliente, errores_cliente = _resolver_cliente(obligatorio=False)
+        errores += errores_cliente
         km = numero_ar(request.form.get("km_entrada"))
         ot.km_entrada = int(km) if km is not None else None
         ot.detalle = request.form.get("detalle", "").strip() or None
@@ -144,61 +149,77 @@ def form(id=None):
                 flash(e, "error")
         else:
             if not id:
-                if vehiculo.cliente is not cliente:
-                    if vehiculo.cliente is not None:
-                        flash(f"{vehiculo.patente} pasó de {vehiculo.cliente.nombre} a {cliente.nombre}.", "info")
-                    vehiculo.cliente = cliente
                 ot.id = OrdenTrabajo.proximo_numero()
                 ot.vehiculo = vehiculo
-                ot.cliente = cliente
                 ot.estado = "Ingresado"
                 db.session.add(ot)
+            _asignar_cliente(ot, cliente)
             if ot.km_entrada and ot.km_entrada > (ot.vehiculo.kilometraje or 0):
                 ot.vehiculo.kilometraje = ot.km_entrada
             db.session.commit()
             flash(f"OT #{ot.id} {'creada' if not id else 'guardada'}.", "ok")
             return _volver(ot)
 
-    vehiculos = clientes = marcas = []
+    vehiculos = marcas = []
     if not id:
         vehiculos = Vehiculo.query.outerjoin(Cliente).order_by(Vehiculo.patente).all()
-        clientes = Cliente.query.order_by(db.func.lower(Cliente.nombre)).all()
         cargadas = {m for (m,) in db.session.query(Vehiculo.marca).distinct() if m}
         marcas = sorted(set(MARCAS_COMUNES) | cargadas, key=str.lower)
-    return render_template("ot/form.html", ot=ot, vehiculo=vehiculo, vehiculos=vehiculos, clientes=clientes,
+    return render_template("ot/form.html", ot=ot, vehiculo=vehiculo, vehiculos=vehiculos, clientes=_clientes(),
                            marcas=marcas, proximo=OrdenTrabajo.proximo_numero())
 
 
-def _resolver_vehiculo_y_cliente():
-    """Del formulario de nueva OT: busca o da de alta (por separado) el vehículo y el cliente."""
-    errores = []
+def _clientes():
+    return Cliente.query.order_by(db.func.lower(Cliente.nombre)).all()
+
+
+def _asignar_cliente(ot, cliente):
+    """Pone el cliente en la OT y asocia el vehículo a ese cliente (si tenía otro dueño, lo avisa)."""
+    if cliente is None:
+        if not ot.cliente and ot.vehiculo.cliente:
+            ot.cliente = ot.vehiculo.cliente  # sin cliente elegido: el dueño del auto
+        return
+    ot.cliente = cliente
+    vehiculo = ot.vehiculo
+    if vehiculo.cliente is not cliente:
+        if vehiculo.cliente is not None:
+            flash(f"{vehiculo.patente} pasó de {vehiculo.cliente.nombre} a {cliente.nombre}.", "info")
+        vehiculo.cliente = cliente
+
+
+def _resolver_vehiculo():
+    """Del formulario de nueva OT: busca el vehículo por patente o lo da de alta (solo el vehículo)."""
     patente = normalizar_patente(request.form.get("patente"))
     vehiculo = Vehiculo.query.filter_by(patente=patente).first() if patente else None
-    if vehiculo is None:
-        if not patente_valida(patente):
-            errores.append(f"La patente «{request.form.get('patente', '')}» no parece válida.")
-        else:
-            anio = request.form.get("v_anio", "").strip()
-            vehiculo = Vehiculo(
-                patente=patente,
-                marca=request.form.get("v_marca", "").strip() or None,
-                modelo=request.form.get("v_modelo", "").strip() or None,
-                motor=request.form.get("v_motor", "").strip() or None,
-                anio=int(anio) if anio.isdigit() else None,
-            )
-            db.session.add(vehiculo)
+    if vehiculo is not None:
+        return vehiculo, []
+    if not patente_valida(patente):
+        return None, [f"La patente «{request.form.get('patente', '')}» no parece válida."]
+    anio = request.form.get("v_anio", "").strip()
+    vehiculo = Vehiculo(
+        patente=patente,
+        marca=request.form.get("v_marca", "").strip() or None,
+        modelo=request.form.get("v_modelo", "").strip() or None,
+        motor=request.form.get("v_motor", "").strip() or None,
+        anio=int(anio) if anio.isdigit() else None,
+    )
+    db.session.add(vehiculo)
+    return vehiculo, []
 
-    texto_cliente = request.form.get("cliente", "").strip()
-    cliente = _buscar_cliente(texto_cliente)
-    if cliente is None:
-        if not texto_cliente:
-            errores.append("Indicá el cliente.")
-        elif "CLI-" in texto_cliente:
-            errores.append(f"No encontré el cliente «{texto_cliente}».")
-        else:
-            cliente = Cliente(nombre=texto_cliente, telefono=request.form.get("c_telefono", "").strip() or None)
-            db.session.add(cliente)
-    return vehiculo, cliente, errores
+
+def _resolver_cliente(obligatorio):
+    """Del campo Cliente: uno existente, uno nuevo (alta solo del cliente) o ninguno."""
+    texto = request.form.get("cliente", "").strip()
+    if not texto:
+        return None, (["Indicá el cliente."] if obligatorio else [])
+    cliente = _buscar_cliente(texto)
+    if cliente is not None:
+        return cliente, []
+    if "CLI-" in texto:
+        return None, [f"No encontré el cliente «{texto}»."]
+    cliente = Cliente(nombre=texto, telefono=request.form.get("c_telefono", "").strip() or None)
+    db.session.add(cliente)
+    return cliente, []
 
 
 @bp.route("/<int:id>")
@@ -375,14 +396,23 @@ def cerrar(id):
     if request.method == "POST":
         cobrado = numero_ar(request.form.get("total_cobrado"))
         metodo = request.form.get("metodo_pago")
+        errores = []
+        if ot.cliente is None:
+            cliente, errores = _resolver_cliente(obligatorio=True)
         if cobrado is None or cobrado < 0 or metodo not in METODOS_PAGO:
-            flash("Completá el total cobrado y la forma de pago.", "error")
+            errores.append("Completá el total cobrado y la forma de pago.")
+        if errores:
+            db.session.rollback()
+            for e in errores:
+                flash(e, "error")
         else:
+            if ot.cliente is None:
+                _asignar_cliente(ot, cliente)
             ot.total_cobrado = cobrado
             ot.fecha_fin = _fecha("fecha_fin", date.today())
             ot.clasificacion_cierre = request.form.get("clasificacion") or None
             ot.estado = "Terminado"
-            venta = Venta(fecha=ot.fecha_fin, cliente_id=ot.cliente_id, ot=ot, metodo_pago=metodo)
+            venta = Venta(fecha=ot.fecha_fin, cliente=ot.cliente, ot=ot, metodo_pago=metodo)
             venta.items.append(VentaItem(
                 descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
                 precio_unitario=cobrado, costo_unitario=ot.costo_repuestos,
@@ -394,7 +424,8 @@ def cerrar(id):
     es_service = any(getattr(ot, campo) for campo, _, _ in CHECKLIST)
     return render_template("ot/cerrar.html", ot=ot, total_calculado=total_calculado, valor_hora=valor_hora,
                            metodos=METODOS_PAGO, clasificaciones=CLASIFICACIONES_CIERRE,
-                           sugerida="Servicio" if es_service else "Otro")
+                           sugerida="Servicio" if es_service else "Otro",
+                           clientes=_clientes() if ot.cliente is None else [])
 
 
 @bp.route("/<int:id>/entregar", methods=["POST"])

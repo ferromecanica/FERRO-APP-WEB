@@ -171,8 +171,9 @@
   <div class="stack">
     <div class="card card-body">
       <dl class="props">
-        <dt>Cliente</dt><dd><a href="{{ url_for('clientes.detalle', id=ot.cliente.id) }}">{{ ot.cliente.nombre }}</a>
-          {% set wa = ot.cliente.telefono | whatsapp %}{% if wa %} <a href="https://wa.me/{{ wa }}" target="_blank" rel="noopener" title="WhatsApp"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i></a>{% endif %}</dd>
+        <dt>Cliente</dt><dd>{% if ot.cliente %}<a href="{{ url_for('clientes.detalle', id=ot.cliente.id) }}">{{ ot.cliente.nombre }}</a>
+          {% set wa = ot.cliente.telefono | whatsapp %}{% if wa %} <a href="https://wa.me/{{ wa }}" target="_blank" rel="noopener" title="WhatsApp"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i></a>{% endif %}
+          {% else %}<span class="muted">Sin cliente</span>{% if editable %} · <a href="{{ url_for('ot.form', id=ot.id) }}">asignar</a>{% endif %}{% endif %}</dd>
         <dt>Vehículo</dt><dd><a href="{{ url_for('clientes.vehiculo_detalle', id=ot.vehiculo.id) }}">{{ ot.vehiculo.patente }}</a> {{ ot.vehiculo.descripcion }}</dd>
         <dt>Km entrada</dt><dd>{{ ot.km_entrada | numero }}</dd>
         <dt>Presupuesto</dt><dd>{{ ot.presupuesto_cliente | pesos if ot.presupuesto_cliente else '—' }}</dd>
