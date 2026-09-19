@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Markups{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Stock</div><h1>Markups</h1></div>
+  <form method="post" action="{{ url_for('stock.recalcular') }}" onsubmit="return confirm('¿Recalcular el precio de venta de todos los repuestos con las reglas actuales?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary"><i class="fa-solid fa-rotate"></i> Recalcular precios</button>
+  </form>
+</div>
+{% include "stock/_tabs.html" %}
+<div class="grid grid-3-1">
+  <div class="card">
+    <div class="card-head seccion"><h2><i class="fa-solid fa-percent"></i> Reglas por proveedor</h2></div>
+    {% if reglas %}
+    <div class="table-wrap"><table class="tabla-densa">
+      <thead><tr><th>Proveedor</th><th>Marca / envase</th><th class="num">Markup</th><th class="num">Ganancia</th><th class="num">Repuestos</th><th></th></tr></thead>
+      <tbody>
+      {% for m in reglas %}
+        {% set origen = m.proveedor ~ (' + ' ~ m.marca_envase if m.marca_envase else ' (general)') %}
+        <tr>
+          <td><strong>{{ m.proveedor }}</strong></td>
+          <td>{{ m.marca_envase or 'General (resto de las marcas)' }}</td>
+          <td class="num">
+            <form method="post" action="{{ url_for('stock.markup_editar', mid=m.id) }}" class="markup-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input name="markup" inputmode="decimal" value="{{ m.markup | numero(2) }}"><button class="btn-icon" title="Guardar"><i class="fa-solid fa-check"></i></button>
+            </form></td>
+          <td class="num">{{ ((m.markup - 1) * 100) | numero(0) }} %</td>
+          <td class="num">{{ uso.get(origen, 0) }}</td>
+          <td class="num">
+            <form method="post" action="{{ url_for('stock.markup_eliminar', mid=m.id) }}" onsubmit="return confirm('¿Eliminar la regla {{ origen }}?')" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon" title="Eliminar"><i class="fa-solid fa-xmark"></i></button></form></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<div class="empty">Todavía no hay reglas de markup.</div>{% endif %}
+    <form method="post" class="add-box fila">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="c-desc"><label>Proveedor</label><input name="proveedor" list="lista-prov" required>
+        <datalist id="lista-prov">{% for p in proveedores %}<option value="{{ p }}">{% endfor %}</datalist></div>
+      <div class="c-desc"><label>Marca / envase (vacío = general)</label><input name="marca_envase" list="lista-marca">
+        <datalist id="lista-marca">{% for m in marcas %}<option value="{{ m }}">{% endfor %}</datalist></div>
+      <div class="c-cant"><label>Markup</label><input name="markup" inputmode="decimal" placeholder="1,4" required></div>
+      <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+    </form>
+  </div>
+
+  <div class="card card-body">
+    <h2 style="margin-bottom:10px">Cómo se elige</h2>
+    <ol class="small" style="margin:0;padding-left:18px;line-height:1.6">
+      <li>Regla del <strong>proveedor + marca</strong> (Marca RSF, o la marca del repuesto). En <strong>FGC Lubes</strong> la clave es el <strong>envase</strong>; 204 L o más cuentan como 204.</li>
+      <li>Regla <strong>general</strong> del proveedor.</li>
+      <li><strong>Markup propio</strong> del repuesto.</li>
+      <li>Si no hay nada: 1,0 (sin ganancia).</li>
+    </ol>
+    <p class="muted small" style="margin:12px 0 0">Precio de venta = costo final × markup. Costo final = costo de lista − descuento de oferta.</p>
+    {% if uso.get('sin regla de markup') %}<p class="small" style="margin:12px 0 0;color:var(--warn)"><i class="fa-solid fa-triangle-exclamation"></i>
+      {{ uso['sin regla de markup'] }} repuesto{{ 's' if uso['sin regla de markup'] != 1 }} sin regla ni markup propio (se venden al costo).</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

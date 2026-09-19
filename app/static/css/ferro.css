@@ -395,3 +395,35 @@ body.visor-abierto { overflow: hidden; }
   .visor-ant { left: 18px; } .visor-sig { right: 18px; }
   .visor-foto img { max-height: calc(100vh - 150px); }
 }
+
+/* ── Stock: tabla densa estilo planilla ────────────────── */
+.barra-filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.barra-filtros .search { flex: 1 1 320px; }
+.barra-filtros .search input { min-width: 0; }
+.barra-filtros select { width: auto; min-width: 190px; }
+.tabla-scroll { overflow: auto; max-height: calc(100vh - 290px); border-radius: var(--radius) var(--radius) 0 0; }
+.tabla-densa { font-size: 12.5px; }
+.tabla-densa th { position: sticky; top: 0; z-index: 1; padding: 8px 10px; font-size: .68rem; white-space: nowrap; }
+.tabla-densa td { padding: 6px 10px; white-space: nowrap; }
+.tabla-densa .col-material { max-width: 340px; overflow: hidden; text-overflow: ellipsis; position: sticky; left: 0; background: inherit; }
+.tabla-densa tbody tr { background: #fff; }
+.tabla-densa tbody tr:hover { background: #fff7ee; }
+.tabla-densa thead th:first-child { left: 0; z-index: 2; }
+.tabla-densa .col-corta { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .95em; }
+.stock { font-weight: 700; }
+.stock-cero { color: var(--danger); }
+.stock-bajo { color: var(--warn); }
+.tabla-pie { padding: 8px 14px; font-size: .8rem; color: var(--muted); border-top: 1px solid var(--border); }
+@media (max-width: 820px) { .tabla-scroll { max-height: none; } .barra-filtros select { flex: 1 1 45%; min-width: 0; } }
+.form-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 18px; }
+.stack-form { display: grid; gap: 12px; }
+.stock-grande { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; padding: 6px 14px; border-radius: 10px; background: var(--ok-soft); color: var(--ok); }
+.stock-grande.stock-cero { background: var(--danger-soft); color: var(--danger); }
+.stock-grande.stock-bajo { background: var(--warn-soft); color: var(--warn); }
+dl.calculo { border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 2px; }
+dl.calculo dd { font-variant-numeric: tabular-nums; }
+.markup-inline { display: inline-flex; gap: 4px; align-items: center; }
+.markup-inline input { width: 70px; padding: 4px 6px; text-align: right; font-size: .9rem; }
+@media (max-width: 820px) { .form-grid-3 { grid-template-columns: 1fr; } }
+.layout > div { min-width: 0; }  /* que una tabla ancha se desplace dentro de su recuadro y no estire la página */

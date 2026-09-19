@@ -342,11 +342,14 @@ class Repuesto(TimestampMixin, db.Model):
     subcategoria_id = db.Column(db.Integer, db.ForeignKey("subcategoria.id"))
     stock_actual = db.Column(db.Float, default=0, nullable=False)
     stock_minimo = db.Column(db.Float, default=0)
+    # Costo: costo_lista (de la lista del proveedor o cargado a mano) menos el descuento de oferta
+    # = precio_costo (costo final, el que se usa para la ganancia). Venta = costo final × markup.
+    costo_lista = db.Column(db.Float, default=0, nullable=False)
+    descuento_oferta = db.Column(db.Float)  # fracción: 0.05 = 5 %
     precio_costo = db.Column(db.Float, default=0, nullable=False)
-    costo_manual = db.Column(db.Boolean, default=False)
+    costo_manual = db.Column(db.Boolean, default=False)  # True: la actualización de listas no pisa el costo
     markup = db.Column(db.Float)  # si es None se toma de ConfigMarkup
     precio_venta = db.Column(db.Float, default=0, nullable=False)
-    descuento_oferta = db.Column(db.Float)
     comp_marca = db.Column(db.String(60))
     comp_modelo = db.Column(db.String(120))
     comp_motor = db.Column(db.String(60))

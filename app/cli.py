@@ -51,9 +51,9 @@ def register_cli(app):
         db.session.add_all([
             Repuesto(id=1000, nombre="Kit filtros Mahle Corolla 1.8", proveedor="RSF", marca="MAHLE",
                      nro_parte="KIT47", categoria=filtros, stock_actual=3, stock_minimo=2,
-                     precio_costo=10838, precio_venta=15173),
+                     costo_lista=10838, precio_costo=10838, precio_venta=15173),
             Repuesto(id=1001, nombre="Helix HX7 10W-40 (litro)", proveedor="Shell", marca="SHELL",
-                     stock_actual=1.5, stock_minimo=10, precio_costo=7067, precio_venta=8101),
+                     stock_actual=1.5, stock_minimo=10, costo_lista=7067, precio_costo=7067, precio_venta=8101),
         ])
 
         c1 = Cliente(nombre="Cliente Demo Uno", telefono="3410000001", condicion_iva="Consumidor Final")

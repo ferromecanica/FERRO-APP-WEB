@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}{{ ('#' ~ r.id) if r.id else 'Nuevo repuesto' }}{% endblock %}
+{% macro encabezado(icono, titulo) -%}
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2></div>
+{%- endmacro %}
+{% block content %}
+{% set f = request.form %}
+{% macro v(campo, valor) -%}{{ f.get(campo, valor if valor is not none else '') }}{%- endmacro %}
+<div class="page-head">
+  <div><div class="eyebrow">Stock{% if r.id %} · #{{ r.id }}{% endif %}</div>
+    <h1 style="max-width:900px">{{ r.nombre if r.id else 'Nuevo repuesto' }}</h1></div>
+  {% if r.id %}<div class="actions"><span class="stock-grande {{ 'stock-cero' if r.stock_actual <= 0 else ('stock-bajo' if r.bajo_stock else '') }}">
+    Stock: {{ r.stock_actual | numero(2) | replace(',00', '') }}</span></div>{% endif %}
+</div>
+{% include "stock/_tabs.html" %}
+
+<form method="post" id="form-repuesto" autocomplete="off">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="grid grid-3-1">
+  <div class="stack">
+    <div class="card">
+      {{ encabezado('fa-tag', 'Repuesto') }}
+      <div class="card-body form-grid">
+        <div class="full"><label>Nombre *</label><input name="nombre" value="{{ v('nombre', r.nombre) }}" required></div>
+        <div><label>Marca</label><input name="marca" list="lista-marcas" value="{{ v('marca', r.marca) }}">
+          <datalist id="lista-marcas">{% for m in marcas %}<option value="{{ m }}">{% endfor %}</datalist></div>
+        <div><label>Nº de parte original</label><input name="nro_parte" value="{{ v('nro_parte', r.nro_parte) }}"></div>
+        <div><label>Código de barras</label><input name="codigo_barras" value="{{ v('codigo_barras', r.codigo_barras) }}" placeholder="Escaneá o escribí"></div>
+        <div><label>Detalle / contenido</label><input name="detalle" value="{{ v('detalle', r.detalle) }}" placeholder="Ej.: 5W-30, OX416D1 LX2792"></div>
+        <div><label>Categoría</label><input name="categoria" list="lista-categorias" value="{{ v('categoria', r.categoria.nombre if r.categoria else '') }}" style="text-transform:uppercase">
+          <datalist id="lista-categorias">{% for c in categorias %}<option value="{{ c.nombre }}">{% endfor %}</datalist></div>
+        <div><label>Subcategoría</label><input name="subcategoria" list="lista-subcategorias" value="{{ v('subcategoria', r.subcategoria.nombre if r.subcategoria else '') }}" style="text-transform:uppercase">
+          <datalist id="lista-subcategorias">{% for s in subcategorias %}<option value="{{ s.nombre }}" data-categoria="{{ s.categoria.nombre }}">{{ s.categoria.nombre }}</option>{% endfor %}</datalist></div>
+      </div>
+    </div>
+
+    <div class="card">
+      {{ encabezado('fa-car-side', 'Compatibilidad') }}
+      <div class="card-body form-grid-3">
+        <div><label>Marca de auto</label><input name="comp_marca" value="{{ v('comp_marca', r.comp_marca) }}" placeholder="Ej.: TOYOTA"></div>
+        <div><label>Modelo</label><input name="comp_modelo" value="{{ v('comp_modelo', r.comp_modelo) }}" placeholder="Ej.: COROLLA"></div>
+        <div><label>Motor</label><input name="comp_motor" value="{{ v('comp_motor', r.comp_motor) }}" placeholder="Ej.: 1.8"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      {{ encabezado('fa-truck', 'Proveedor') }}
+      <div class="card-body form-grid-3">
+        <div><label>Proveedor</label><input name="proveedor" id="proveedor" list="lista-proveedores" value="{{ v('proveedor', r.proveedor) }}">
+          <datalist id="lista-proveedores">{% for p in proveedores %}<option value="{{ p }}">{% endfor %}</datalist></div>
+        <div><label>Cód. proveedor</label><input name="cod_proveedor" value="{{ v('cod_proveedor', r.cod_proveedor) }}"></div>
+        <div><label>Marca proveedor / envase</label><input name="marca_proveedor" id="marca_proveedor" value="{{ v('marca_proveedor', r.marca_proveedor) }}" placeholder="Ej.: BOSFI, MAHFI · FGC: 4, 20, 204">
+          <div class="muted small" style="margin-top:4px">Define qué markup se aplica.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      {{ encabezado('fa-calculator', 'Precios') }}
+      <div class="card-body stack-form">
+        <div><label>Costo de lista *</label><input name="costo_lista" id="costo_lista" inputmode="decimal" required
+             value="{{ v('costo_lista', (r.costo_lista | numero(2)) if r.id else '') }}" placeholder="$">
+          <label class="check" style="margin-top:6px"><input type="checkbox" name="costo_manual" value="1" {{ 'checked' if (f.get('costo_manual') if f else r.costo_manual) }}>
+            Costo fijo: la actualización de listas no lo cambia</label></div>
+        <div><label>Descuento oferta (%)</label><input name="descuento_oferta" id="descuento" inputmode="decimal"
+             value="{{ v('descuento_oferta', (r.descuento_oferta * 100) | numero(1) if r.descuento_oferta else '') }}" placeholder="0"></div>
+        <div><label>Markup propio</label><input name="markup" id="markup_propio" inputmode="decimal" value="{{ v('markup', (r.markup | numero(2)) if r.markup else '') }}" placeholder="Ej.: 1,4">
+          <div class="muted small" style="margin-top:4px">Se usa solo si el proveedor no tiene regla de markup.</div></div>
+        <dl class="props totales calculo">
+          <dt>Costo final</dt><dd id="calc-costo">{{ r.precio_costo | pesos(2) }}</dd>
+          <dt>Markup <span class="muted small" id="calc-origen">({{ origen_markup }})</span></dt><dd id="calc-markup">× {{ markup_actual | numero(2) }}</dd>
+          <dt><strong>Precio de venta</strong></dt><dd><strong id="calc-venta">{{ r.precio_venta | pesos(2) }}</strong></dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card" id="stock">
+      {{ encabezado('fa-boxes-stacked', 'Stock') }}
+      <div class="card-body stack-form">
+        {% if not r.id %}
+        <div><label>Stock inicial</label><input name="stock_inicial" inputmode="decimal" value="{{ f.get('stock_inicial', '') }}" placeholder="0"></div>
+        {% endif %}
+        <div><label>Stock mínimo (para reponer)</label><input name="stock_minimo" inputmode="decimal" value="{{ v('stock_minimo', (r.stock_minimo | numero(1)) if r.stock_minimo else '') }}" placeholder="0"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary"><i class="fa-solid fa-check"></i> {{ 'Guardar' if r.id else 'Crear repuesto' }}</button>
+      <a class="btn" href="{{ url_for('stock.lista') }}">Volver</a>
+    </div>
+  </div>
+</div>
+</form>
+
+{% if r.id %}
+<div class="grid grid-3-1" style="margin-top:16px">
+  <div class="card">
+    {{ encabezado('fa-right-left', 'Movimientos') }}
+    {% if movimientos %}
+    <div class="table-wrap"><table class="tabla-densa">
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>OT</th><th class="num">Cantidad</th></tr></thead>
+      <tbody>{% for m in movimientos %}
+        <tr><td>{{ m.fecha | fecha('%d/%m/%Y %H:%M') }}</td><td><span class="badge">{{ m.tipo }}</span></td>
+          <td style="white-space:normal">{{ m.detalle }}</td>
+          <td>{% if m.ot_id %}<a href="{{ url_for('ot.detalle', id=m.ot_id) }}">#{{ m.ot_id }}</a>{% endif %}</td>
+          <td class="num" style="color:{{ 'var(--ok)' if m.cantidad > 0 else 'var(--danger)' }}">{{ '+' if m.cantidad > 0 }}{{ m.cantidad | numero(2) | replace(',00', '') }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="empty" style="padding:22px">Sin movimientos.</div>{% endif %}
+  </div>
+
+  <div class="stack">
+    <form class="card" method="post" action="{{ url_for('stock.ajuste', id=r.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {{ encabezado('fa-scale-balanced', 'Ajustar stock') }}
+      <div class="card-body stack-form">
+        <div><label>Cantidad real en el taller</label><input name="stock_nuevo" inputmode="decimal" placeholder="{{ r.stock_actual | numero(2) | replace(',00', '') }}" required></div>
+        <div><label>Motivo</label><input name="motivo" placeholder="Ej.: conteo, rotura, devolución" required></div>
+        <button class="btn"><i class="fa-solid fa-check"></i> Ajustar</button>
+        <div class="muted small">Queda registrado en Movimientos. Para compras usá Ingresos.</div>
+      </div>
+    </form>
+    <div class="card card-body">
+      {% if usado %}
+        <p class="muted small" style="margin:0"><i class="fa-solid fa-lock"></i> No se puede eliminar: tiene movimientos u operaciones.</p>
+      {% else %}
+        <form method="post" action="{{ url_for('stock.eliminar', id=r.id) }}" onsubmit="return confirm('¿Eliminar el repuesto #{{ r.id }}?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar repuesto</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+/* Precio en vivo, con la misma lógica que el servidor (y que la fórmula de AppSheet) */
+(function () {
+  var reglas = {{ reglas | tojson }};
+  var $ = function (id) { return document.getElementById(id); };
+  function num(t) {
+    t = (t || '').replace(/\$|\s/g, '');
+    if (!t) return null;
+    if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+    else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+    var n = parseFloat(t); return isNaN(n) ? null : n;
+  }
+  function pesos(n) { return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function claveMarkup(prov) {
+    var clave = ($('marca_proveedor').value || document.querySelector('[name=marca]').value || '').trim();
+    if (prov === 'FGC Lubes') { var l = num(clave); if (l !== null) clave = l >= 204 ? '204' : String(l); }
+    return clave;
+  }
+  function markup() {
+    var prov = $('proveedor').value.trim(), clave = claveMarkup(prov);
+    if (prov) {
+      var r = reglas.find(function (x) { return x.proveedor === prov && x.marca && x.marca.trim() === clave; });
+      if (clave && r) return [r.markup, prov + ' + ' + clave];
+      r = reglas.find(function (x) { return x.proveedor === prov && !x.marca; });
+      if (r) return [r.markup, prov + ' (general)'];
+    }
+    var propio = num($('markup_propio').value);
+    return propio ? [propio, 'propio del repuesto'] : [1, 'sin regla de markup'];
+  }
+  function calcular() {
+    var costo = (num($('costo_lista').value) || 0) * (1 - (num($('descuento').value) || 0) / 100);
+    var m = markup();
+    $('calc-costo').textContent = pesos(costo);
+    $('calc-markup').textContent = '× ' + m[0].toLocaleString('es-AR', { maximumFractionDigits: 2 });
+    $('calc-origen').textContent = '(' + m[1] + ')';
+    $('calc-venta').textContent = pesos(costo * m[0]);
+  }
+  document.getElementById('form-repuesto').addEventListener('input', calcular);
+  calcular();
+})();
+</script>
+{% endblock %}

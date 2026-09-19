@@ -87,27 +87,54 @@ def confirmar_ingreso(ingreso):
             ingreso_id=ingreso.id,
         )
         if item.costo_unitario and not item.repuesto.costo_manual:
-            item.repuesto.precio_costo = item.costo_unitario
+            item.repuesto.costo_lista = item.costo_unitario
             recalcular_precio_venta(item.repuesto)
     ingreso.estado = "Confirmado"
 
 
+def clave_markup(repuesto):
+    """Clave para buscar la regla del proveedor (como en AppSheet).
+
+    FGC Lubes: el envase (los de 204 L o más cuentan como "204"). Resto: Marca_RSF o, si está vacía, la marca.
+    """
+    clave = (repuesto.marca_proveedor or repuesto.marca or "").strip()
+    if repuesto.proveedor == "FGC Lubes":
+        try:
+            litros = float(clave.replace(",", "."))
+            clave = "204" if litros >= 204 else f"{litros:g}"
+        except ValueError:
+            pass
+    return clave or None
+
+
+def regla_markup(repuesto):
+    """(markup, de dónde sale). Mismo orden que la fórmula de AppSheet:
+    1) proveedor + clave  2) proveedor general  3) markup propio del repuesto  4) 1,0."""
+    if repuesto.proveedor:
+        clave = clave_markup(repuesto)
+        if clave:
+            regla = ConfigMarkup.query.filter(ConfigMarkup.proveedor == repuesto.proveedor,
+                                              db.func.trim(ConfigMarkup.marca_envase) == clave).first()
+            if regla:
+                return regla.markup, f"{repuesto.proveedor} + {clave}"
+        regla = ConfigMarkup.query.filter_by(proveedor=repuesto.proveedor, marca_envase=None).first()
+        if regla:
+            return regla.markup, f"{repuesto.proveedor} (general)"
+    if repuesto.markup:
+        return repuesto.markup, "propio del repuesto"
+    return 1.0, "sin regla de markup"
+
+
 def markup_para(repuesto):
     """Markup propio del repuesto o, si no tiene, el configurado para proveedor + marca."""
-    if repuesto.markup:
-        return repuesto.markup
-    regla = (
-        ConfigMarkup.query.filter_by(proveedor=repuesto.proveedor, marca_envase=repuesto.marca_proveedor).first()
-        or ConfigMarkup.query.filter_by(proveedor=repuesto.proveedor, marca_envase=None).first()
-    )
-    return regla.markup if regla else 1.0
+    return regla_markup(repuesto)[0]
 
 
 def recalcular_precio_venta(repuesto):
-    precio = (repuesto.precio_costo or 0) * markup_para(repuesto)
-    if repuesto.descuento_oferta:
-        precio *= 1 - repuesto.descuento_oferta
-    repuesto.precio_venta = round(precio, 2)
+    """Costo final = costo de lista × (1 − descuento); venta = costo final × markup (como en AppSheet)."""
+    costo = (repuesto.costo_lista or 0) * (1 - (repuesto.descuento_oferta or 0))
+    repuesto.precio_costo = round(costo, 2)
+    repuesto.precio_venta = round(costo * markup_para(repuesto), 2)
     return repuesto.precio_venta
 
 

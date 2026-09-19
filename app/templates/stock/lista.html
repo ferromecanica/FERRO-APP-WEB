@@ -1,30 +1,25 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import vacio %}
 {% block title %}Stock{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Gestión</div><h1>Stock</h1></div>
-  <form class="search" method="get"><i class="fa-solid fa-magnifying-glass"></i>
-    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código de barras…"></form>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('stock.ficha') }}"><i class="fa-solid fa-plus"></i> Repuesto</a></div>
 </div>
 {% include "stock/_tabs.html" %}
-<div class="card">
-  {% if repuestos %}
-  <div class="table-wrap"><table>
-    <thead><tr><th>Repuesto</th><th class="hide-sm">Categoría</th><th class="num">Stock</th><th class="num hide-sm">Costo</th><th class="num">Venta</th></tr></thead>
-    <tbody>
-    {% for r in repuestos %}
-      <tr>
-        <td><strong>{{ r.nombre }}</strong><div class="muted small">#{{ r.id }}{% if r.marca %} · {{ r.marca }}{% endif %}{% if r.nro_parte %} · {{ r.nro_parte }}{% endif %}</div></td>
-        <td class="hide-sm">{{ r.categoria.nombre if r.categoria else '—' }}</td>
-        <td class="num">{% if not r.controla_stock %}<span class="muted">n/a</span>
-          {% else %}<span class="badge {{ 'badge-danger' if r.bajo_stock else 'badge-ok' }}">{{ r.stock_actual | numero(1) }}</span>{% endif %}</td>
-        <td class="num hide-sm">{{ r.precio_costo | pesos }}</td>
-        <td class="num">{{ r.precio_venta | pesos }}</td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table></div>
-  {% else %}{{ vacio('fa-boxes-stacked', 'No hay repuestos' ~ (' que coincidan' if q else ' cargados') ~ '.') }}{% endif %}
-</div>
+<form class="barra-filtros" hx-get="{{ url_for('stock.lista') }}" hx-target="#tabla-stock" hx-push-url="true"
+      hx-trigger="input changed delay:250ms from:input[name=q], change from:select, search">
+  <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código, compatibilidad…" autocomplete="off"></div>
+  <select name="categoria">
+    <option value="">Todas las categorías</option>
+    {% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if c.id == categoria_id }}>{{ c.nombre }}</option>{% endfor %}
+  </select>
+  <select name="filtro">
+    <option value="">Todo el stock</option>
+    <option value="con_stock" {{ 'selected' if filtro == 'con_stock' }}>Con stock</option>
+    <option value="sin_stock" {{ 'selected' if filtro == 'sin_stock' }}>Sin stock</option>
+    <option value="bajo" {{ 'selected' if filtro == 'bajo' }}>Para reponer (bajo mínimo)</option>
+  </select>
+</form>
+<div class="card" id="tabla-stock">{% include "stock/_tabla.html" %}</div>
 {% endblock %}

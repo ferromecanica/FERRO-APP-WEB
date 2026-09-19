@@ -1,5 +1,6 @@
 <div class="filters" style="margin-bottom:14px">
-  <a class="chip {{ 'active' if request.endpoint == 'stock.lista' }}" href="{{ url_for('stock.lista') }}">Repuestos</a>
-  <a class="chip {{ 'active' if request.endpoint == 'stock.ingresos' }}" href="{{ url_for('stock.ingresos') }}">Ingresos de mercadería</a>
-  <a class="chip {{ 'active' if request.endpoint == 'stock.movimientos' }}" href="{{ url_for('stock.movimientos') }}">Movimientos</a>
+  <a class="chip {{ 'active' if request.endpoint in ('stock.lista', 'stock.ficha') }}" href="{{ url_for('stock.lista') }}"><i class="fa-solid fa-boxes-stacked"></i> Repuestos</a>
+  <a class="chip {{ 'active' if request.endpoint == 'stock.markups' }}" href="{{ url_for('stock.markups') }}"><i class="fa-solid fa-percent"></i> Markups</a>
+  <a class="chip {{ 'active' if request.endpoint == 'stock.ingresos' }}" href="{{ url_for('stock.ingresos') }}"><i class="fa-solid fa-truck-ramp-box"></i> Ingresos</a>
+  <a class="chip {{ 'active' if request.endpoint == 'stock.movimientos' }}" href="{{ url_for('stock.movimientos') }}"><i class="fa-solid fa-right-left"></i> Movimientos</a>
 </div>
