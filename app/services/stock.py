@@ -58,6 +58,22 @@ def revertir_consumo(consumo):
     db.session.delete(consumo)
 
 
+def modificar_consumo(consumo, cantidad, precio_unitario, descripcion=None, precio_costo=None):
+    """Edita un renglón de la OT. Si cambia la cantidad, ajusta el stock por la diferencia."""
+    diferencia = cantidad - consumo.cantidad
+    if diferencia:
+        registrar_movimiento(
+            consumo.repuesto, -diferencia, "Consumo" if diferencia > 0 else "Reversion",
+            detalle=f"Corrección de cantidad: {consumo.descripcion}", ot_id=consumo.ot_id,
+        )
+    consumo.cantidad = cantidad
+    consumo.precio_unitario = precio_unitario
+    if descripcion:
+        consumo.descripcion = descripcion
+    if precio_costo is not None:
+        consumo.precio_costo = precio_costo
+
+
 def confirmar_ingreso(ingreso):
     """Suma al stock todos los ítems de una compra y actualiza costos."""
     if ingreso.estado == "Confirmado":

@@ -7,6 +7,18 @@
     <button class="btn-icon" title="Quitar"><i class="fa-solid fa-xmark"></i></button>
   </form>
 {%- endmacro %}
+{% macro acciones(fila, url_borrar, pregunta) -%}
+  <span class="acciones-fila">
+    <button type="button" class="btn-icon btn-editar" data-editar="{{ fila }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+    {{ borrar(url_borrar, pregunta) }}
+  </span>
+{%- endmacro %}
+{% macro botones_edicion() -%}
+  <span class="acciones-edicion">
+    <button class="btn btn-primary btn-sm" title="Guardar"><i class="fa-solid fa-check"></i> Guardar</button>
+    <button type="button" class="btn btn-sm" data-cancelar title="Cancelar">Cancelar</button>
+  </span>
+{%- endmacro %}
 {% macro encabezado(icono, titulo, extra='') -%}
   <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2><span class="muted small">{{ extra }}</span></div>
 {%- endmacro %}
@@ -66,8 +78,17 @@
       {{ encabezado('fa-list-check', 'Tareas realizadas', ot.tareas | length) }}
       {% if ot.tareas %}
       <ul class="list">{% for t in ot.tareas %}
-        <li><span style="white-space:pre-line">{{ t.descripcion }}</span>
-          {% if editable %}{{ borrar(url_for('ot.tarea_eliminar', tid=t.id), '¿Quitar esta tarea?') }}{% endif %}</li>
+        <li id="tarea-{{ t.id }}"><span style="white-space:pre-line">{{ t.descripcion }}</span>
+          {% if editable %}{{ acciones('tarea-' ~ t.id, url_for('ot.tarea_eliminar', tid=t.id), '¿Quitar esta tarea?') }}{% endif %}</li>
+        {% if editable %}
+        <li id="tarea-{{ t.id }}-edicion" class="fila-edicion" hidden>
+          <form method="post" action="{{ url_for('ot.tarea_editar', tid=t.id) }}" class="edicion-linea">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input name="descripcion" value="{{ t.descripcion }}" required>
+            {{ botones_edicion() }}
+          </form>
+        </li>
+        {% endif %}
       {% endfor %}</ul>
       {% elif not editable %}{{ vacio('fa-list-check', 'Sin tareas registradas.') }}{% endif %}
       {% if editable %}
@@ -87,14 +108,29 @@
         <thead><tr><th>Artículo</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th><th class="num hide-sm">Costo</th>{% if editable %}<th></th>{% endif %}</tr></thead>
         <tbody>
         {% for c in ot.consumos %}
-          <tr>
-            <td>{{ c.descripcion }}{% if c.repuesto_id != 99 %}<div class="muted small">#{{ c.repuesto_id }} · stock</div>{% endif %}</td>
+          {% set es_varios = c.repuesto_id == 99 %}
+          <tr id="consumo-{{ c.id }}">
+            <td>{{ c.descripcion }}{% if not es_varios %}<div class="muted small">#{{ c.repuesto_id }} · stock</div>{% endif %}</td>
             <td class="num">{{ c.cantidad | numero(2) | replace(',00', '') }}</td>
             <td class="num">{{ c.precio_unitario | pesos }}</td>
             <td class="num">{{ c.subtotal | pesos }}</td>
             <td class="num hide-sm muted">{{ c.subtotal_costo | pesos }}</td>
-            {% if editable %}<td class="num">{{ borrar(url_for('ot.consumo_eliminar', cid=c.id), '¿Quitar ' ~ (c.descripcion | replace("'", "")) ~ '? Si es del stock, vuelve al stock.') }}</td>{% endif %}
+            {% if editable %}<td class="num">{{ acciones('consumo-' ~ c.id, url_for('ot.consumo_eliminar', cid=c.id), '¿Quitar ' ~ (c.descripcion | replace("'", "")) ~ '? Si es del stock, vuelve al stock.') }}</td>{% endif %}
           </tr>
+          {% if editable %}
+          <tr id="consumo-{{ c.id }}-edicion" class="fila-edicion" hidden><td colspan="6">
+            <form method="post" action="{{ url_for('ot.consumo_editar', cid=c.id) }}" class="fila">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="c-desc"><label>Descripción</label>
+                <input name="descripcion" value="{{ c.descripcion }}" {{ 'required' if es_varios else 'disabled' }}></div>
+              <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ c.cantidad | numero(2) | replace(',00', '') }}"></div>
+              <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" value="{{ c.precio_unitario | numero }}"></div>
+              <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" value="{{ c.precio_costo | numero }}" {{ '' if es_varios else 'disabled title="El costo de un repuesto del stock se toma del stock"' }}></div>
+              <div class="c-btn">{{ botones_edicion() }}</div>
+            </form>
+            {% if not es_varios %}<div class="muted small" style="margin-top:6px">Si cambiás la cantidad, el stock se ajusta por la diferencia.</div>{% endif %}
+          </td></tr>
+          {% endif %}
         {% endfor %}
           <tr class="total-row"><td colspan="3">Total repuestos</td><td class="num">{{ ot.total_repuestos | pesos }}</td>
             <td class="num hide-sm">{{ ot.costo_repuestos | pesos }}</td>{% if editable %}<td></td>{% endif %}</tr>
@@ -132,21 +168,43 @@
     <div class="card" id="horas">
       {{ encabezado('fa-screwdriver-wrench', 'Mano de obra', (ot.horas_insumidas | numero(1)) ~ ' h') }}
       {% if ot.horas %}
-      <ul class="list">{% for h in ot.horas %}
-        <li><div><strong>{{ h.mecanico }}</strong> <span class="muted small">{{ h.fecha | fecha }}</span>
-            {% if h.detalle %}<div class="muted small">{{ h.detalle }}</div>{% endif %}</div>
-          <span style="display:flex;align-items:center;gap:8px"><span class="badge">{{ h.horas | numero(1) }} h</span>
-            {% if editable %}{{ borrar(url_for('ot.horas_eliminar', hid=h.id), '¿Quitar este registro de horas?') }}{% endif %}</span></li>
-      {% endfor %}</ul>
+      <div class="table-wrap"><table class="tabla-horas">
+        <thead><tr><th>Mecánico</th><th>Qué se hizo</th><th>Fecha</th><th class="num">Horas</th>{% if editable %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for h in ot.horas %}
+          <tr id="horas-{{ h.id }}">
+            <td><strong>{{ h.mecanico }}</strong></td>
+            <td class="que-se-hizo">{{ h.detalle or '—' }}</td>
+            <td style="white-space:nowrap">{{ h.fecha | fecha }}</td>
+            <td class="num"><span class="badge">{{ h.horas | numero(1) }} h</span></td>
+            {% if editable %}<td class="num">{{ acciones('horas-' ~ h.id, url_for('ot.horas_eliminar', hid=h.id), '¿Quitar este registro de horas?') }}</td>{% endif %}
+          </tr>
+          {% if editable %}
+          <tr id="horas-{{ h.id }}-edicion" class="fila-edicion" hidden><td colspan="5">
+            <form method="post" action="{{ url_for('ot.horas_editar', hid=h.id) }}" class="fila">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="c-mec"><label>Mecánico</label>
+                <select name="mecanico">{% for m in mecanicos %}<option {{ 'selected' if m == h.mecanico }}>{{ m }}</option>{% endfor %}
+                  {% if h.mecanico not in mecanicos %}<option selected>{{ h.mecanico }}</option>{% endif %}</select></div>
+              <div class="c-desc"><label>Qué se hizo</label><input name="detalle" value="{{ h.detalle or '' }}"></div>
+              <div class="c-fecha"><label>Fecha</label><input type="date" name="fecha" value="{{ h.fecha.isoformat() }}"></div>
+              <div class="c-cant"><label>Horas</label><input name="horas" inputmode="decimal" value="{{ h.horas | numero(1) }}"></div>
+              <div class="c-btn">{{ botones_edicion() }}</div>
+            </form>
+          </td></tr>
+          {% endif %}
+        {% endfor %}
+        </tbody>
+      </table></div>
       {% elif not editable %}{{ vacio('fa-clock', 'Sin horas registradas.') }}{% endif %}
       {% if editable %}
       <form method="post" action="{{ url_for('ot.horas_agregar', id=ot.id) }}" class="add-box fila fila-horas">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="c-mec"><label>Mecánico</label>
           <select name="mecanico" required>{% for m in mecanicos %}<option>{{ m }}</option>{% endfor %}</select></div>
-        <div class="c-cant"><label>Horas</label><input name="horas" inputmode="decimal" placeholder="1,5" required></div>
+        <div class="c-desc"><label>Qué se hizo</label><input name="detalle" placeholder="Ej.: Desarme de tren delantero"></div>
         <div class="c-fecha"><label>Fecha</label><input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
-        <div class="c-desc"><label>Qué se hizo</label><input name="detalle" placeholder="Opcional"></div>
+        <div class="c-cant"><label>Horas</label><input name="horas" inputmode="decimal" placeholder="1,5" required></div>
         <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
       </form>
       {% endif %}
@@ -256,6 +314,21 @@
       var caja = b.closest('.add-box');
       caja.querySelectorAll('.seg').forEach(function (t) { t.classList.toggle('active', t === b); });
       caja.querySelectorAll('.tab-panel').forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
+    });
+  });
+  // Edición en el lugar: el lápiz muestra el formulario de la fila, Cancelar lo oculta
+  document.querySelectorAll('[data-editar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var vista = document.getElementById(b.dataset.editar), edicion = document.getElementById(b.dataset.editar + '-edicion');
+      vista.hidden = true; edicion.hidden = false;
+      var campo = edicion.querySelector('input:not([type=hidden]):not(:disabled), select');
+      if (campo) campo.focus();
+    });
+  });
+  document.querySelectorAll('[data-cancelar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var edicion = b.closest('.fila-edicion');
+      edicion.hidden = true; document.getElementById(edicion.id.replace(/-edicion$/, '')).hidden = false;
     });
   });
   // Ventanas emergentes: botones data-abrir="id" y data-cerrar-dialogo; #cerrar / #cobrar las abre al entrar

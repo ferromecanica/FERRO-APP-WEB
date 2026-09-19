@@ -21,7 +21,7 @@ from ..models import (
     Venta,
     VentaItem,
 )
-from ..services.stock import buscar_repuesto, consumir_en_ot, repuesto_varios, revertir_consumo
+from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
 from ..validaciones import MARCAS_COMUNES, normalizar_patente, numero_ar, patente_valida
 
 bp = Blueprint("ot", __name__)
@@ -380,6 +380,56 @@ def consumo_eliminar(cid):
 
 
 # ────────────────────────────────── Checklist ───────────────────────────────
+
+
+# ─────────────────────────────── Edición de renglones ───────────────────────
+
+
+@bp.route("/tareas/<int:tid>/editar", methods=["POST"])
+def tarea_editar(tid):
+    tarea = db.get_or_404(TareaOT, tid)
+    if _ot_editable(tarea.ot_id) is not None:
+        texto = request.form.get("descripcion", "").strip()
+        if texto:
+            tarea.descripcion = texto
+            db.session.commit()
+    return _volver(tarea.ot_id, "tareas")
+
+
+@bp.route("/horas/<int:hid>/editar", methods=["POST"])
+def horas_editar(hid):
+    registro = db.get_or_404(RegistroHoras, hid)
+    if _ot_editable(registro.ot_id) is not None:
+        horas = numero_ar(request.form.get("horas"))
+        mecanico = request.form.get("mecanico", "").strip()
+        if not horas or horas <= 0 or not mecanico:
+            flash("Indicá mecánico y horas.", "error")
+        else:
+            registro.mecanico = mecanico
+            registro.horas = horas
+            registro.fecha = _fecha("fecha", registro.fecha)
+            registro.detalle = request.form.get("detalle", "").strip() or None
+            db.session.commit()
+    return _volver(registro.ot_id, "horas")
+
+
+@bp.route("/consumos/<int:cid>/editar", methods=["POST"])
+def consumo_editar(cid):
+    consumo = db.get_or_404(ConsumoOT, cid)
+    if _ot_editable(consumo.ot_id) is not None:
+        cantidad = numero_ar(request.form.get("cantidad"))
+        precio = numero_ar(request.form.get("precio"))
+        if not cantidad or cantidad <= 0 or precio is None or precio < 0:
+            flash("Revisá cantidad y precio.", "error")
+        else:
+            es_varios = consumo.repuesto_id == Repuesto.ID_VARIOS
+            modificar_consumo(
+                consumo, cantidad, precio,
+                descripcion=request.form.get("descripcion", "").strip() if es_varios else None,
+                precio_costo=(numero_ar(request.form.get("costo")) or 0) if es_varios else None,
+            )
+            db.session.commit()
+    return _volver(consumo.ot_id, "repuestos")
 
 
 # ──────────────────────────────── Cierre de OT ──────────────────────────────
