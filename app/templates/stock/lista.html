@@ -18,9 +18,14 @@
     <option value="sin_stock" {{ 'selected' if filtro == 'sin_stock' }}>Sin stock</option>
     <option value="bajo" {{ 'selected' if filtro == 'bajo' }}>Para reponer (bajo mínimo)</option>
   </select>
+  <div class="selector-columnas" data-columnas-para="stock">
+    <button type="button" class="btn"><i class="fa-solid fa-table-columns"></i> Columnas</button>
+    <div class="menu-columnas" hidden></div>
+  </div>
 </form>
 <div class="card" id="tabla-stock">{% include "stock/_tabla.html" %}</div>
 <script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tabla-config.js') }}"></script>
 <script>
 FerroCategorias({{ arbol | tojson }}, {
   categoria: 'filtro-categoria', subcategoria: 'filtro-subcategoria',

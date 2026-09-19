@@ -33,8 +33,7 @@
       <a href="{{ url_for('clientes.vehiculos') }}" class="{{ 'active' if (ep or '').startswith('clientes.vehiculo') }}"><i class="fa-solid fa-car-side"></i> Vehículos</a>
       <div class="nav-label">Comercial</div>
       <a href="{{ url_for('ventas.lista') }}" class="{{ 'active' if seccion == 'ventas' }}"><i class="fa-solid fa-cart-shopping"></i> Ventas</a>
-      <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if ep in ('stock.lista', 'stock.ficha', 'stock.markups') }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
-      <a href="{{ url_for('stock.ingresos') }}" class="{{ 'active' if ep == 'stock.ingresos' }}"><i class="fa-solid fa-truck-ramp-box"></i> Ingreso Stock</a>
+      <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if seccion == 'stock' and ep != 'stock.movimientos' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
       <a href="{{ url_for('stock.movimientos') }}" class="{{ 'active' if ep == 'stock.movimientos' }}"><i class="fa-solid fa-barcode"></i> Control de Stock</a>
       <div class="nav-label">Sistema</div>
       <a href="{{ url_for('movil.inicio') }}"><i class="fa-solid fa-mobile-screen"></i> Modo celular</a>

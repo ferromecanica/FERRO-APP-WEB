@@ -1,32 +1,47 @@
 {% from "partials/macros.html" import vacio %}
 {% if repuestos %}
-<div class="tabla-scroll"><table class="tabla-densa">
+<div class="tabla-scroll"><table class="tabla-densa tabla-config" data-tabla="stock">
   <thead><tr>
-    <th>Material</th><th>Marca</th><th>Nº parte</th><th class="num">Stock</th><th>Ubicación</th><th class="num">Costo</th><th class="num">Venta</th>
-    <th>Comp. marca</th><th>Comp. modelo</th><th>Comp. motor</th><th>Detalle</th><th class="num">Desc.</th>
-    <th>Cód. prov.</th><th>Categoría</th><th>Subcategoría</th>
+    <th data-col="material" class="izq">Material</th>
+    <th data-col="marca">Marca</th>
+    <th data-col="parte">Nº parte</th>
+    <th data-col="stock">Stock</th>
+    <th data-col="ubicacion">Ubicación</th>
+    <th data-col="costo">Costo</th>
+    <th data-col="venta">Venta</th>
+    <th data-col="comp_marca">Comp. marca</th>
+    <th data-col="comp_modelo">Comp. modelo</th>
+    <th data-col="comp_motor">Comp. motor</th>
+    <th data-col="detalle">Detalle</th>
+    <th data-col="descuento">Desc.</th>
+    <th data-col="cod_prov">Cód. prov.</th>
+    <th data-col="proveedor">Proveedor</th>
+    <th data-col="categoria">Categoría</th>
+    <th data-col="subcategoria">Subcategoría</th>
   </tr></thead>
   <tbody>
   {% for r in repuestos %}
     <tr class="clickable" onclick="location='{{ url_for('stock.ficha', id=r.id) }}'">
-      <td class="col-material" title="{{ r.nombre }}"><span class="muted">{{ r.id }}</span> · {{ r.nombre }}</td>
-      <td>{{ r.marca or '' }}</td>
-      <td class="mono">{{ r.nro_parte or '' }}</td>
-      <td class="num"><span class="stock {{ 'stock-cero' if r.stock_actual <= 0 else ('stock-bajo' if r.bajo_stock else '') }}">{{ r.stock_actual | numero(2) | replace(',00', '') }}</span></td>
-      <td>{{ r.ubicacion }}</td>
-      <td class="num">{{ r.precio_costo | pesos(2) }}</td>
-      <td class="num"><strong>{{ r.precio_venta | pesos(2) }}</strong></td>
-      <td>{{ r.comp_marca or '' }}</td>
-      <td>{{ r.comp_modelo or '' }}</td>
-      <td>{{ r.comp_motor or '' }}</td>
-      <td class="col-corta" title="{{ r.detalle or '' }}">{{ r.detalle or '' }}</td>
-      <td class="num">{{ ((r.descuento_oferta * 100) | numero(0)) ~ ' %' if r.descuento_oferta else '' }}</td>
-      <td class="mono">{{ r.cod_proveedor or '' }}</td>
-      <td>{{ r.categoria.nombre if r.categoria else '' }}</td>
-      <td>{{ r.subcategoria.nombre if r.subcategoria else '' }}</td>
+      <td data-col="material" class="izq" title="{{ r.nombre }}"><span class="muted">{{ r.id }}</span> · {{ r.nombre }}</td>
+      <td data-col="marca" title="{{ r.marca or '' }}">{{ r.marca or '' }}</td>
+      <td data-col="parte" class="mono" title="{{ r.nro_parte or '' }}">{{ r.nro_parte or '' }}</td>
+      <td data-col="stock"><span class="stock {{ 'stock-cero' if r.stock_actual <= 0 else ('stock-bajo' if r.bajo_stock else '') }}">{{ r.stock_actual | numero(2) | replace(',00', '') }}</span></td>
+      <td data-col="ubicacion">{{ r.ubicacion }}</td>
+      <td data-col="costo" class="plata">{{ r.precio_costo | pesos(2) }}</td>
+      <td data-col="venta" class="plata"><strong>{{ r.precio_venta | pesos(2) }}</strong></td>
+      <td data-col="comp_marca" title="{{ r.comp_marca or '' }}">{{ r.comp_marca or '' }}</td>
+      <td data-col="comp_modelo" title="{{ r.comp_modelo or '' }}">{{ r.comp_modelo or '' }}</td>
+      <td data-col="comp_motor" title="{{ r.comp_motor or '' }}">{{ r.comp_motor or '' }}</td>
+      <td data-col="detalle" title="{{ r.detalle or '' }}">{{ r.detalle or '' }}</td>
+      <td data-col="descuento">{{ ((r.descuento_oferta * 100) | numero(0)) ~ ' %' if r.descuento_oferta else '' }}</td>
+      <td data-col="cod_prov" class="mono">{{ r.cod_proveedor or '' }}</td>
+      <td data-col="proveedor" title="{{ r.proveedor or '' }}">{{ r.proveedor or '' }}</td>
+      <td data-col="categoria">{{ r.categoria.nombre if r.categoria else '' }}</td>
+      <td data-col="subcategoria">{{ r.subcategoria.nombre if r.subcategoria else '' }}</td>
     </tr>
   {% endfor %}
   </tbody>
 </table></div>
-<div class="tabla-pie">{{ repuestos | length }} repuesto{{ 's' if repuestos | length != 1 }}</div>
-{% else %}{{ vacio('fa-boxes-stacked', 'No hay repuestos' ~ (' que coincidan con la búsqueda' if q or categoria_id or filtro else ' cargados todavía') ~ '.') }}{% endif %}
+<div class="tabla-pie">{{ repuestos | length }} repuesto{{ 's' if repuestos | length != 1 }}
+  <span class="muted"> · Arrastrá el borde de un título para cambiar el ancho de la columna.</span></div>
+{% else %}{{ vacio('fa-boxes-stacked', 'No hay repuestos' ~ (' que coincidan con la búsqueda' if q or categoria_id or subcategoria_id or filtro else ' cargados todavía') ~ '.') }}{% endif %}
