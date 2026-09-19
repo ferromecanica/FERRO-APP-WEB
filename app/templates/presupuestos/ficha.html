@@ -9,7 +9,8 @@
 <div class="page-head">
   <div>
     <div class="eyebrow">Presupuesto · {{ p.fecha | fecha }}</div>
-    <h1>#{{ p.id }} <span style="font-size:1rem;vertical-align:middle">{{ badge(p.estado) }}</span></h1>
+    <h1>#{{ p.id }} <span style="font-size:1rem;vertical-align:middle">{{ badge(p.estado) }}
+      {% if p.archivado %}<span class="chip"><i class="fa-solid fa-box-archive"></i> Archivado</span>{% endif %}</span></h1>
     <div class="muted small" style="margin-top:4px">{{ p.cliente.nombre }}{% if p.vehiculo %} · {{ p.vehiculo.patente }} {{ p.vehiculo.descripcion }}{% endif %}</div>
   </div>
   <div class="actions">
@@ -183,9 +184,15 @@
       </dl>
     </div>
 
-    <div class="card card-body">
+    <div class="card card-body actions">
+      <form method="post" action="{{ url_for('presupuestos.archivar', id=p.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="archivar" value="{{ '0' if p.archivado else '1' }}">
+        <button class="btn btn-sm"><i class="fa-solid {{ 'fa-box-open' if p.archivado else 'fa-box-archive' }}"></i>
+          {{ 'Sacar del archivo' if p.archivado else 'Archivar' }}</button>
+      </form>
       <form method="post" action="{{ url_for('presupuestos.eliminar', id=p.id) }}"
-            data-confirmar="¿Eliminar el presupuesto #{{ p.id }}?" data-confirmar-detalle="No se puede deshacer."
+            data-confirmar="¿Eliminar el presupuesto #{{ p.id }}?" data-confirmar-detalle="No se puede deshacer. Si solo querés sacarlo del listado, archivalo."
             data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar presupuesto</button>

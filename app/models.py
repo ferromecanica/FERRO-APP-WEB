@@ -483,6 +483,7 @@ class Presupuesto(TimestampMixin, db.Model):
     valor_hora = db.Column(db.Float)  # congelado al crear el presupuesto
     monto_fijo_mo = db.Column(db.Float)
     mostrar_precios_detalle = db.Column(db.Boolean, default=True)
+    archivado = db.Column(db.Boolean, default=False, nullable=False)  # fuera del listado, sin borrarlo
     archivo_pdf = db.Column(db.String(300))
 
     cliente = db.relationship("Cliente")

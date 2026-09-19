@@ -93,6 +93,16 @@ assert str(pid) in B(c.get(f'/presupuestos/?q={pid}'))
 assert str(pid) in B(c.get('/presupuestos/?estado=Aprobado'))
 assert str(pid) not in B(c.get('/presupuestos/?estado=Rechazado'))
 
+# archivar: sale del listado pero sigue estando
+b = post(f'/presupuestos/{pid}/archivar', {'archivar': '1'})
+assert f'#{pid} archivado' in b and 'Archivados (1)' in b
+assert str(pid) not in B(c.get('/presupuestos/'))
+assert str(pid) in B(c.get('/presupuestos/?estado=Archivados'))
+assert str(pid) not in B(c.get('/presupuestos/?estado=Aprobado'))
+b = post(f'/presupuestos/{pid}/archivar', {'archivar': '0'})
+assert 'desarchivado' in b
+assert str(pid) in B(c.get('/presupuestos/'))
+
 # vuelve a Borrador y se elimina
 post(f'/presupuestos/{pid}/estado', {'estado': 'Borrador'})
 assert f'Presupuesto #{pid} eliminado' in post(f'/presupuestos/{pid}/eliminar')

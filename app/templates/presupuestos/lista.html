@@ -15,6 +15,8 @@
 <div class="filters" style="margin-bottom:14px">
   <a class="chip {{ 'active' if not estado }}" href="{{ url_for('presupuestos.lista', q=q or None) }}">Todos</a>
   {% for e in estados %}<a class="chip {{ 'active' if estado == e }}" href="{{ url_for('presupuestos.lista', estado=e, q=q or None) }}">{{ e }}</a>{% endfor %}
+  {% if archivados %}<a class="chip {{ 'active' if estado == 'Archivados' }}" href="{{ url_for('presupuestos.lista', estado='Archivados', q=q or None) }}">
+    <i class="fa-solid fa-box-archive"></i> Archivados ({{ archivados }})</a>{% endif %}
 </div>
 <div class="card">
   {% if presupuestos %}
@@ -32,8 +34,21 @@
         <td class="num hide-sm">{{ p.total_repuestos | pesos }}</td>
         <td class="num hide-sm">{{ p.costo_mano_obra | pesos }}</td>
         <td class="num"><strong>{{ p.total | pesos }}</strong></td>
-        <td class="num">{% if p.archivo_pdf %}<a href="{{ p.archivo_pdf }}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
-             title="Ver PDF"><i class="fa-solid fa-file-pdf" style="color:#d93025"></i></a>{% endif %}</td>
+        <td class="num" onclick="event.stopPropagation()"><span class="acciones-fila">
+          {% if p.archivo_pdf %}<a href="{{ p.archivo_pdf }}" target="_blank" rel="noopener"
+             title="Ver PDF"><i class="fa-solid fa-file-pdf" style="color:#d93025"></i></a>{% endif %}
+          <form method="post" action="{{ url_for('presupuestos.archivar', id=p.id) }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="archivar" value="{{ '0' if p.archivado else '1' }}">
+            <button class="btn-icon" title="{{ 'Sacar del archivo' if p.archivado else 'Archivar' }}">
+              <i class="fa-solid {{ 'fa-box-open' if p.archivado else 'fa-box-archive' }}"></i></button></form>
+          <form method="post" action="{{ url_for('presupuestos.eliminar', id=p.id) }}" style="display:inline"
+                data-confirmar="¿Eliminar el presupuesto #{{ p.id }}?" data-confirmar-detalle="No se puede deshacer. Si solo querés sacarlo del listado, archivalo."
+                data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="estado" value="{{ estado }}">
+            <button class="btn-icon" title="Eliminar"><i class="fa-solid fa-trash"></i></button></form>
+        </span></td>
       </tr>
     {% endfor %}
     </tbody>

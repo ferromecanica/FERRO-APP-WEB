@@ -22,12 +22,10 @@
       .col-cant { text-align: center; white-space: nowrap; }
       .col-plata { text-align: right; white-space: nowrap; }
       .totals-box { width: 300px; margin-left: auto; margin-top: 18px; background: #fdfdfd; padding: 10px; border: 1px solid #eee; page-break-inside: avoid; }
-      .totals-box.sin-detalle { width: 420px; }
       .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
       .total-row span + span { white-space: nowrap; padding-left: 14px; }
       .grand-total { border-top: 2px solid #E48A06; font-weight: bold; color: #E48A06; font-size: 16px; padding-top: 8px; margin-top: 8px; }
-      .sin-detalle .grand-total { border-top: none; padding-top: 0; margin-top: 0; font-size: 14px; }
-      .sin-detalle .grand-total span:first-child { white-space: nowrap; }
+      .sin-detalle-titulo { font-size: 11px; font-weight: bold; color: #666; padding-bottom: 5px; }
       .validez { margin-top: 18px; font-size: 10px; color: #666; }
     </style>
   </head>
@@ -85,14 +83,14 @@
         </tbody>
       </table>
 
-      <div class="totals-box{{ '' if p.mostrar_precios_detalle else ' sin-detalle' }}">
+      <div class="totals-box">
         {% if p.mostrar_precios_detalle %}
           <div class="total-row"><span>Subtotal Materiales:</span> <span>{{ p.total_repuestos | pesos }}</span></div>
           <div class="total-row"><span>Mano de Obra:</span> <span>{{ p.costo_mano_obra | pesos }}</span></div>
-          <div class="total-row grand-total"><span>TOTAL:</span> <span>{{ p.total | pesos }}</span></div>
         {% else %}
-          <div class="total-row grand-total"><span>TOTAL MANO DE OBRA Y MATERIALES:</span> <span>{{ p.total | pesos }}</span></div>
+          <div class="sin-detalle-titulo">Materiales y mano de obra</div>
         {% endif %}
+        <div class="total-row grand-total"><span>TOTAL:</span> <span>{{ p.total | pesos }}</span></div>
       </div>
 
       {% if validez %}<div class="validez">Presupuesto válido por {{ validez }} días. No incluye trabajos no detallados.</div>{% endif %}

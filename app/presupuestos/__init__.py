@@ -56,7 +56,8 @@ def lista():
     estado = request.args.get("estado", "")
     q = request.args.get("q", "").strip()
     consulta = Presupuesto.query.join(Cliente).outerjoin(Vehiculo, Presupuesto.vehiculo_id == Vehiculo.id)
-    if estado:
+    consulta = consulta.filter(Presupuesto.archivado.is_(estado == "Archivados"))
+    if estado and estado != "Archivados":
         consulta = consulta.filter(Presupuesto.estado == estado)
     if q:
         like = f"%{q}%"
@@ -65,8 +66,9 @@ def lista():
             filtros.append(Presupuesto.id == int(q))
         consulta = consulta.filter(or_(*filtros))
     presupuestos = consulta.order_by(Presupuesto.id.desc()).all()
+    archivados = Presupuesto.query.filter_by(archivado=True).count()
     return render_template("presupuestos/lista.html", presupuestos=presupuestos, estado=estado, q=q,
-                           estados=ESTADOS_PRESUPUESTO)
+                           estados=ESTADOS_PRESUPUESTO, archivados=archivados)
 
 
 @bp.route("/nuevo", methods=["GET", "POST"])
@@ -228,6 +230,16 @@ def precios(id):
     return _volver(id, "totales")
 
 
+@bp.route("/<int:id>/archivar", methods=["POST"])
+def archivar(id):
+    """Lo saca del listado sin borrarlo (queda en la solapa Archivados)."""
+    p = db.get_or_404(Presupuesto, id)
+    p.archivado = request.form.get("archivar") != "0"
+    db.session.commit()
+    flash(f"Presupuesto #{id} {'archivado' if p.archivado else 'desarchivado'}.", "ok")
+    return redirect(url_for(".lista")) if p.archivado else _volver(id)
+
+
 @bp.route("/<int:id>/pdf", methods=["POST"])
 def pdf(id):
     p = db.get_or_404(Presupuesto, id)
@@ -247,4 +259,4 @@ def eliminar(id):
     db.session.delete(p)
     db.session.commit()
     flash(f"Presupuesto #{id} eliminado.", "ok")
-    return redirect(url_for(".lista"))
+    return redirect(url_for(".lista", estado=request.form.get("estado") or None))
