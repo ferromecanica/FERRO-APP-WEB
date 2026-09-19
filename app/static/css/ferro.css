@@ -467,3 +467,8 @@ th.ordenada .flecha { opacity: 1; color: var(--accent); }
 th[draggable="true"] { cursor: grab; }
 th.arrastrando { opacity: .45; }
 th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !important; }
+/* La lupa del buscador es solo el primer ícono; el del botón de código de barras va en su lugar */
+.search i { position: static; transform: none; }
+.search > i, .search > .input-group ~ i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); z-index: 1; }
+.btn-escaner i { position: static !important; transform: none !important; color: var(--text); font-size: 1rem; }
+.btn-escaner { display: inline-flex; align-items: center; gap: 6px; }

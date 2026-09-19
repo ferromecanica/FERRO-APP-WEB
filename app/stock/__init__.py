@@ -57,6 +57,26 @@ def _arbol_categorias():
 # ─────────────────────────────────── Repuestos ──────────────────────────────
 
 
+# Campos de texto del repuesto donde busca el buscador (además de categoría, subcategoría y número)
+CAMPOS_BUSQUEDA = [
+    Repuesto.nombre, Repuesto.marca, Repuesto.nro_parte, Repuesto.codigo_barras, Repuesto.detalle,
+    Repuesto.proveedor, Repuesto.cod_proveedor, Repuesto.marca_proveedor,
+    Repuesto.comp_marca, Repuesto.comp_modelo, Repuesto.comp_motor, Repuesto.estanteria, Repuesto.estante,
+]
+
+
+def _coincide(palabra):
+    """La palabra aparece en algún campo del repuesto, en su categoría o subcategoría, o es su número."""
+    like = f"%{palabra}%"
+    condiciones = [c.ilike(like) for c in CAMPOS_BUSQUEDA]
+    condiciones.append(Repuesto.categoria_id.in_(db.session.query(Categoria.id).filter(Categoria.nombre.ilike(like))))
+    condiciones.append(Repuesto.subcategoria_id.in_(
+        db.session.query(Subcategoria.id).filter(Subcategoria.nombre.ilike(like))))
+    if palabra.isdigit():
+        condiciones.append(Repuesto.id == int(palabra))
+    return or_(*condiciones)
+
+
 # Columnas por las que se puede ordenar el listado (clave del encabezado → columna)
 ORDENES = {
     "material": Repuesto.nombre, "marca": Repuesto.marca, "parte": Repuesto.nro_parte, "stock": Repuesto.stock_actual,
@@ -94,14 +114,7 @@ def lista():
     consulta = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS)
     if q:
         for palabra in q.split():  # todas las palabras tienen que aparecer en algún campo
-            like = f"%{palabra}%"
-            filtro_id = [Repuesto.id == int(palabra)] if palabra.isdigit() else []
-            consulta = consulta.filter(or_(
-                Repuesto.nombre.ilike(like), Repuesto.nro_parte.ilike(like), Repuesto.codigo_barras.ilike(like),
-                Repuesto.marca.ilike(like), Repuesto.detalle.ilike(like), Repuesto.comp_marca.ilike(like),
-                Repuesto.comp_modelo.ilike(like), Repuesto.comp_motor.ilike(like), Repuesto.cod_proveedor.ilike(like),
-                Repuesto.estanteria.ilike(like), Repuesto.estante.ilike(like),
-                *filtro_id))
+            consulta = consulta.filter(_coincide(palabra))
     if categoria_id:
         consulta = consulta.filter(Repuesto.categoria_id == categoria_id)
     if subcategoria_id:

@@ -10,7 +10,7 @@
       hx-trigger="input changed delay:250ms from:input[name=q], change from:select, search, ordenar">
   <input type="hidden" name="orden" value="{{ orden }}"><input type="hidden" name="dir" value="{{ direccion }}">
   <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
-    <input type="search" name="q" value="{{ q }}" placeholder="Nombre, nº de parte, código, compatibilidad, estantería…" autocomplete="off" data-escaner></div>
+    <input type="search" name="q" value="{{ q }}" placeholder="Buscá por cualquier dato: nombre, proveedor, nº de parte, categoría…" autocomplete="off" data-escaner></div>
   <select name="categoria" id="filtro-categoria" data-valor="{{ categoria_id or '' }}"></select>
   <select name="subcategoria" id="filtro-subcategoria" data-valor="{{ subcategoria_id or '' }}"></select>
   <select name="filtro">
