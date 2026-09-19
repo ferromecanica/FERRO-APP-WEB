@@ -15,6 +15,7 @@ def create_app(config_class=Config):
     csrf.init_app(app)
 
     from . import models  # noqa: F401  (registra los modelos)
+    from .api import bp as api_bp
     from .auth import bp as auth_bp
     from .clientes import bp as clientes_bp
     from .dashboard import bp as dashboard_bp
@@ -34,6 +35,7 @@ def create_app(config_class=Config):
     app.register_blueprint(stock_bp, url_prefix="/stock")
     app.register_blueprint(ventas_bp, url_prefix="/ventas")
     app.register_blueprint(sistema_bp, url_prefix="/sistema")
+    app.register_blueprint(api_bp, url_prefix="/api")
 
     from .cli import register_cli
     from .filters import register_filters

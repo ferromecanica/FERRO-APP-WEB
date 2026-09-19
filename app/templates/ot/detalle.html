@@ -38,6 +38,17 @@
       {% if ot.por_cobrar %}
       <button type="button" class="btn btn-primary" data-abrir="dialogo-cobro"><i class="fa-solid fa-cash-register"></i> Registrar cobro</button>
       {% endif %}
+      {% if ot.link_reporte %}
+      <a class="btn" href="{{ ot.link_reporte }}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" style="color:#d93025"></i> Reporte PDF</a>
+      {% endif %}
+      {% if ot.clasificacion_cierre == 'Servicio' %}
+        {% if reportes_configurados %}
+        <form method="post" action="{{ url_for('ot.reporte_generar', id=ot.id) }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('span').textContent='Generando…'">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn"><i class="fa-solid fa-rotate"></i> <span>{{ 'Regenerar' if ot.link_reporte else 'Generar' }} reporte</span></button></form>
+        {% endif %}
+        <a class="btn" href="{{ url_for('ot.reporte_vista', id=ot.id) }}" target="_blank" title="Vista previa del reporte"><i class="fa-solid fa-eye"></i></a>
+      {% endif %}
       <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" onsubmit="return confirm('¿Reabrir la OT {{ ot.id }}?{{ ' Se anula la venta registrada.' if ot.venta else '' }}')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn"><i class="fa-solid fa-lock-open"></i> Reabrir</button></form>

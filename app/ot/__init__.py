@@ -21,6 +21,7 @@ from ..models import (
     Venta,
     VentaItem,
 )
+from ..services import reporte
 from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
 from ..validaciones import MARCAS_COMUNES, normalizar_patente, numero_ar, patente_valida
 
@@ -246,6 +247,7 @@ def detalle(id):
     repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
     return render_template(
         "ot/detalle.html", ot=ot, estados=ESTADOS_OT_ABIERTA, mecanicos=_mecanicos(), repuestos=repuestos,
+        reportes_configurados=reporte.configurado(),
         **_contexto_cierre(ot),
     )
 
@@ -520,7 +522,35 @@ def cerrar(id):
         mensaje = f"OT #{ot.id} cerrada. Queda por cobrar."
     db.session.commit()
     flash(mensaje, "ok")
+    if clasificacion == "Servicio" and reporte.configurado():
+        _generar_reporte(ot)
     return _volver(ot)
+
+
+def _generar_reporte(ot):
+    try:
+        reporte.generar_pdf(ot)
+        db.session.commit()
+        flash("Reporte de mantenimiento generado en Drive.", "ok")
+    except reporte.ErrorReporte as e:
+        db.session.rollback()
+        flash(str(e), "error")
+
+
+@bp.route("/<int:id>/reporte", methods=["POST"])
+def reporte_generar(id):
+    ot = db.get_or_404(OrdenTrabajo, id)
+    if ot.abierta:
+        flash("El reporte se genera con la OT cerrada.", "error")
+    else:
+        _generar_reporte(ot)
+    return _volver(ot)
+
+
+@bp.route("/<int:id>/reporte/vista")
+def reporte_vista(id):
+    """Vista previa del reporte en el navegador (sin firma ni fotos de Drive)."""
+    return reporte.armar_html(db.get_or_404(OrdenTrabajo, id), vista_previa=True)
 
 
 @bp.route("/<int:id>/cobrar", methods=["GET", "POST"])

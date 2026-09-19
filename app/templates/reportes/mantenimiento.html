@@ -1,0 +1,119 @@
+{#
+  Reporte de mantenimiento: mismo diseño que el generador de Apps Script de AppSheet.
+  __LOGO__, __FIRMA__ y __FOTO:archivo__ los reemplaza el Apps Script con las imágenes de Drive.
+#}
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font-family: sans-serif; color: #333; margin: 0; padding: 15px; }
+      .container { max-width: 800px; margin: auto; border: 1px solid #eee; padding: 25px; border-radius: 10px; }
+      .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E48A06; padding-bottom: 15px; margin-bottom: 20px; }
+      .logo-box { width: 55%; }
+      .logo-img { width: 250px; height: auto; }
+      .services-text { font-size: 10px; color: #555; margin-top: 8px; line-height: 1.3; font-weight: bold; }
+      .doc-title { text-align: right; width: 45%; }
+      .doc-title h2 { color: #E48A06; margin: 0; font-size: 20px; text-transform: uppercase; }
+      .taller-data { font-size: 9px; color: #666; margin-top: 10px; line-height: 1.4; }
+      .info-grid { background: #f9f9f9; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #eee; }
+      .label { color: #E48A06; font-size: 9px; font-weight: bold; text-transform: uppercase; display: block; }
+
+      h3 {
+        border-left: 5px solid #E48A06;
+        padding: 6px 10px;
+        background: #f2f2f2;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: #333;
+        margin-top: 15px;
+        margin-bottom: 5px;
+        page-break-after: avoid;
+      }
+
+      table { width: calc(100% - 10px); margin-left: 10px; border-collapse: collapse; margin-bottom: 10px; }
+      td { font-size: 11px; }
+      .valor-resaltado { font-size: 13px; font-weight: normal; }
+
+      .photo-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; margin-left: 10px; }
+      .photo-item { width: 48%; border: 1px solid #eee; padding: 5px; border-radius: 5px; background: #fff; box-sizing: border-box; page-break-inside: avoid; }
+      .photo-img { width: 100%; height: 270px; object-fit: contain; background: #fcfcfc; border-radius: 3px; display: block; }
+
+      .footer-layout { display: flex; align-items: flex-end; margin-top: 50px; gap: 30px; page-break-inside: avoid; }
+      .footer-col { flex: 1; }
+      .box-next { border: 2px solid #E48A06; padding: 10px; text-align: center; font-weight: bold; font-size: 12px; color: #E48A06; border-radius: 8px; }
+      .signature-box { text-align: center; }
+      .firma-img { width: 150px; height: auto; margin-bottom: -15px; }
+      .motivo-box { padding: 10px 8px; font-size: 11px; margin-left: 10px; border-bottom: 1px solid #eee; line-height: 1.4; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-box">
+          <img src="{{ logo }}" class="logo-img">
+          <div class="services-text">Mecánica - Electricidad<br>Inyección – Cambios de aceite<br>Escaneo profesional – Tren delantero<br>Servicio Integral del Automotor</div>
+        </div>
+        <div class="doc-title">
+          <h2>REPORTE DE MANTENIMIENTO</h2>
+          <p style="font-weight: bold; font-size: 18px; margin: 5px 0;">OT #{{ ot.id }}</p>
+          <p style="font-size: 11px;">Fecha: {{ ot.fecha_fin | fecha if ot.fecha_fin else '---' }}</p>
+          <div class="taller-data">{{ taller.direccion }}<br>{{ taller.localidad }}<br>Cel/Wzp: {{ taller.telefono }}<br>IVA {{ taller.iva }}</div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <table style="width: 100%; border: none; margin-left: 0;">
+          <tr>
+            <td style="border:none; width: 35%; vertical-align: top;"><span class="label">Cliente</span><b>{{ ot.cliente.nombre if ot.cliente else 'Consumidor Final' }}</b><br><small>Tel: {{ (ot.cliente.telefono if ot.cliente else '') or '---' }}</small></td>
+            <td style="border:none; width: 40%; vertical-align: top;"><span class="label">Vehículo</span><b>{{ ot.vehiculo.patente }}</b><br><small>{{ ((ot.vehiculo.marca or '') ~ ' ' ~ (ot.vehiculo.modelo or '')).strip() or '---' }}</small></td>
+            <td style="border:none; width: 25%; vertical-align: top;"><span class="label">Kilómetros</span><b style="font-size: 13px;">{{ ot.km_entrada | numero if ot.km_entrada else '---' }} KM</b></td>
+          </tr>
+        </table>
+      </div>
+
+      {% if ot.detalle %}<h3>Motivo de Ingreso</h3><div class="motivo-box">{{ ot.detalle }}</div>{% endif %}
+
+      <h3>Lubricantes y Fluidos</h3>
+      <table><tbody>
+        {% for label, val, obs in fluidos %}
+        <tr><td style="padding:4px 8px; border-bottom:1px solid #eee; width: 55%; font-weight:normal;">{{ label }}</td><td style="padding:4px 8px; border-bottom:1px solid #eee;" class="valor-resaltado">{{ val }}{% if obs %} - {{ obs }}{% endif %}</td></tr>
+        {% endfor %}
+      </tbody></table>
+
+      <h3>Filtros y Chequeos</h3>
+      <table><tbody>
+        {% for i in range(3) %}
+        <tr><td style="padding:6px 8px; border-bottom:1px solid #eee; width: 35%; font-weight:normal;">{{ filtros1[i][0] }}</td><td style="padding:6px 8px; border-bottom:1px solid #eee; font-weight:bold; width: 15%;">{{ filtros1[i][1] }}</td><td style="padding:6px 8px; border-bottom:1px solid #eee; border-left: 1px solid #eee; width: 35%; font-weight:normal;">{{ filtros2[i][0] }}</td><td style="padding:6px 8px; border-bottom:1px solid #eee; font-weight:bold; width: 15%;">{{ filtros2[i][1] }}</td></tr>
+        {% endfor %}
+      </tbody></table>
+
+      {% if ot.tareas %}<h3>Detalle de tareas realizadas</h3><table><tbody>
+        {% for t in ot.tareas %}<tr><td style="padding: 10px 8px; border-bottom: 1px solid #eee;">{{ t.descripcion }}</td></tr>{% endfor %}
+      </tbody></table>{% endif %}
+
+      {% if ot.consumos %}<h3>Repuestos e Insumos</h3><table><tbody>
+        {% for c in ot.consumos %}<tr><td style="padding: 10px 8px; border-bottom: 1px solid #eee;">{{ c.descripcion }}</td><td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">{{ c.cantidad | numero(2) | replace(',00', '') }}</td></tr>{% endfor %}
+      </tbody></table>{% endif %}
+
+      {% if fotos %}
+      <h3>Registro Fotográfico</h3><div class="photo-grid">
+        {% for f in fotos %}
+        <div class="photo-item">
+          <img src="{{ f.src }}" class="photo-img">
+          {% if f.descripcion %}<p style="font-size: 8px; color: #666; margin: 2px 0 0 0; text-align: center; font-style: italic;">{{ f.descripcion }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="footer-layout">
+        <div class="footer-col"><div class="box-next">PRÓXIMO SERVICIO: {{ ot.km_proximo_service | numero if ot.km_proximo_service else '---' }} KM</div></div>
+        <div class="footer-col signature-box">
+          {% if firma %}<img src="{{ firma }}" class="firma-img">{% endif %}
+          <div style="border-top: 1px solid #333; width: 150px; margin: 0 auto;"></div>
+          <p style="font-size: 10px; font-weight: bold; margin-top: 8px; text-transform: uppercase;">Firma Responsable</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

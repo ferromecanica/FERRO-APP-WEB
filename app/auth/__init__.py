@@ -13,7 +13,8 @@ EMAIL_TALLER = "taller@ferro.local"
 
 def ingreso_automatico():
     """Con LOGIN_OBLIGATORIO apagado, todos entran como el usuario genérico 'Taller'."""
-    if current_user.is_authenticated or request.endpoint in ("static", "sistema.backup"):
+    if current_user.is_authenticated or request.endpoint in ("static", "sistema.backup") \
+            or (request.endpoint or "").startswith("api."):
         return
     usuario = Usuario.query.filter_by(email=EMAIL_TALLER).first()
     if usuario is None:
