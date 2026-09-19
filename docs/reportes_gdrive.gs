@@ -10,7 +10,7 @@
  *   p. ej. "Repuestos", que se crea sola) y devuelve su id.
  * accion=borrar_foto: manda una foto a la papelera.
  *
- * Instalación (una sola vez), en el MISMO proyecto "Ferro Backup":
+ * Instalación (una sola vez), en el MISMO proyecto de Apps Script donde está el backup diario:
  *  1. Archivo → "+" → Script → nombre "Reportes" → pegar este código. (Usa la constante
  *     SECRETO que ya está en el otro archivo del proyecto.)
  *  2. Implementar → Nueva implementación → tipo "Aplicación web":
