@@ -14,6 +14,7 @@ from ..models import (
     ConfigTaller,
     Presupuesto,
     PresupuestoItem,
+    PresupuestoTrabajo,
     Repuesto,
     Vehiculo,
 )
@@ -145,6 +146,11 @@ def pasar_a_presupuesto():
     if not coti["items"] and not _totales(coti)["mano_obra"]:
         flash("La cotización está vacía.", "error")
         return redirect(url_for(".inicio"))
+    trabajos = [t.strip(" -•\t") for t in request.form.get("trabajos", "").splitlines()]
+    trabajos = [t for t in trabajos if t]
+    if not trabajos:
+        flash("Escribí los trabajos a realizar: van en el PDF del presupuesto.", "error")
+        return redirect(url_for(".inicio") + "#pasar")
 
     vehiculo = db.session.get(Vehiculo, request.form.get("vehiculo_id", type=int) or 0)
     t = _totales(coti)
@@ -156,6 +162,8 @@ def pasar_a_presupuesto():
         horas_mano_obra=coti["horas"], monto_fijo_mo=coti["monto_mo"],
     )
     db.session.add(p)
+    for texto in trabajos:
+        db.session.add(PresupuestoTrabajo(presupuesto=p, descripcion=texto))
     for i in coti["items"]:
         db.session.add(PresupuestoItem(presupuesto=p, repuesto_id=i["repuesto_id"], descripcion=i["descripcion"],
                                        cantidad=i["cantidad"], precio_unitario=i["precio"], costo_unitario=i["costo"]))

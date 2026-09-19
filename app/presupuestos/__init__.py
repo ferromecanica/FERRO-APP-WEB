@@ -219,6 +219,15 @@ def estado(id):
     return _volver(id)
 
 
+@bp.route("/<int:id>/precios", methods=["POST"])
+def precios(id):
+    """Mostrar u ocultar el precio de cada ítem en el PDF (el total siempre va)."""
+    p = db.get_or_404(Presupuesto, id)
+    p.mostrar_precios_detalle = request.form.get("mostrar") == "1"
+    db.session.commit()
+    return _volver(id, "totales")
+
+
 @bp.route("/<int:id>/pdf", methods=["POST"])
 def pdf(id):
     p = db.get_or_404(Presupuesto, id)

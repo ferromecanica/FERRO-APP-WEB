@@ -126,10 +126,16 @@
         </dl>
       </div>
     </div>
-    <form class="card" method="post" action="{{ url_for('cotizador.pasar_a_presupuesto') }}">
+    <form class="card" id="pasar" method="post" action="{{ url_for('cotizador.pasar_a_presupuesto') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {{ encabezado('fa-file-invoice-dollar', 'Pasar a presupuesto') }}
       <div class="card-body">
+        <div class="campo-falta">
+          <label for="trabajos"><i class="fa-solid fa-list-check"></i> Trabajos a realizar *</label>
+          <textarea name="trabajos" id="trabajos" rows="3" required
+                    placeholder="Uno por renglón. Ej.:&#10;Reemplazo de compresor de A/A&#10;Carga de gas y prueba"></textarea>
+          <div class="muted small" style="margin-top:4px">Esto es lo que el cliente lee arriba de todo en el PDF: el cotizador no lo tiene cargado.</div>
+        </div>
         <div class="form-grid">
           <div><label>Cliente</label>
             <select name="cliente_id" id="cliente" required>

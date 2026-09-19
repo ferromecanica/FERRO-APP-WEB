@@ -17,11 +17,17 @@
       h3 { border-left: 5px solid #E48A06; padding: 6px 10px; background: #f2f2f2; font-size: 13px; text-transform: uppercase;
            color: #333; margin-top: 16px; margin-bottom: 5px; page-break-after: avoid; }
       table { width: 100%; border-collapse: collapse; }
-      th { background: #f2f2f2; padding: 8px; text-align: left; font-size: 11px; border-bottom: 2px solid #ddd; }
-      td { font-size: 11px; border-bottom: 1px solid #eee; }
-      .totals-box { width: 260px; margin-left: auto; margin-top: 18px; background: #fdfdfd; padding: 10px; border: 1px solid #eee; page-break-inside: avoid; }
+      th { background: #f2f2f2; padding: 7px 8px; text-align: left; font-size: 11px; border-bottom: 2px solid #ddd; }
+      td { font-size: 11px; border-bottom: 1px solid #eee; padding: 7px 8px; }
+      .col-cant { text-align: center; white-space: nowrap; }
+      .col-plata { text-align: right; white-space: nowrap; }
+      .totals-box { width: 300px; margin-left: auto; margin-top: 18px; background: #fdfdfd; padding: 10px; border: 1px solid #eee; page-break-inside: avoid; }
+      .totals-box.sin-detalle { width: 420px; }
       .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+      .total-row span + span { white-space: nowrap; padding-left: 14px; }
       .grand-total { border-top: 2px solid #E48A06; font-weight: bold; color: #E48A06; font-size: 16px; padding-top: 8px; margin-top: 8px; }
+      .sin-detalle .grand-total { border-top: none; padding-top: 0; margin-top: 0; font-size: 14px; }
+      .sin-detalle .grand-total span:first-child { white-space: nowrap; }
       .validez { margin-top: 18px; font-size: 10px; color: #666; }
     </style>
   </head>
@@ -55,35 +61,38 @@
 
       <h3>Trabajos a Realizar</h3>
       <table><tbody>
-        {% for t in p.trabajos %}<tr><td style="padding: 10px 8px;">{{ t.descripcion }}</td></tr>
-        {% else %}<tr><td style="padding: 10px 8px;">No especificado.</td></tr>{% endfor %}
+        {% for t in p.trabajos %}<tr><td style="padding: 9px 8px;">{{ t.descripcion }}</td></tr>
+        {% else %}<tr><td style="padding: 9px 8px;">No especificado.</td></tr>{% endfor %}
       </tbody></table>
 
       <h3>Repuestos y Materiales</h3>
       <table>
-        <thead><tr><th>Descripción</th><th style="text-align: center;">Cant.</th>
-          {% if p.mostrar_precios_detalle %}<th style="text-align: right;">Unitario</th><th style="text-align: right;">Subtotal</th>{% endif %}</tr></thead>
+        {% if p.mostrar_precios_detalle %}
+        <colgroup><col style="width: 52%"><col style="width: 10%"><col style="width: 19%"><col style="width: 19%"></colgroup>
+        {% else %}<colgroup><col style="width: 88%"><col style="width: 12%"></colgroup>{% endif %}
+        <thead><tr><th>Descripción</th><th class="col-cant">Cant.</th>
+          {% if p.mostrar_precios_detalle %}<th class="col-plata">Unitario</th><th class="col-plata">Subtotal</th>{% endif %}</tr></thead>
         <tbody>
         {% for i in p.items %}
-          <tr><td style="padding: 8px;">{{ i.descripcion or (i.repuesto.nombre if i.repuesto else '') }}</td>
-            <td style="padding: 8px; text-align: center;">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+          <tr><td>{{ i.descripcion or (i.repuesto.nombre if i.repuesto else '') }}</td>
+            <td class="col-cant">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
             {% if p.mostrar_precios_detalle %}
-            <td style="padding: 8px; text-align: right;">{{ i.precio_unitario | pesos }}</td>
-            <td style="padding: 8px; text-align: right;">{{ i.subtotal | pesos }}</td>{% endif %}</tr>
+            <td class="col-plata">{{ i.precio_unitario | pesos }}</td>
+            <td class="col-plata">{{ i.subtotal | pesos }}</td>{% endif %}</tr>
         {% else %}
-          <tr><td colspan="{{ 4 if p.mostrar_precios_detalle else 2 }}" style="padding: 8px;">No hay repuestos.</td></tr>
+          <tr><td colspan="{{ 4 if p.mostrar_precios_detalle else 2 }}">No hay repuestos.</td></tr>
         {% endfor %}
         </tbody>
       </table>
 
-      <div class="totals-box">
+      <div class="totals-box{{ '' if p.mostrar_precios_detalle else ' sin-detalle' }}">
         {% if p.mostrar_precios_detalle %}
           <div class="total-row"><span>Subtotal Materiales:</span> <span>{{ p.total_repuestos | pesos }}</span></div>
           <div class="total-row"><span>Mano de Obra:</span> <span>{{ p.costo_mano_obra | pesos }}</span></div>
+          <div class="total-row grand-total"><span>TOTAL:</span> <span>{{ p.total | pesos }}</span></div>
         {% else %}
-          <div style="font-size: 11px; font-weight: bold; color: #666; padding-bottom: 5px;">Materiales y mano de obra</div>
+          <div class="total-row grand-total"><span>TOTAL MANO DE OBRA Y MATERIALES:</span> <span>{{ p.total | pesos }}</span></div>
         {% endif %}
-        <div class="total-row grand-total"><span>TOTAL:</span> <span>{{ p.total | pesos }}</span></div>
       </div>
 
       {% if validez %}<div class="validez">Presupuesto válido por {{ validez }} días. No incluye trabajos no detallados.</div>{% endif %}

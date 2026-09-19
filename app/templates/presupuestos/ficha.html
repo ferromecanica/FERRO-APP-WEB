@@ -33,6 +33,11 @@
     {# ───── Trabajos ───── #}
     <div class="card" id="trabajos">
       {{ encabezado('fa-list-check', 'Trabajos a realizar', p.trabajos | length) }}
+      {% if not p.trabajos and editable %}
+      <div class="card-body" style="padding-bottom:0"><div class="campo-falta" style="margin:0">
+        <i class="fa-solid fa-triangle-exclamation" style="color:var(--accent)"></i>
+        Falta cargar los trabajos a realizar: es lo primero que el cliente lee en el PDF.</div></div>
+      {% endif %}
       {% if p.trabajos %}
       <ul class="list">{% for t in p.trabajos %}
         <li><span>{{ t.descripcion }}</span>
@@ -142,7 +147,7 @@
 
   {# ───── Totales ───── #}
   <div class="stack">
-    <div class="card resultado">
+    <div class="card resultado" id="totales">
       {{ encabezado('fa-calculator', 'Totales') }}
       <div class="card-body">
         <dl class="props totales">
@@ -155,9 +160,17 @@
           <dt>Costo de materiales</dt><dd class="num">{{ p.costo_materiales | pesos }}</dd>
           <dt><strong>Ganancia</strong></dt><dd class="num"><strong style="color:var(--ok)">{{ p.ganancia | pesos }}</strong></dd>
         </dl>
-        <p class="muted small" style="margin:12px 0 0">
-          {% if p.mostrar_precios_detalle %}El PDF muestra el precio de cada ítem.{% else %}El PDF muestra solo el total.{% endif %}
-          {% if not reportes_configurados %}<br>Falta configurar la conexión con Drive para generar el PDF.{% endif %}</p>
+        <form method="post" action="{{ url_for('presupuestos.precios', id=p.id) }}" style="margin-top:14px">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label style="display:block;margin-bottom:6px">Precios en el PDF</label>
+          <div class="segmented" style="margin-bottom:6px">
+            <button class="seg {{ 'active' if p.mostrar_precios_detalle }}" name="mostrar" value="1"><i class="fa-solid fa-eye"></i> Mostrar</button>
+            <button class="seg {{ 'active' if not p.mostrar_precios_detalle }}" name="mostrar" value="0"><i class="fa-solid fa-eye-slash"></i> Ocultar</button>
+          </div>
+          <div class="muted small">{% if p.mostrar_precios_detalle %}Sale el precio de cada ítem y el detalle de materiales y mano de obra.
+            {% else %}Salen los mismos renglones pero sin precios, y una sola línea final con el total.{% endif %}</div>
+        </form>
+        {% if not reportes_configurados %}<p class="muted small" style="margin:12px 0 0">Falta configurar la conexión con Drive para generar el PDF.</p>{% endif %}
       </div>
     </div>
 

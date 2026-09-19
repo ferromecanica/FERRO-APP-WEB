@@ -62,6 +62,19 @@ b = post(f'/presupuestos/items/{iid}/editar', {'cantidad': '3', 'precio': '1.000
 assert 'Editado' in b and '$ 3.000' in b
 assert 'Editado' not in post(f'/presupuestos/items/{iid}/eliminar')
 
+# switch de precios en el PDF
+b = post(f'/presupuestos/{pid}/precios', {'mostrar': '0'})
+assert 'sin precios' in b
+b = post(f'/presupuestos/{pid}/precios', {'mostrar': '1'})
+assert 'precio de cada ítem' in b
+
+# aviso cuando faltan los trabajos
+assert 'Falta cargar los trabajos' not in b
+b = post(f'/presupuestos/trabajos/{tid}/eliminar')
+assert 'Falta cargar los trabajos' in b
+post(f'/presupuestos/{pid}/trabajos', {'descripcion': 'Reemplazo de compresor de A/A'})
+tid = int(re.search(r'/trabajos/(\d+)/eliminar', B(c.get(f'/presupuestos/{pid}'))).group(1))
+
 # estados: aprobado deja de ser editable
 assert 'Presupuesto aprobado' in post(f'/presupuestos/{pid}/estado', {'estado': 'Aprobado'})
 for url, datos in [(f'/presupuestos/{pid}/trabajos', {'descripcion': 'no va'}),
