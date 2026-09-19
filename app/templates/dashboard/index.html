@@ -29,11 +29,11 @@
     <div class="kpi-value">{{ ganancia | pesos }}</div>
     <div class="kpi-foot">ventas menos costo de repuestos</div>
   </div>
-  <div class="card kpi">
-    <div class="kpi-label"><i class="fa-solid fa-triangle-exclamation"></i> Stock bajo</div>
-    <div class="kpi-value">{{ cant_bajo_stock }}</div>
-    <div class="kpi-foot">repuestos en o bajo el mínimo</div>
-  </div>
+  <a class="card kpi kpi-link" href="{{ url_for('ot.lista', estado='por_cobrar') }}">
+    <div class="kpi-label"><i class="fa-solid fa-hourglass-half"></i> Por cobrar</div>
+    <div class="kpi-value">{{ monto_por_cobrar | pesos }}</div>
+    <div class="kpi-foot">{{ cant_por_cobrar }} OT terminada{{ 's' if cant_por_cobrar != 1 }} sin cobrar</div>
+  </a>
 </div>
 
 <div class="grid grid-3-1">

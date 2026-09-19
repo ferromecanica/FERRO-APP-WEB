@@ -84,8 +84,8 @@ def lista():
     estado = request.args.get("estado")
     q = request.args.get("q", "").strip()
     consulta = OrdenTrabajo.query.join(Vehiculo).outerjoin(Cliente, OrdenTrabajo.cliente_id == Cliente.id)
-    if estado == "abiertas":
-        consulta = consulta.filter(OrdenTrabajo.estado.in_(ESTADOS_OT_ABIERTA))
+    if estado == "por_cobrar":
+        consulta = consulta.filter(OrdenTrabajo.estado == "Finalizada", ~OrdenTrabajo.ventas.any())
     elif estado:
         consulta = consulta.filter(OrdenTrabajo.estado == estado)
     if q:
@@ -407,6 +407,31 @@ def _guardar_checklist(ot, es_servicio):
     ot.otros = (request.form.get("otros", "").strip() or None) if es_servicio else None
 
 
+def _registrar_venta(ot, cobrado, metodo, fecha):
+    """Crea la venta de la OT (la fecha es la del cobro: la ganancia cuenta ese mes)."""
+    costo = ot.costo_repuestos  # antes de crear la venta (consultar la OT no debe arrastrar objetos a medio armar)
+    ot.total_cobrado = cobrado
+    venta = Venta(fecha=fecha, cliente=ot.cliente, metodo_pago=metodo)
+    venta.items.append(VentaItem(
+        descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
+        precio_unitario=cobrado, costo_unitario=costo,
+    ))
+    db.session.add(venta)
+    venta.ot = ot
+
+
+def _datos_cobro(ot):
+    """Valida cliente (obligatorio para cobrar), total y forma de pago del formulario."""
+    errores, cliente = [], None
+    if ot.cliente is None:
+        cliente, errores = _resolver_cliente(obligatorio=True)
+    cobrado = numero_ar(request.form.get("total_cobrado"))
+    metodo = request.form.get("metodo_pago")
+    if cobrado is None or cobrado < 0 or metodo not in METODOS_PAGO:
+        errores.append("Completá el total cobrado y la forma de pago.")
+    return cliente, cobrado, metodo, errores
+
+
 @bp.route("/<int:id>/cerrar", methods=["GET", "POST"])
 def cerrar(id):
     ot = _ot_editable(id)
@@ -415,15 +440,15 @@ def cerrar(id):
     if request.method == "GET":
         return _volver(ot, "cerrar")  # el cierre se hace desde la ventana de la ficha
 
-    cobrado = numero_ar(request.form.get("total_cobrado"))
-    metodo = request.form.get("metodo_pago")
+    cobra_ahora = request.form.get("cobrado") == "si"
     clasificacion = request.form.get("clasificacion")
-    errores = []
-    cliente = None
-    if ot.cliente is None:
-        cliente, errores = _resolver_cliente(obligatorio=True)
-    if cobrado is None or cobrado < 0 or metodo not in METODOS_PAGO:
-        errores.append("Completá el total cobrado y la forma de pago.")
+    errores, cliente, cobrado, metodo = [], None, None, None
+    if request.form.get("cobrado") not in ("si", "no"):
+        errores.append("Indicá si el trabajo ya se cobró.")
+    elif cobra_ahora:
+        cliente, cobrado, metodo, errores = _datos_cobro(ot)
+    elif ot.cliente is None:
+        cliente, errores = _resolver_cliente(obligatorio=False)
     if clasificacion not in CLASIFICACIONES_CIERRE:
         errores.append("Elegí si es Servicio u Otro.")
     if errores:
@@ -432,23 +457,42 @@ def cerrar(id):
             flash(e, "error")
         return render_template("ot/cerrar.html", ot=ot, **_contexto_cierre(ot))
 
-    if ot.cliente is None:
+    if ot.cliente is None and cliente is not None:
         _asignar_cliente(ot, cliente)
     _guardar_checklist(ot, clasificacion == "Servicio")
-    ot.total_cobrado = cobrado
     ot.fecha_fin = _fecha("fecha_fin", date.today())
     ot.clasificacion_cierre = clasificacion
     ot.estado = "Finalizada"
-    costo = ot.costo_repuestos  # antes de crear la venta (consultar la OT no debe arrastrar objetos a medio armar)
-    venta = Venta(fecha=ot.fecha_fin, cliente=ot.cliente, metodo_pago=metodo)
-    venta.items.append(VentaItem(
-        descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
-        precio_unitario=cobrado, costo_unitario=costo,
-    ))
-    db.session.add(venta)
-    venta.ot = ot
+    if cobra_ahora:
+        _registrar_venta(ot, cobrado, metodo, ot.fecha_fin)
+        mensaje = f"OT #{ot.id} cerrada. Venta registrada por ${cobrado:,.0f}.".replace(",", ".")
+    else:
+        mensaje = f"OT #{ot.id} cerrada. Queda por cobrar."
     db.session.commit()
-    flash(f"OT #{ot.id} cerrada. Venta registrada por ${cobrado:,.0f}.".replace(",", "."), "ok")
+    flash(mensaje, "ok")
+    return _volver(ot)
+
+
+@bp.route("/<int:id>/cobrar", methods=["GET", "POST"])
+def cobrar(id):
+    ot = db.get_or_404(OrdenTrabajo, id)
+    if not ot.por_cobrar:
+        flash("Esta OT no tiene un cobro pendiente.", "error")
+        return _volver(ot)
+    if request.method == "GET":
+        return _volver(ot, "cobrar")
+
+    cliente, cobrado, metodo, errores = _datos_cobro(ot)
+    if errores:
+        db.session.rollback()
+        for e in errores:
+            flash(e, "error")
+        return render_template("ot/cobrar.html", ot=ot, **_contexto_cierre(ot))
+    if ot.cliente is None:
+        _asignar_cliente(ot, cliente)
+    _registrar_venta(ot, cobrado, metodo, _fecha("fecha_cobro", date.today()))
+    db.session.commit()
+    flash(f"Cobro registrado: ${cobrado:,.0f}.".replace(",", "."), "ok")
     return _volver(ot)
 
 

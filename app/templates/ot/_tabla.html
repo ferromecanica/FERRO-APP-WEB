@@ -11,7 +11,7 @@
   {% for ot in ordenes %}
     <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
       <td><strong>{{ ot.id }}</strong></td>
-      <td>{{ badge(ot.estado) }}</td>
+      <td>{{ badge(ot.estado) }}{% if ot.por_cobrar %} {{ badge('Por cobrar') }}{% endif %}</td>
       <td style="white-space:nowrap"><span class="plate">{{ ot.vehiculo.patente }}</span>
         <div class="muted small">{{ ((ot.vehiculo.marca or '') ~ ' ' ~ (ot.vehiculo.modelo or '')).strip() }}</div></td>
       <td class="hide-sm">{% if ot.cliente %}{{ ot.cliente.nombre }}{% else %}<span class="muted">Sin cliente</span>{% endif %}</td>

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Cobro OT {{ ot.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">OT {{ ot.id }} · {{ ot.vehiculo.patente }}{% if ot.cliente %} · {{ ot.cliente.nombre }}{% endif %}</div><h1>Registrar cobro</h1></div>
+</div>
+<div class="card card-body" style="max-width:760px">{% include "ot/_form_cobro.html" %}</div>
+<script>
+  document.querySelectorAll('[data-cerrar-dialogo]').forEach(function (b) {
+    b.addEventListener('click', function () { location = '{{ url_for("ot.detalle", id=ot.id) }}'; });
+  });
+</script>
+{% endblock %}

@@ -207,6 +207,11 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     def venta(self):
         return self.ventas[0] if self.ventas else None
 
+    @property
+    def por_cobrar(self):
+        """Trabajo terminado pero todavía sin cobrar (sin venta registrada)."""
+        return self.estado == "Finalizada" and not self.ventas
+
     @classmethod
     def proximo_numero(cls):
         ultimo = db.session.query(db.func.max(cls.id)).scalar()

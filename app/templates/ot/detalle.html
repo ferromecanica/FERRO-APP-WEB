@@ -21,9 +21,12 @@
   <div class="actions">
     {% if editable %}
       <a class="btn" href="{{ url_for('ot.form', id=ot.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
-      <button type="button" class="btn btn-primary" id="abrir-cierre"><i class="fa-solid fa-flag-checkered"></i> Cerrar OT</button>
+      <button type="button" class="btn btn-primary" data-abrir="dialogo-cierre"><i class="fa-solid fa-flag-checkered"></i> Cerrar OT</button>
     {% else %}
-      <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" onsubmit="return confirm('¿Reabrir la OT {{ ot.id }}? Se anula la venta registrada al cerrarla.')">
+      {% if ot.por_cobrar %}
+      <button type="button" class="btn btn-primary" data-abrir="dialogo-cobro"><i class="fa-solid fa-cash-register"></i> Registrar cobro</button>
+      {% endif %}
+      <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" onsubmit="return confirm('¿Reabrir la OT {{ ot.id }}?{{ ' Se anula la venta registrada.' if ot.venta else '' }}')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn"><i class="fa-solid fa-lock-open"></i> Reabrir</button></form>
     {% endif %}
@@ -38,10 +41,15 @@
   {% endfor %}
   <span class="step disabled"><i class="fa-solid fa-flag-checkered"></i> Finalizada</span>
 </form>
+{% elif ot.por_cobrar %}
+<div class="flash flash-warn" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
+  <span><i class="fa-solid fa-hourglass-half"></i> <strong>Por cobrar</strong> · calculado {{ total_calculado | pesos }}</span>
+</div>
 {% else %}
 <div class="flash flash-ok" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
-  <span>Cobrado <strong>{{ ot.total_cobrado | pesos }}</strong>{% if ot.venta %} · {{ ot.venta.metodo_pago }}{% endif %}</span>
+  <span>Cobrado <strong>{{ ot.total_cobrado | pesos }}</strong>{% if ot.venta %} · {{ ot.venta.metodo_pago }} · {{ ot.venta.fecha | fecha }}{% endif %}</span>
 </div>
 {% endif %}
 
@@ -184,7 +192,7 @@
           <dt>Repuestos</dt><dd class="num">{{ ot.total_repuestos | pesos }}</dd>
           <dt><strong>Total calculado</strong></dt><dd class="num"><strong>{{ total_calculado | pesos }}</strong></dd>
           <dt>Costo materiales</dt><dd class="num muted">{{ ot.costo_repuestos | pesos }}</dd>
-          {% if not editable %}
+          {% if not editable and not ot.por_cobrar %}
           <dt><strong>Cobrado</strong></dt><dd class="num"><strong>{{ ot.total_cobrado | pesos }}</strong></dd>
           <dt>Ganancia</dt><dd class="num" style="color:var(--ok)"><strong>{{ ((ot.total_cobrado or 0) - ot.costo_repuestos) | pesos }}</strong></dd>
           {% endif %}
@@ -227,6 +235,21 @@
 </dialog>
 {% endif %}
 
+{% if ot.por_cobrar %}
+<dialog id="dialogo-cobro" class="dialogo">
+  <div class="dialogo-head">
+    <div><div class="eyebrow">OT {{ ot.id }} · {{ ot.vehiculo.patente }}</div><h2>Registrar cobro</h2></div>
+    <button type="button" class="btn-icon" data-cerrar-dialogo title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="dialogo-resumen">
+    <span>Mano de obra <strong>{{ mano_obra | pesos }}</strong></span>
+    <span>Repuestos <strong>{{ ot.total_repuestos | pesos }}</strong></span>
+    <span>Calculado <strong>{{ total_calculado | pesos }}</strong></span>
+  </div>
+  <div class="dialogo-body">{% include "ot/_form_cobro.html" %}</div>
+</dialog>
+{% endif %}
+
 <script>
   document.querySelectorAll('.segmented .seg').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -235,14 +258,14 @@
       caja.querySelectorAll('.tab-panel').forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
     });
   });
-  (function () {
-    var dialogo = document.getElementById('dialogo-cierre');
-    if (!dialogo) return;
-    document.getElementById('abrir-cierre').addEventListener('click', function () { dialogo.showModal(); });
-    dialogo.querySelectorAll('[data-cerrar-dialogo]').forEach(function (b) {
-      b.addEventListener('click', function () { dialogo.close(); });
-    });
-    if (location.hash === '#cerrar') dialogo.showModal();
-  })();
+  // Ventanas emergentes: botones data-abrir="id" y data-cerrar-dialogo; #cerrar / #cobrar las abre al entrar
+  document.querySelectorAll('[data-abrir]').forEach(function (b) {
+    b.addEventListener('click', function () { document.getElementById(b.dataset.abrir).showModal(); });
+  });
+  document.querySelectorAll('dialog [data-cerrar-dialogo]').forEach(function (b) {
+    b.addEventListener('click', function () { b.closest('dialog').close(); });
+  });
+  var porHash = { '#cerrar': 'dialogo-cierre', '#cobrar': 'dialogo-cobro' }[location.hash];
+  if (porHash && document.getElementById(porHash)) document.getElementById(porHash).showModal();
 </script>
 {% endblock %}

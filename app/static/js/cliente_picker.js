@@ -36,7 +36,7 @@ window.FerroClientePicker = function () {
     } else if (v && !estado.dueno && estado.vehiculoSinDueno) {
       info.textContent = 'El vehículo no tenía dueño: queda asociado a este cliente.';
     } else if (!v && !obligatorio) {
-      info.textContent = 'Sin cliente por ahora: se pide al cerrar la OT.';
+      info.textContent = input.dataset.textoOpcional || 'Sin cliente por ahora: se pide al cerrar la OT.';
     } else {
       info.textContent = '';
     }
@@ -46,5 +46,11 @@ window.FerroClientePicker = function () {
   document.getElementById('btn-cliente-nuevo').addEventListener('click', function () { modoNuevo(true); });
   document.getElementById('cerrar-cliente-nuevo').addEventListener('click', function () { modoNuevo(false); });
   revisar();
-  return { input: input, estado: estado, revisar: revisar, existe: existe, enAlta: function () { return !caja.hidden; } };
+  function setObligatorio(valor) {
+    obligatorio = valor;
+    if (caja.hidden) input.required = valor;
+    revisar();
+  }
+  return { input: input, estado: estado, revisar: revisar, existe: existe, setObligatorio: setObligatorio,
+           enAlta: function () { return !caja.hidden; } };
 };

@@ -22,6 +22,8 @@ def index():
         .order_by(Turno.fecha, Turno.hora).limit(6).all()
     bajo_stock = [r for r in Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).all() if r.bajo_stock]
 
+    por_cobrar = OrdenTrabajo.query.filter(OrdenTrabajo.estado == "Finalizada", ~OrdenTrabajo.ventas.any()).all()
+    valor_hora = ConfigTaller.get().valor_hora or 0
     facturado = sum(v.total for v in ventas_mes)
     ganancia = sum(v.ganancia for v in ventas_mes)
     return render_template(
@@ -33,6 +35,8 @@ def index():
         turnos=turnos,
         bajo_stock=bajo_stock[:8],
         cant_bajo_stock=len(bajo_stock),
+        cant_por_cobrar=len(por_cobrar),
+        monto_por_cobrar=sum(o.horas_insumidas * valor_hora + o.total_repuestos for o in por_cobrar),
     )
 
 

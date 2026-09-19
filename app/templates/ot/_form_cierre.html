@@ -3,16 +3,28 @@
 <form method="post" action="{{ url_for('ot.cerrar', id=ot.id) }}" class="cierre" autocomplete="off">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="form-grid">
+    <div class="full"><label>¿Se cobró el trabajo? *</label>
+      <div class="filters">
+        <label class="chip-radio"><input type="radio" name="cobrado" value="si" required {{ 'checked' if f.get('cobrado') == 'si' }}> Sí, registrar el cobro</label>
+        <label class="chip-radio"><input type="radio" name="cobrado" value="no" required {{ 'checked' if f.get('cobrado') == 'no' }}> Todavía no: queda por cobrar</label>
+      </div></div>
+
     {% if not ot.cliente %}
-      {% with valor=f.get('cliente', ''), obligatorio=True %}{% include "ot/_cliente_picker.html" %}{% endwith %}
+      {% with valor=f.get('cliente', ''), obligatorio=(f.get('cobrado') != 'no') %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% endif %}
-    <div class="full"><label>Total cobrado *</label>
-      <input name="total_cobrado" inputmode="decimal" required class="input-grande"
-             value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
-      <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}). Cambialo por lo que realmente se cobró.</div></div>
-    <div><label>Forma de pago *</label>
-      <select name="metodo_pago" required><option value="">Elegí…</option>
-        {% for m in metodos %}<option {{ 'selected' if m == f.get('metodo_pago') }}>{{ m }}</option>{% endfor %}</select></div>
+
+    <div class="full bloque-cobro" {{ '' if f.get('cobrado') == 'si' else 'hidden' }}>
+      <div class="form-grid">
+        <div class="full"><label>Total cobrado *</label>
+          <input name="total_cobrado" inputmode="decimal" class="input-grande"
+                 value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
+          <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}). Cambialo por lo que realmente se cobró.</div></div>
+        <div><label>Forma de pago *</label>
+          <select name="metodo_pago"><option value="">Elegí…</option>
+            {% for m in metodos %}<option {{ 'selected' if m == f.get('metodo_pago') }}>{{ m }}</option>{% endfor %}</select></div>
+      </div>
+    </div>
+
     <div><label>Fecha de cierre</label><input type="date" name="fecha_fin" value="{{ f.get('fecha_fin', hoy.isoformat()) }}"></div>
     <div class="full"><label>Tipo de trabajo *</label>
       <div class="filters">
@@ -37,7 +49,7 @@
   </fieldset>
 
   <div class="actions" style="margin-top:18px">
-    <button class="btn btn-primary"><i class="fa-solid fa-flag-checkered"></i> Cerrar y registrar venta</button>
+    <button class="btn btn-primary"><i class="fa-solid fa-flag-checkered"></i> <span class="texto-cerrar">Cerrar OT</span></button>
     <button type="button" class="btn" data-cerrar-dialogo>Volver</button>
   </div>
 </form>
@@ -45,9 +57,23 @@
 (function () {
   var form = document.currentScript.previousElementSibling;
   var checklist = form.querySelector('.checklist-cierre');
+  var cobro = form.querySelector('.bloque-cobro');
+  var textoBoton = form.querySelector('.texto-cerrar');
+  var picker = form.querySelector('#cliente') ? FerroClientePicker() : null;
+  if (picker) picker.input.dataset.textoOpcional = 'Sin cliente por ahora: se pide al registrar el cobro.';
+
+  function actualizarCobro() {
+    var si = form.querySelector('input[name="cobrado"][value="si"]').checked;
+    var no = form.querySelector('input[name="cobrado"][value="no"]').checked;
+    cobro.hidden = !si;
+    cobro.querySelectorAll('input, select').forEach(function (c) { c.required = si; });
+    if (picker) picker.setObligatorio(!no);
+    textoBoton.textContent = si ? 'Cerrar y registrar venta' : (no ? 'Cerrar (queda por cobrar)' : 'Cerrar OT');
+  }
+  form.querySelectorAll('input[name="cobrado"]').forEach(function (r) { r.addEventListener('change', actualizarCobro); });
   form.querySelectorAll('input[name="clasificacion"]').forEach(function (r) {
     r.addEventListener('change', function () { checklist.hidden = r.value !== 'Servicio' || !r.checked; });
   });
-  if (form.querySelector('#cliente')) FerroClientePicker();
+  actualizarCobro();
 })();
 </script>

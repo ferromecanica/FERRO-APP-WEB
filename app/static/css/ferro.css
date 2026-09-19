@@ -282,3 +282,8 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
   .fila .c-btn { flex: 1 1 100%; }
   .fila .c-btn .btn { width: 100%; justify-content: center; }
 }
+.flash-warn { background: var(--warn-soft); color: var(--warn); }
+.chip-alerta i { color: var(--danger); margin-right: 4px; }
+.chip-alerta.active i { color: #fff; }
+a.kpi-link { color: inherit; display: block; }
+a.kpi-link:hover { text-decoration: none; border-color: #f5b56b; }
