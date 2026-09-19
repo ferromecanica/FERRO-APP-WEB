@@ -45,3 +45,18 @@ assert 'Editado' not in b
 b = post('/cotizador/limpiar')
 assert 'Cotización vaciada' in b and 'Pastillas delanteras' not in b
 print('TODO OK')
+
+# pasar a presupuesto
+from app.models import Cliente
+with app.app_context():
+    cliente = Cliente.query.filter(Cliente.vehiculos.any()).first()
+    cid, vid = cliente.id, cliente.vehiculos[0].id
+assert 'está vacía' in post('/cotizador/pasar-a-presupuesto', {'cliente_id': cid})
+post('/cotizador/items', {'tipo': 'manual', 'descripcion': 'Filtro de aceite', 'cantidad': '2', 'precio': '10.000', 'costo': '6.000'})
+post('/cotizador/mano-obra', {'modo_mo': 'horas', 'horas': '2'})
+assert 'Elegí el cliente' in post('/cotizador/pasar-a-presupuesto', {})
+b = post('/cotizador/pasar-a-presupuesto', {'cliente_id': cid, 'vehiculo_id': vid})
+assert 'creado con lo cotizado' in b and 'Filtro de aceite' in b and '$ 20.000' in b
+assert '168.000' in b   # 2 h x 84.000
+assert 'Filtro de aceite' not in B(c.get('/cotizador/'))   # el cotizador quedó vacío
+print('PASAR A PRESUPUESTO OK')

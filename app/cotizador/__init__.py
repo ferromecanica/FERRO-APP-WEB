@@ -1,13 +1,22 @@
 """Cotizador: sacar rápido cuánto vale un trabajo, sin guardar nada.
 
-Vive en la sesión del navegador (cada uno tiene la suya). Cuando esté el módulo de
-presupuestos, desde acá se va a poder pasar la cotización a un presupuesto con PDF.
+Vive en la sesión del navegador (cada uno tiene la suya). Si el número cierra, se
+pasa a un presupuesto (ahí sí se guarda y se genera el PDF).
 """
+from datetime import date
+
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
 from ..extensions import db
-from ..models import ConfigTaller, Repuesto
+from ..models import (
+    Cliente,
+    ConfigTaller,
+    Presupuesto,
+    PresupuestoItem,
+    Repuesto,
+    Vehiculo,
+)
 from ..services.stock import buscar_repuesto
 from ..validaciones import numero_ar
 
@@ -51,7 +60,11 @@ def _totales(coti):
 def inicio():
     coti = _cotizacion()
     repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
-    return render_template("cotizador/inicio.html", coti=coti, t=_totales(coti), repuestos=repuestos)
+    clientes = Cliente.query.order_by(db.func.lower(Cliente.nombre)).all()
+    return render_template("cotizador/inicio.html", coti=coti, t=_totales(coti), repuestos=repuestos,
+                           clientes=clientes,
+                           vehiculos_por_cliente={c.id: [{"id": v.id, "texto": f"{v.patente} · {v.descripcion}".strip(" ·")}
+                                                         for v in c.vehiculos] for c in clientes})
 
 
 @bp.route("/items", methods=["POST"])
@@ -119,6 +132,37 @@ def mano_obra():
     coti["monto_mo"] = numero_ar(request.form.get("monto_mo")) or 0
     _guardar(coti)
     return redirect(url_for(".inicio") + "#mano-obra")
+
+
+@bp.route("/pasar-a-presupuesto", methods=["POST"])
+def pasar_a_presupuesto():
+    """Guarda lo cotizado como presupuesto y vacía el cotizador."""
+    coti = _cotizacion()
+    cliente = db.session.get(Cliente, request.form.get("cliente_id", type=int) or 0)
+    if cliente is None:
+        flash("Elegí el cliente para pasar la cotización a presupuesto.", "error")
+        return redirect(url_for(".inicio"))
+    if not coti["items"] and not _totales(coti)["mano_obra"]:
+        flash("La cotización está vacía.", "error")
+        return redirect(url_for(".inicio"))
+
+    vehiculo = db.session.get(Vehiculo, request.form.get("vehiculo_id", type=int) or 0)
+    t = _totales(coti)
+    p = Presupuesto(
+        id=Presupuesto.proximo_numero(), fecha=date.today(), estado="Borrador", cliente=cliente,
+        vehiculo=vehiculo if vehiculo and vehiculo.cliente_id == cliente.id else None,
+        mostrar_precios_detalle=True, valor_hora=t["valor_hora"],
+        modo_mano_obra="Por monto" if coti["modo_mo"] == "monto" else "Por horas",
+        horas_mano_obra=coti["horas"], monto_fijo_mo=coti["monto_mo"],
+    )
+    db.session.add(p)
+    for i in coti["items"]:
+        db.session.add(PresupuestoItem(presupuesto=p, repuesto_id=i["repuesto_id"], descripcion=i["descripcion"],
+                                       cantidad=i["cantidad"], precio_unitario=i["precio"], costo_unitario=i["costo"]))
+    db.session.commit()
+    session.pop("cotizacion", None)
+    flash(f"Presupuesto #{p.id} creado con lo cotizado.", "ok")
+    return redirect(url_for("presupuestos.ficha", id=p.id))
 
 
 @bp.route("/limpiar", methods=["POST"])

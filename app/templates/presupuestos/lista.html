@@ -1,23 +1,43 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import estado, vacio %}
+{% from "partials/macros.html" import estado as badge, vacio %}
 {% block title %}Presupuestos{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Taller</div><h1>Presupuestos</h1></div>
-  <div class="actions"><button class="btn btn-primary" disabled title="Próximamente"><i class="fa-solid fa-plus"></i> Nuevo presupuesto</button></div>
+  <div class="actions">
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Nº, cliente o patente…"
+             hx-get="{{ url_for('presupuestos.lista') }}" hx-trigger="input changed delay:250ms, search"
+             hx-target="body" hx-push-url="true"></div>
+    <a class="btn btn-primary" href="{{ url_for('presupuestos.form') }}"><i class="fa-solid fa-plus"></i> Nuevo presupuesto</a>
+  </div>
+</div>
+<div class="filters" style="margin-bottom:14px">
+  <a class="chip {{ 'active' if not estado }}" href="{{ url_for('presupuestos.lista', q=q or None) }}">Todos</a>
+  {% for e in estados %}<a class="chip {{ 'active' if estado == e }}" href="{{ url_for('presupuestos.lista', estado=e, q=q or None) }}">{{ e }}</a>{% endfor %}
 </div>
 <div class="card">
   {% if presupuestos %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th class="hide-sm">Vehículo</th><th>Estado</th><th class="num">Total</th></tr></thead>
+    <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th class="hide-sm">Vehículo</th><th>Estado</th>
+      <th class="num hide-sm">Repuestos</th><th class="num hide-sm">Mano de obra</th><th class="num">Total</th><th></th></tr></thead>
     <tbody>
     {% for p in presupuestos %}
-      <tr><td><strong>{{ p.id }}</strong></td><td>{{ p.fecha | fecha }}</td><td>{{ p.cliente.nombre }}</td>
+      <tr class="clickable" onclick="location='{{ url_for('presupuestos.ficha', id=p.id) }}'">
+        <td><strong>{{ p.id }}</strong></td>
+        <td style="white-space:nowrap">{{ p.fecha | fecha }}</td>
+        <td>{{ p.cliente.nombre }}</td>
         <td class="hide-sm">{% if p.vehiculo %}<span class="plate">{{ p.vehiculo.patente }}</span>{% endif %}</td>
-        <td>{{ estado(p.estado) }}</td><td class="num">{{ p.total | pesos }}</td></tr>
+        <td>{{ badge(p.estado) }}</td>
+        <td class="num hide-sm">{{ p.total_repuestos | pesos }}</td>
+        <td class="num hide-sm">{{ p.costo_mano_obra | pesos }}</td>
+        <td class="num"><strong>{{ p.total | pesos }}</strong></td>
+        <td class="num">{% if p.archivo_pdf %}<a href="{{ p.archivo_pdf }}" target="_blank" rel="noopener" onclick="event.stopPropagation()"
+             title="Ver PDF"><i class="fa-solid fa-file-pdf" style="color:#d93025"></i></a>{% endif %}</td>
+      </tr>
     {% endfor %}
     </tbody>
   </table></div>
-  {% else %}{{ vacio('fa-file-invoice', 'Todavía no hay presupuestos.') }}{% endif %}
+  {% else %}{{ vacio('fa-file-invoice-dollar', 'No hay presupuestos' ~ (' que coincidan' if q or estado else ' todavía') ~ '.') }}{% endif %}
 </div>
 {% endblock %}

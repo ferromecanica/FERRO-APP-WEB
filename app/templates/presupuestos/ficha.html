@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado as badge, vacio %}
+{% block title %}Presupuesto {{ p.id }}{% endblock %}
+{% macro encabezado(icono, titulo, extra='') -%}
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2><span class="muted small">{{ extra }}</span></div>
+{%- endmacro %}
+{% block content %}
+{% set editable = p.editable %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">Presupuesto · {{ p.fecha | fecha }}</div>
+    <h1>#{{ p.id }} <span style="font-size:1rem;vertical-align:middle">{{ badge(p.estado) }}</span></h1>
+    <div class="muted small" style="margin-top:4px">{{ p.cliente.nombre }}{% if p.vehiculo %} · {{ p.vehiculo.patente }} {{ p.vehiculo.descripcion }}{% endif %}</div>
+  </div>
+  <div class="actions">
+    {% if p.archivo_pdf %}<a class="btn" href="{{ p.archivo_pdf }}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" style="color:#d93025"></i> Ver PDF</a>{% endif %}
+    {% if reportes_configurados %}
+    <form method="post" action="{{ url_for('presupuestos.pdf', id=p.id) }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('span').textContent='Generando…'">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary"><i class="fa-solid fa-file-arrow-down"></i> <span>{{ 'Regenerar' if p.archivo_pdf else 'Generar' }} PDF</span></button></form>
+    {% endif %}
+    {% if editable %}<a class="btn" href="{{ url_for('presupuestos.form', id=p.id) }}"><i class="fa-solid fa-pen"></i> Datos</a>{% endif %}
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('presupuestos.estado', id=p.id) }}" class="stepper">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for e in estados %}<button name="estado" value="{{ e }}" class="step {{ 'active' if e == p.estado }}">{{ e }}</button>{% endfor %}
+</form>
+
+<div class="grid grid-3-1">
+  <div class="stack">
+    {# ───── Trabajos ───── #}
+    <div class="card" id="trabajos">
+      {{ encabezado('fa-list-check', 'Trabajos a realizar', p.trabajos | length) }}
+      {% if p.trabajos %}
+      <ul class="list">{% for t in p.trabajos %}
+        <li><span>{{ t.descripcion }}</span>
+          {% if editable %}
+          <form method="post" action="{{ url_for('presupuestos.trabajo_eliminar', tid=t.id) }}" style="display:inline"
+                data-confirmar="¿Quitar este trabajo?" data-confirmar-boton="Quitar" data-confirmar-tono="peligro">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-icon"><i class="fa-solid fa-xmark"></i></button></form>{% endif %}</li>
+      {% endfor %}</ul>
+      {% elif not editable %}{{ vacio('fa-list-check', 'Sin trabajos detallados.') }}{% endif %}
+      {% if editable %}
+      <form method="post" action="{{ url_for('presupuestos.trabajo_agregar', id=p.id) }}" class="add-row">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input name="descripcion" placeholder="Ej.: Reemplazo de compresor de A/A" required>
+        <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# ───── Repuestos ───── #}
+    <div class="card" id="items">
+      {{ encabezado('fa-boxes-stacked', 'Repuestos y materiales', (p.items | length) ~ ' ítems') }}
+      {% if p.items %}
+      <div class="table-wrap"><table class="tabla-densa">
+        <thead><tr><th class="izq">Descripción</th><th class="num">Cant.</th><th class="num">Precio</th>
+          <th class="num">Subtotal</th><th class="num hide-sm">Costo</th>{% if editable %}<th></th>{% endif %}</tr></thead>
+        <tbody>
+        {% for i in p.items %}
+          <tr id="item-{{ i.id }}">
+            <td class="izq">{{ i.descripcion }}{% if i.repuesto_id %}<div class="muted small">#{{ i.repuesto_id }} · del stock</div>{% endif %}</td>
+            <td class="num">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+            <td class="num">{{ i.precio_unitario | pesos }}</td>
+            <td class="num"><strong>{{ i.subtotal | pesos }}</strong></td>
+            <td class="num hide-sm muted">{{ i.subtotal_costo | pesos }}</td>
+            {% if editable %}
+            <td class="num"><span class="acciones-fila">
+              <button type="button" class="btn-icon btn-editar" data-editar="item-{{ i.id }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+              <form method="post" action="{{ url_for('presupuestos.item_eliminar', iid=i.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn-icon" title="Quitar"><i class="fa-solid fa-xmark"></i></button></form></span></td>
+            {% endif %}
+          </tr>
+          {% if editable %}
+          <tr id="item-{{ i.id }}-edicion" class="fila-edicion" hidden><td colspan="6">
+            <form method="post" action="{{ url_for('presupuestos.item_editar', iid=i.id) }}" class="fila">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="c-desc"><label>Descripción</label><input name="descripcion" value="{{ i.descripcion }}"></div>
+              <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ i.cantidad | numero(2) | replace(',00', '') }}"></div>
+              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" value="{{ i.precio_unitario | numero(2) }}"></div>
+              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" value="{{ i.costo_unitario | numero(2) if i.costo_unitario else '' }}"></div>
+              <div class="c-btn"><span class="acciones-edicion"><button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
+                <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
+            </form>
+          </td></tr>
+          {% endif %}
+        {% endfor %}
+          <tr class="total-row"><td colspan="3">Total repuestos</td><td class="num">{{ p.total_repuestos | pesos }}</td>
+            <td class="num hide-sm">{{ p.costo_materiales | pesos }}</td>{% if editable %}<td></td>{% endif %}</tr>
+        </tbody>
+      </table></div>
+      {% elif not editable %}{{ vacio('fa-boxes-stacked', 'Sin repuestos.') }}{% endif %}
+
+      {% if editable %}
+      <div class="add-box">
+        <div class="segmented" role="tablist">
+          <button type="button" class="seg active" data-tab="stock"><i class="fa-solid fa-boxes-stacked"></i> Del stock</button>
+          <button type="button" class="seg" data-tab="manual"><i class="fa-solid fa-pen-to-square"></i> A mano</button>
+        </div>
+        <form method="post" action="{{ url_for('presupuestos.item_agregar', id=p.id) }}" class="tab-panel fila" data-panel="stock">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="stock">
+          <div class="c-repuesto"><label>Repuesto (nombre, código o escáner)</label>
+            <input name="repuesto" list="lista-repuestos" autocomplete="off" required data-escaner placeholder="Escribí para buscar…">
+            <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}">stock {{ r.stock_actual | numero(1) }} · {{ r.precio_venta | pesos }}</option>{% endfor %}</datalist></div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+        </form>
+        <form method="post" action="{{ url_for('presupuestos.item_agregar', id=p.id) }}" class="tab-panel fila" data-panel="manual" hidden>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="manual">
+          <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Compresor de A/A" required></div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" placeholder="$ (lo que pagamos)"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ───── Mano de obra ───── #}
+    <form class="card" id="mano-obra" method="post" action="{{ url_for('presupuestos.mano_obra', id=p.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {{ encabezado('fa-screwdriver-wrench', 'Mano de obra', p.costo_mano_obra | pesos) }}
+      <div class="card-body">
+        <div class="filters" style="margin-bottom:12px">
+          <label class="chip-radio"><input type="radio" name="modo" value="Por horas" {{ 'checked' if p.modo_mano_obra != 'Por monto' }} {{ 'disabled' if not editable }}> Por horas</label>
+          <label class="chip-radio"><input type="radio" name="modo" value="Por monto" {{ 'checked' if p.modo_mano_obra == 'Por monto' }} {{ 'disabled' if not editable }}> Por monto fijo</label>
+        </div>
+        <div class="fila">
+          <div class="c-cant"><label>Horas</label><input name="horas" inputmode="decimal" value="{{ p.horas_mano_obra | numero(1) if p.horas_mano_obra else '' }}" placeholder="1,5" {{ 'disabled' if not editable }}></div>
+          <div class="c-plata"><label>Valor de la hora</label><input name="valor_hora" inputmode="decimal" value="{{ p.valor_hora | numero if p.valor_hora else '' }}" {{ 'disabled' if not editable }}></div>
+          <div class="c-plata"><label>Monto fijo</label><input name="monto" inputmode="decimal" value="{{ p.monto_fijo_mo | numero if p.monto_fijo_mo else '' }}" placeholder="$" {{ 'disabled' if not editable }}></div>
+          {% if editable %}<div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button></div>{% endif %}
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {# ───── Totales ───── #}
+  <div class="stack">
+    <div class="card resultado">
+      {{ encabezado('fa-calculator', 'Totales') }}
+      <div class="card-body">
+        <dl class="props totales">
+          <dt>Repuestos</dt><dd class="num">{{ p.total_repuestos | pesos }}</dd>
+          <dt>Mano de obra</dt><dd class="num">{{ p.costo_mano_obra | pesos }}
+            {% if p.modo_mano_obra != 'Por monto' and p.horas_mano_obra %}<div class="muted small">{{ p.horas_mano_obra | numero(1) }} h × {{ p.valor_hora | pesos }}</div>{% endif %}</dd>
+        </dl>
+        <div class="precio-final"><span>Total</span><strong>{{ p.total | pesos }}</strong></div>
+        <dl class="props totales" style="margin-top:14px">
+          <dt>Costo de materiales</dt><dd class="num">{{ p.costo_materiales | pesos }}</dd>
+          <dt><strong>Ganancia</strong></dt><dd class="num"><strong style="color:var(--ok)">{{ p.ganancia | pesos }}</strong></dd>
+        </dl>
+        <p class="muted small" style="margin:12px 0 0">
+          {% if p.mostrar_precios_detalle %}El PDF muestra el precio de cada ítem.{% else %}El PDF muestra solo el total.{% endif %}
+          {% if not reportes_configurados %}<br>Falta configurar la conexión con Drive para generar el PDF.{% endif %}</p>
+      </div>
+    </div>
+
+    <div class="card card-body">
+      <dl class="props">
+        <dt>Cliente</dt><dd><a href="{{ url_for('clientes.detalle', id=p.cliente_id) }}">{{ p.cliente.nombre }}</a>
+          {% set wa = p.cliente.telefono | whatsapp %}{% if wa %} <a href="https://wa.me/{{ wa }}{% if p.archivo_pdf %}?text={{ ('Hola ' ~ p.cliente.nombre.split()[0] ~ ', te paso el presupuesto: ' ~ p.archivo_pdf) | urlencode }}{% endif %}"
+            target="_blank" rel="noopener" title="Enviar por WhatsApp"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i></a>{% endif %}</dd>
+        <dt>Vehículo</dt><dd>{% if p.vehiculo %}<a href="{{ url_for('clientes.vehiculo_detalle', id=p.vehiculo_id) }}">{{ p.vehiculo.patente }}</a> {{ p.vehiculo.descripcion }}{% else %}—{% endif %}</dd>
+      </dl>
+    </div>
+
+    <div class="card card-body">
+      <form method="post" action="{{ url_for('presupuestos.eliminar', id=p.id) }}"
+            data-confirmar="¿Eliminar el presupuesto #{{ p.id }}?" data-confirmar-detalle="No se puede deshacer."
+            data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar presupuesto</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.segmented .seg').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var caja = b.closest('.add-box');
+      caja.querySelectorAll('.seg').forEach(function (t) { t.classList.toggle('active', t === b); });
+      caja.querySelectorAll('.tab-panel').forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
+    });
+  });
+  document.querySelectorAll('[data-editar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById(b.dataset.editar).hidden = true;
+      document.getElementById(b.dataset.editar + '-edicion').hidden = false;
+    });
+  });
+  document.querySelectorAll('[data-cancelar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ed = b.closest('.fila-edicion'); ed.hidden = true;
+      document.getElementById(ed.id.replace(/-edicion$/, '')).hidden = false;
+    });
+  });
+</script>
+{% endblock %}

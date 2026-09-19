@@ -1,0 +1,92 @@
+{# Presupuesto: mismo diseño que el generador de Apps Script de AppSheet. __LOGO__ lo completa el Apps Script. #}
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font-family: sans-serif; color: #333; margin: 0; padding: 0; }
+      .container { margin: 0; border: 1px solid #eee; padding: 14px 16px; border-radius: 10px; }
+      .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E48A06; padding-bottom: 10px; margin-bottom: 14px; }
+      .logo-box { width: 55%; }
+      .logo-img { width: 220px; height: auto; }
+      .services-text { font-size: 10px; color: #555; margin-top: 4px; line-height: 1.3; font-weight: bold; }
+      .doc-title { text-align: right; width: 45%; }
+      .doc-title h2 { color: #E48A06; margin: 0; font-size: 24px; text-transform: uppercase; }
+      .taller-data { font-size: 9px; color: #666; margin-top: 6px; line-height: 1.4; }
+      .info-grid { background: #f9f9f9; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; border: 1px solid #eee; }
+      .label { color: #E48A06; font-size: 9px; font-weight: bold; text-transform: uppercase; display: block; }
+      h3 { border-left: 5px solid #E48A06; padding: 6px 10px; background: #f2f2f2; font-size: 13px; text-transform: uppercase;
+           color: #333; margin-top: 16px; margin-bottom: 5px; page-break-after: avoid; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #f2f2f2; padding: 8px; text-align: left; font-size: 11px; border-bottom: 2px solid #ddd; }
+      td { font-size: 11px; border-bottom: 1px solid #eee; }
+      .totals-box { width: 260px; margin-left: auto; margin-top: 18px; background: #fdfdfd; padding: 10px; border: 1px solid #eee; page-break-inside: avoid; }
+      .total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+      .grand-total { border-top: 2px solid #E48A06; font-weight: bold; color: #E48A06; font-size: 16px; padding-top: 8px; margin-top: 8px; }
+      .validez { margin-top: 18px; font-size: 10px; color: #666; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-box">
+          <img src="{{ logo }}" class="logo-img">
+          <div class="services-text">Mecánica - Electricidad<br>Inyección – Cambios de aceite<br>Escaneo profesional – Tren delantero<br>Servicio Integral del Automotor</div>
+        </div>
+        <div class="doc-title">
+          <h2>PRESUPUESTO</h2>
+          <p style="font-weight: bold; font-size: 18px; margin: 4px 0;">#{{ p.id }}</p>
+          <p style="font-size: 11px; margin: 4px 0;">Fecha: {{ p.fecha | fecha }}</p>
+          <div class="taller-data">{{ taller.direccion }}<br>{{ taller.localidad }}<br>Cel/Wzp: {{ taller.telefono }}<br>
+            Inicio Actividades: {{ taller.inicio }}<br>IVA {{ taller.iva }}</div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <table style="width: 100%; border: none;">
+          <tr>
+            <td style="border:none; width: 50%; padding: 0;"><span class="label">Cliente</span>
+              <b style="font-size:13px">{{ p.cliente.nombre }}</b></td>
+            <td style="border:none; width: 50%; padding: 0;"><span class="label">Vehículo / Patente</span>
+              <b style="font-size:13px">{{ p.vehiculo.patente if p.vehiculo else '—' }}</b>
+              <div style="font-size:11px; color:#666; margin-top:2px;">{{ ((p.vehiculo.marca or '') ~ ' ' ~ (p.vehiculo.modelo or '')).strip() if p.vehiculo else '' }}</div></td>
+          </tr>
+        </table>
+      </div>
+
+      <h3>Trabajos a Realizar</h3>
+      <table><tbody>
+        {% for t in p.trabajos %}<tr><td style="padding: 10px 8px;">{{ t.descripcion }}</td></tr>
+        {% else %}<tr><td style="padding: 10px 8px;">No especificado.</td></tr>{% endfor %}
+      </tbody></table>
+
+      <h3>Repuestos y Materiales</h3>
+      <table>
+        <thead><tr><th>Descripción</th><th style="text-align: center;">Cant.</th>
+          {% if p.mostrar_precios_detalle %}<th style="text-align: right;">Unitario</th><th style="text-align: right;">Subtotal</th>{% endif %}</tr></thead>
+        <tbody>
+        {% for i in p.items %}
+          <tr><td style="padding: 8px;">{{ i.descripcion or (i.repuesto.nombre if i.repuesto else '') }}</td>
+            <td style="padding: 8px; text-align: center;">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+            {% if p.mostrar_precios_detalle %}
+            <td style="padding: 8px; text-align: right;">{{ i.precio_unitario | pesos }}</td>
+            <td style="padding: 8px; text-align: right;">{{ i.subtotal | pesos }}</td>{% endif %}</tr>
+        {% else %}
+          <tr><td colspan="{{ 4 if p.mostrar_precios_detalle else 2 }}" style="padding: 8px;">No hay repuestos.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="totals-box">
+        {% if p.mostrar_precios_detalle %}
+          <div class="total-row"><span>Subtotal Materiales:</span> <span>{{ p.total_repuestos | pesos }}</span></div>
+          <div class="total-row"><span>Mano de Obra:</span> <span>{{ p.costo_mano_obra | pesos }}</span></div>
+        {% else %}
+          <div style="font-size: 11px; font-weight: bold; color: #666; padding-bottom: 5px;">Materiales y mano de obra</div>
+        {% endif %}
+        <div class="total-row grand-total"><span>TOTAL:</span> <span>{{ p.total | pesos }}</span></div>
+      </div>
+
+      {% if validez %}<div class="validez">Presupuesto válido por {{ validez }} días. No incluye trabajos no detallados.</div>{% endif %}
+    </div>
+  </body>
+</html>

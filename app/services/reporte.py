@@ -17,7 +17,9 @@ TALLER_POR_DEFECTO = {
     "localidad": "Rosario - Santa Fe",
     "telefono": "3416206823",
     "iva": "Responsable Inscripto",
+    "inicio": "01/02/2026",
 }
+DIAS_VALIDEZ_PRESUPUESTO = 15
 
 
 class ErrorReporte(Exception):
@@ -65,6 +67,26 @@ def armar_html(ot):
         ],
         fotos=fotos,
     )
+
+
+def generar_pdf_presupuesto(presupuesto):
+    """Genera el PDF del presupuesto en la carpeta de presupuestos de Drive y devuelve su link."""
+    cfg = ConfigTaller.get()
+    taller = dict(TALLER_POR_DEFECTO)
+    if cfg.direccion:
+        taller["direccion"] = cfg.direccion
+    if cfg.telefono:
+        taller["telefono"] = cfg.telefono
+    html = render_template("reportes/presupuesto.html", p=presupuesto, taller=taller,
+                           logo="__LOGO__", validez=DIAS_VALIDEZ_PRESUPUESTO)
+    patente = presupuesto.vehiculo.patente if presupuesto.vehiculo else "SINPATENTE"
+    nombre = f"{presupuesto.fecha:%Y%m%d}_{presupuesto.id}_{patente}.pdf"
+    try:
+        resultado = drive.llamar("reporte", nombre=nombre, html=html, carpeta="presupuestos")
+    except drive.ErrorDrive as e:
+        raise ErrorReporte(str(e).replace("Google Drive", "Google"))
+    presupuesto.archivo_pdf = resultado["url"]
+    return presupuesto.archivo_pdf
 
 
 def nombre_archivo(ot):

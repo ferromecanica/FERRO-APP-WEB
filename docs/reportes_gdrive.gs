@@ -1,7 +1,8 @@
 /**
  * Conexión de Ferro con Google Drive: reportes PDF y fotos de las OT.
  *
- * accion=reporte (o sin acción): Ferro manda el HTML del reporte; este script reemplaza
+ * accion=reporte (o sin acción): Ferro manda el HTML del reporte o del presupuesto
+ *   (carpeta=presupuestos lo guarda en la carpeta de presupuestos); este script reemplaza
  *   __LOGO__, __FIRMA__ y __FOTO:archivo__ por las imágenes de Drive, lo convierte a PDF,
  *   lo guarda en la carpeta de reportes (reemplazando uno anterior con el mismo nombre)
  *   y devuelve el link.
@@ -20,6 +21,7 @@
  *  Implementar → Administrar implementaciones → lápiz → Versión: "Nueva versión" → Implementar.
  */
 const FOLDER_REPORTES_ID = '1o1ZkDqFamPa13Vmgzq5Um2FFYla84GIq';
+const FOLDER_PRESUPUESTOS_ID = '1lBvBQ6mPestQoBhgmEPnE25x-JgWUAtb';
 const FOLDER_LOGO_ID = '1hKdsArmHtOGlBSA_ZQ_LCeRv4UKKfyC3';
 const NOMBRE_LOGO = 'SOBRIO FONDO BLANCO.jpeg';
 const NOMBRE_FIRMA = 'FIRMA.jpg';
@@ -48,7 +50,7 @@ function generarReporte(p) {
     return imagenBase64(FOLDER_FOTOS_ID, archivo) || '';
   });
 
-  const carpeta = DriveApp.getFolderById(FOLDER_REPORTES_ID);
+  const carpeta = DriveApp.getFolderById(p.carpeta === 'presupuestos' ? FOLDER_PRESUPUESTOS_ID : FOLDER_REPORTES_ID);
   const anteriores = carpeta.getFilesByName(p.nombre);
   while (anteriores.hasNext()) anteriores.next().setTrashed(true);
 

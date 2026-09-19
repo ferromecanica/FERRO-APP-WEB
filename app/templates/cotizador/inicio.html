@@ -126,14 +126,44 @@
         </dl>
       </div>
     </div>
+    <form class="card" method="post" action="{{ url_for('cotizador.pasar_a_presupuesto') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {{ encabezado('fa-file-invoice-dollar', 'Pasar a presupuesto') }}
+      <div class="card-body">
+        <div class="form-grid">
+          <div><label>Cliente</label>
+            <select name="cliente_id" id="cliente" required>
+              <option value="">Elegí…</option>
+              {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+            </select></div>
+          <div><label>Vehículo</label><select name="vehiculo_id" id="vehiculo"></select></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:12px"><i class="fa-solid fa-file-arrow-right"></i> Crear presupuesto</button>
+        <p class="muted small" style="margin:10px 0 0">Se guarda como borrador con estos ítems y desde ahí generás el PDF. El cotizador queda vacío.</p>
+      </div>
+    </form>
+
     <div class="card card-body muted small">
-      <i class="fa-solid fa-circle-info"></i> Lo cargado queda en este navegador hasta que lo vacíes.
-      El paso siguiente va a ser pasar la cotización a un presupuesto con PDF.
+      <i class="fa-solid fa-circle-info"></i> Lo cargado queda en este navegador hasta que lo pases a presupuesto o lo vacíes.
     </div>
   </div>
 </div>
 
 <script>
+  var vehiculosPorCliente = {{ vehiculos_por_cliente | tojson }};
+  var selCliente = document.getElementById('cliente'), selVehiculo = document.getElementById('vehiculo');
+  function llenarVehiculos() {
+    var lista = vehiculosPorCliente[selCliente.value] || [];
+    var vacio = !selCliente.value ? 'Elegí primero el cliente' : (lista.length ? 'Sin vehículo' : 'El cliente no tiene vehículos');
+    selVehiculo.innerHTML = '<option value="">' + vacio + '</option>';
+    lista.forEach(function (v) {
+      var op = document.createElement('option'); op.value = v.id; op.textContent = v.texto;
+      selVehiculo.appendChild(op);
+    });
+  }
+  selCliente.addEventListener('change', llenarVehiculos);
+  llenarVehiculos();
+
   document.querySelectorAll('.segmented .seg').forEach(function (b) {
     b.addEventListener('click', function () {
       var caja = b.closest('.add-box');

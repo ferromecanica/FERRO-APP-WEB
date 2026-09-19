@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Presupuesto #' ~ p.id if p.id else 'Nuevo presupuesto' }}{% endblock %}
+{% block content %}
+{% set f = request.form %}
+<div class="page-head">
+  <div><div class="eyebrow">Presupuestos</div><h1>{{ ('Presupuesto #' ~ p.id) if p.id else 'Nuevo presupuesto' }}</h1></div>
+</div>
+<form class="card" method="post" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-body form-grid">
+    <div><label>Cliente *</label>
+      <select name="cliente_id" id="cliente" required>
+        <option value="">Elegí…</option>
+        {% for c in clientes %}<option value="{{ c.id }}" {{ 'selected' if c.id == (f.get('cliente_id', p.cliente_id) | int) }}>{{ c.nombre }}</option>{% endfor %}
+      </select></div>
+    <div><label>Vehículo</label><select name="vehiculo_id" id="vehiculo" data-valor="{{ p.vehiculo_id or '' }}"></select></div>
+    <div><label>Fecha</label><input type="date" name="fecha" value="{{ (p.fecha or hoy).isoformat() }}"></div>
+    <div style="align-self:end">
+      <label class="check"><input type="checkbox" name="mostrar_precios_detalle" value="1" {{ 'checked' if p.mostrar_precios_detalle }}>
+        Mostrar precios por ítem en el PDF</label>
+      <div class="muted small" style="margin-top:4px">Si lo destildás, el PDF muestra solo el total.</div></div>
+  </div>
+  <div class="card-body actions" style="border-top:1px solid var(--border)">
+    <button class="btn btn-primary"><i class="fa-solid fa-check"></i> {{ 'Guardar' if p.id else 'Crear presupuesto' }}</button>
+    <a class="btn" href="{{ url_for('presupuestos.ficha', id=p.id) if p.id else url_for('presupuestos.lista') }}">Cancelar</a>
+  </div>
+</form>
+<script>
+  var vehiculosPorCliente = {{ vehiculos_por_cliente | tojson }};
+  var selCliente = document.getElementById('cliente'), selVehiculo = document.getElementById('vehiculo');
+  function llenarVehiculos(elegido) {
+    var lista = vehiculosPorCliente[selCliente.value] || [];
+    var vacio = !selCliente.value ? 'Elegí primero el cliente' : (lista.length ? 'Sin vehículo' : 'El cliente no tiene vehículos');
+    selVehiculo.innerHTML = '<option value="">' + vacio + '</option>';
+    lista.forEach(function (v) {
+      var op = document.createElement('option'); op.value = v.id; op.textContent = v.texto;
+      selVehiculo.appendChild(op);
+    });
+    selVehiculo.value = elegido || '';
+  }
+  selCliente.addEventListener('change', function () { llenarVehiculos(''); });
+  llenarVehiculos(selVehiculo.dataset.valor);
+</script>
+{% endblock %}

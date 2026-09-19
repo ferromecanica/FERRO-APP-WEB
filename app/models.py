@@ -469,6 +469,9 @@ class IngresoStockItem(db.Model):
 # ──────────────────────────────── Presupuestos ──────────────────────────────
 
 
+ESTADOS_PRESUPUESTO = ["Borrador", "Enviado", "Aprobado", "Rechazado"]
+
+
 class Presupuesto(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)  # número (40000…)
     fecha = db.Column(db.Date, default=date.today, nullable=False)
@@ -501,6 +504,23 @@ class Presupuesto(TimestampMixin, db.Model):
     def total(self):
         return self.costo_mano_obra + self.total_repuestos
 
+    @property
+    def costo_materiales(self):
+        return sum(i.subtotal_costo for i in self.items)
+
+    @property
+    def ganancia(self):
+        return self.total - self.costo_materiales
+
+    @property
+    def editable(self):
+        return self.estado in ("Borrador", "Enviado")
+
+    @classmethod
+    def proximo_numero(cls):
+        ultimo = db.session.query(db.func.max(cls.id)).scalar()
+        return max((ultimo or 0) + 1, 40000)
+
 
 class PresupuestoTrabajo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -514,6 +534,7 @@ class PresupuestoItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     presupuesto_id = db.Column(db.Integer, db.ForeignKey("presupuesto.id"), nullable=False)
     repuesto_id = db.Column(db.Integer, db.ForeignKey("repuesto.id"))
+    costo_unitario = db.Column(db.Float, default=0)  # para calcular la ganancia
     descripcion = db.Column(db.String(300))
     cantidad = db.Column(db.Float, default=1, nullable=False)
     precio_unitario = db.Column(db.Float, default=0, nullable=False)
@@ -524,6 +545,10 @@ class PresupuestoItem(db.Model):
     @property
     def subtotal(self):
         return (self.cantidad or 0) * (self.precio_unitario or 0)
+
+    @property
+    def subtotal_costo(self):
+        return (self.cantidad or 0) * (self.costo_unitario or 0)
 
 
 # ─────────────────────────────────── Ventas ─────────────────────────────────
