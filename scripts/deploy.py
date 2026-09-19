@@ -34,12 +34,12 @@ def leer_token():
 TOKEN = leer_token()
 
 
-def api(metodo, ruta, datos=None):
+def api(metodo, ruta, datos=None, timeout=30):
     cuerpo = urllib.parse.urlencode(datos).encode() if datos else None
     req = urllib.request.Request(f"{API}/{ruta}", data=cuerpo, method=metodo,
                                  headers={"Authorization": f"Token {TOKEN}"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             texto = r.read().decode()
             return json.loads(texto) if texto else {}
     except urllib.error.HTTPError as e:
@@ -88,11 +88,16 @@ def main():
         sys.exit("✗ El git pull en el servidor no terminó bien (ver arriba).")
     print("✓ Código, librerías y base de datos actualizados en el servidor")
 
-    api("POST", f"webapps/{DOMINIO}/reload/")
-    print("✓ Web app recargada")
+    try:
+        api("POST", f"webapps/{DOMINIO}/reload/", timeout=120)
+        print("✓ Web app recargada")
+    except (TimeoutError, OSError):
+        # A veces PythonAnywhere tarda en contestar aunque la recarga se hace igual: lo verifica el paso siguiente
+        print("· La recarga tardó en responder; verifico el sitio…")
+        time.sleep(10)
 
     try:
-        with urllib.request.urlopen(f"https://{DOMINIO}/", timeout=30) as r:
+        with urllib.request.urlopen(f"https://{DOMINIO}/", timeout=60) as r:
             print(f"✓ https://{DOMINIO} responde ({r.status})")
     except urllib.error.HTTPError as e:
         sys.exit(f"✗ El sitio responde con error {e.code}: revisar el Error log en la pestaña Web.")
