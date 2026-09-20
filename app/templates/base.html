@@ -38,8 +38,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ferro.css') }}">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.12/htmx.min.js" defer></script>
 </head>
-<body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
 {% set seccion = request.blueprint %}
+<body class="{{ 'modulo-contable' if seccion == 'contable' }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
 <div class="layout">
   <aside class="sidebar">
     <div class="brand">
@@ -62,6 +62,8 @@
       <div class="nav-label">Comercial</div>
       <a href="{{ url_for('ventas.lista') }}" class="{{ 'active' if seccion == 'ventas' }}"><i class="fa-solid fa-cart-shopping"></i> Ventas</a>
       <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if seccion == 'stock' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
+      <div class="nav-label">Administración</div>
+      <a href="{{ url_for('contable.movimientos') }}" class="nav-contable {{ 'active' if seccion == 'contable' }}"><i class="fa-solid fa-building-columns"></i> Administración</a>
       <div class="nav-label">Sistema</div>
       <a href="{{ url_for('movil.inicio') }}"><i class="fa-solid fa-mobile-screen"></i> Modo celular</a>
       <a href="{{ url_for('dashboard.configuracion') }}" class="{{ 'active' if ep == 'dashboard.configuracion' }}"><i class="fa-solid fa-gear"></i> Configuración</a>

@@ -479,6 +479,123 @@ class Repuesto(TimestampMixin, db.Model):
         return self.controla_stock and self.stock_actual <= (self.stock_minimo or 0)
 
 
+# ────────────────────────────── Administración ──────────────────────────────
+
+TIPOS_MOVIMIENTO_CONTABLE = ["Ingreso", "Egreso", "Colchón"]
+CLASIFICACIONES = ["Ventas", "Repuestos y Proveedores", "Gasto Corriente", "Gasto Operativo",
+                   "Gasto menor", "Bien de uso", "Inversión de Capital", "Sueldos"]
+COMPROBANTES = ["S/C", "Factura A", "Factura B", "Factura C", "Ticket", "Liquidación", "Recibo"]
+TIPOS_CAPITAL = ["Aporte de Capital", "Devolución de Capital"]
+
+
+class Socio(db.Model):
+    """Los dueños del taller: sueldo de referencia y cuánto le toca a cada uno."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(60), unique=True, nullable=False)
+    rol = db.Column(db.String(60))
+    sueldo_base = db.Column(db.Float, default=0)
+    participacion = db.Column(db.Float, default=0.5)  # 0,5 = mitad y mitad
+    alias = db.Column(db.String(60))
+    orden = db.Column(db.Integer, default=0)  # en el reparto de sueldos, el primero cobra primero
+
+    aportes = db.relationship("AporteCapital", back_populates="socio")
+
+    @property
+    def capital_pesos(self):
+        return sum(a.pesos_con_signo for a in self.aportes)
+
+    @property
+    def capital_usd(self):
+        return sum(a.usd_con_signo for a in self.aportes)
+
+
+class MovimientoContable(db.Model):
+    """Lo que entra y sale de la caja del taller (ex Movimientos de la app contable).
+
+    Los que salen de una venta o de una compra de repuestos se generan solos y
+    quedan atados a su origen, para no cargar dos veces lo mismo.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    tipo = db.Column(db.String(20), nullable=False)  # Ingreso | Egreso | Colchón
+    mes_imputacion = db.Column(db.String(7), nullable=False, index=True)  # "2026-08"
+    clasificacion = db.Column(db.String(40))
+    comprobante = db.Column(db.String(20), default="S/C")
+    nro_comprobante = db.Column(db.String(40))
+    quien = db.Column(db.String(120))  # proveedor o cliente
+    cuit = db.Column(db.String(15))
+    concepto = db.Column(db.String(300))
+    neto = db.Column(db.Float, default=0)
+    iva = db.Column(db.Float, default=0)
+    percepciones = db.Column(db.Float, default=0)
+    no_gravado = db.Column(db.Float, default=0)
+    total = db.Column(db.Float, default=0, nullable=False)
+    cobrado = db.Column(db.Boolean, default=True, nullable=False)  # los ingresos suman al cierre si están cobrados
+    venta_id = db.Column(db.Integer, db.ForeignKey("venta.id"))
+    ingreso_id = db.Column(db.Integer, db.ForeignKey("ingreso_stock.id"))
+
+    venta = db.relationship("Venta")
+    ingreso = db.relationship("IngresoStock")
+
+    @property
+    def automatico(self):
+        """Salió de una venta o de una compra de repuestos: no se edita a mano."""
+        return bool(self.venta_id or self.ingreso_id)
+
+    @property
+    def signo(self):
+        return -1 if self.tipo == "Egreso" else 1
+
+    @staticmethod
+    def mes_de(fecha):
+        return f"{fecha:%Y-%m}"
+
+
+class AporteCapital(db.Model):
+    """Plata que un socio pone (o saca) del taller, en pesos y en dólares del día."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    socio_id = db.Column(db.Integer, db.ForeignKey("socio.id"), nullable=False)
+    tipo = db.Column(db.String(30), default="Aporte de Capital", nullable=False)
+    pesos = db.Column(db.Float, default=0, nullable=False)
+    cotizacion = db.Column(db.Float)  # cuánto valía el dólar ese día
+    notas = db.Column(db.String(300))
+
+    socio = db.relationship("Socio", back_populates="aportes")
+
+    @property
+    def usd(self):
+        return round(self.pesos / self.cotizacion, 2) if self.cotizacion else 0
+
+    @property
+    def devuelve(self):
+        return self.tipo == "Devolución de Capital"
+
+    @property
+    def pesos_con_signo(self):
+        return -self.pesos if self.devuelve else self.pesos
+
+    @property
+    def usd_con_signo(self):
+        return -self.usd if self.devuelve else self.usd
+
+
+class CierreMensual(db.Model):
+    """El cierre de un mes: qué entró, qué salió y cómo se reparte."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    mes = db.Column(db.String(7), unique=True, nullable=False)  # "2026-08"
+    fecha_cierre = db.Column(db.Date)
+    cotizacion = db.Column(db.Float)
+    estado = db.Column(db.String(20), default="Abierto")  # Abierto | Cerrado
+    modo = db.Column(db.String(10), default="Manual")  # Manual | Automático
+    colchon = db.Column(db.Float, default=0)  # lo que se guarda para el mes que viene
+    notas = db.Column(db.Text)
+
+
 class MovimientoStock(db.Model):
     """Libro de stock. Cantidad con signo: + entra, − sale. Nunca se borra, se revierte."""
 

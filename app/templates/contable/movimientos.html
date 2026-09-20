@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}Administración{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Administración</div><h1>Movimientos</h1>
+    <div class="muted small" style="margin-top:4px">{{ mes | mes_imputacion | capitalize }} · {{ movimientos | length }} movimiento{{ 's' if movimientos | length != 1 }}</div></div>
+  <div class="actions">
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Proveedor, concepto o comprobante…"
+             hx-get="{{ url_for('contable.movimientos', mes=mes, tipo=tipo or None) }}"
+             hx-trigger="input changed delay:250ms, search" hx-target="body" hx-push-url="true"></div>
+    <a class="btn btn-primary" href="{{ url_for('contable.form', mes=mes) }}"><i class="fa-solid fa-plus"></i> Movimiento</a>
+  </div>
+</div>
+{% include "contable/_tabs.html" %}
+
+<div class="grid grid-4" style="margin-bottom:16px">
+  <div class="card kpi"><div class="kpi-label"><i class="fa-solid fa-arrow-down"></i> Ingresos cobrados</div>
+    <div class="kpi-value">{{ totales.ingresos | pesos }}</div>
+    {% if totales.por_cobrar %}<div class="kpi-foot">+ {{ totales.por_cobrar | pesos }} sin cobrar</div>{% endif %}</div>
+  <div class="card kpi"><div class="kpi-label"><i class="fa-solid fa-arrow-up"></i> Egresos</div>
+    <div class="kpi-value">{{ totales.egresos | pesos }}</div>
+    <div class="kpi-foot">sin sueldos ni capital</div></div>
+  <div class="card kpi"><div class="kpi-label"><i class="fa-solid fa-bed"></i> Colchón que entra</div>
+    <div class="kpi-value">{{ totales.colchon | pesos }}</div></div>
+  <div class="card kpi"><div class="kpi-label"><i class="fa-solid fa-scale-balanced"></i> Resultado del mes</div>
+    <div class="kpi-value" style="color:{{ 'var(--ok)' if totales.resultado >= 0 else 'var(--danger)' }}">{{ totales.resultado | pesos }}</div></div>
+</div>
+
+<div class="filters" style="margin-bottom:14px">
+  <form method="get" style="display:contents">
+    <select name="mes" onchange="this.form.submit()" style="max-width:200px">
+      {% for m in meses %}<option value="{{ m }}" {{ 'selected' if m == mes }}>{{ m | mes_imputacion | capitalize }}</option>{% endfor %}
+    </select>
+    {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+  </form>
+  <a class="chip {{ 'active' if not tipo }}" href="{{ url_for('contable.movimientos', mes=mes, q=q or None) }}">Todos</a>
+  {% for t in tipos %}
+    <a class="chip {{ 'active' if tipo == t }}" href="{{ url_for('contable.movimientos', mes=mes, tipo=t, q=q or None) }}">{{ t }}</a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  {% if movimientos %}
+  <div class="table-wrap"><table class="tabla-densa lista-movil">
+    <colgroup><col style="width:90px"><col style="width:86px"><col style="width:26%"><col style="width:24%">
+      <col style="width:120px"><col style="width:110px"><col style="width:78px"></colgroup>
+    <thead><tr><th class="centro">Fecha</th><th class="centro">Tipo</th><th class="izq">Quién</th>
+      <th class="izq">Concepto</th><th class="izq hide-sm">Clasificación</th><th class="num">Importe</th><th></th></tr></thead>
+    <tbody>
+    {% for m in movimientos %}
+      <tr id="mov-{{ m.id }}">
+        <td class="centro fecha-chica" data-titulo="Fecha">{{ m.fecha | fecha }}</td>
+        <td class="centro"><span class="badge {{ 'badge-ok' if m.tipo == 'Ingreso' else ('badge-info' if m.tipo == 'Colchón' else 'badge-danger') }}">{{ m.tipo }}</span></td>
+        <td class="izq envuelve destacado">{{ m.quien or '—' }}
+          {% if m.nro_comprobante or m.comprobante != 'S/C' %}<div class="muted small">{{ m.comprobante }}{% if m.nro_comprobante %} {{ m.nro_comprobante }}{% endif %}</div>{% endif %}</td>
+        <td class="izq envuelve" data-titulo="Concepto">{{ m.concepto or '' }}
+          {% if m.automatico %}<div class="muted small"><i class="fa-solid fa-bolt"></i>
+            {% if m.venta_id %}<a href="{{ url_for('ventas.detalle', id=m.venta_id) }}">venta {{ m.venta_id }}</a>
+            {% else %}<a href="{{ url_for('stock.ingreso', id=m.ingreso_id) }}">compra {{ m.ingreso_id }}</a>{% endif %}</div>{% endif %}</td>
+        <td class="izq hide-sm muted small" data-titulo="Clasificación">{{ m.clasificacion or '' }}</td>
+        <td class="num" data-titulo="Importe" style="color:{{ 'var(--ok)' if m.tipo != 'Egreso' else 'var(--danger)' }}">
+          <strong>{{ m.total | pesos }}</strong>
+          {% if m.tipo == 'Ingreso' and not m.cobrado %}<div class="muted small">sin cobrar</div>{% endif %}</td>
+        <td class="num"><span class="acciones-fila">
+          {% if m.tipo == 'Ingreso' %}
+          <form method="post" action="{{ url_for('contable.cobrado', id=m.id) }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="cobrado" value="{{ '0' if m.cobrado else '1' }}">
+            <button class="btn-icon" title="{{ 'Marcar como no cobrado' if m.cobrado else 'Marcar como cobrado' }}">
+              <i class="fa-{{ 'solid' if m.cobrado else 'regular' }} fa-circle-check" style="color:{{ 'var(--ok)' if m.cobrado else 'var(--muted)' }}"></i></button></form>
+          {% endif %}
+          {% if not m.automatico %}
+          <a class="btn-icon" href="{{ url_for('contable.form', id=m.id) }}" title="Editar"><i class="fa-solid fa-pen"></i></a>
+          <form method="post" action="{{ url_for('contable.eliminar', id=m.id) }}" style="display:inline"
+                data-confirmar="¿Eliminar este movimiento?" data-confirmar-detalle="{{ (m.concepto or m.quien or '') | truncate(60) }} · {{ m.total | pesos }}"
+                data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-icon" title="Eliminar"><i class="fa-solid fa-trash"></i></button></form>
+          {% endif %}
+        </span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-right-left', 'No hay movimientos' ~ (' que coincidan' if q or tipo else ' en ' ~ (mes | mes_imputacion)) ~ '.') }}{% endif %}
+</div>
+{% endblock %}

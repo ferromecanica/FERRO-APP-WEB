@@ -18,6 +18,40 @@
   <div class="card-body" style="border-top:1px solid var(--border)"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button></div>
 </form>
 
+<form class="card" id="socios" method="post" action="{{ url_for('dashboard.socios_guardar') }}" style="max-width:760px;margin-top:16px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-head"><h2>Socios</h2></div>
+  <div class="card-body">
+    <p class="muted small" style="margin:0 0 12px">El sueldo base es hasta cuánto cobra cada uno cuando el mes alcanza.
+      El orden manda: el 1 cobra primero. La participación es cómo se reparte el repago de capital y la ganancia.</p>
+    {% if socios %}
+    <div class="table-wrap"><table class="tabla-densa lista-movil">
+      <thead><tr><th class="izq">Socio</th><th class="izq">Rol</th><th class="num">Sueldo base</th>
+        <th class="num">Participación</th><th class="centro">Orden</th><th class="izq hide-sm">Alias</th><th></th></tr></thead>
+      <tbody>
+      {% for s in socios %}
+        <tr>
+          <td class="izq destacado">{{ s.nombre }}</td>
+          <td class="izq"><input name="rol_{{ s.id }}" value="{{ s.rol or '' }}" placeholder="Jefe de taller"></td>
+          <td class="num"><input name="sueldo_{{ s.id }}" inputmode="decimal" value="{{ s.sueldo_base | numero if s.sueldo_base else '' }}" placeholder="$"></td>
+          <td class="num"><input name="participacion_{{ s.id }}" inputmode="decimal" style="max-width:90px"
+                 value="{{ (s.participacion * 100) | numero(0) if s.participacion is not none }}" placeholder="50"> %</td>
+          <td class="centro"><input name="orden_{{ s.id }}" inputmode="numeric" style="max-width:56px" value="{{ s.orden }}"></td>
+          <td class="izq hide-sm"><input name="alias_{{ s.id }}" value="{{ s.alias or '' }}" placeholder="alias.mp"></td>
+          <td class="num"><label class="check" title="Borrar este socio"><input type="checkbox" name="borrar_{{ s.id }}" value="1"></label></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% endif %}
+    <div class="form-grid" style="margin-top:12px">
+      <div><label>Agregar un socio</label><input name="nombre_nuevo" placeholder="Nombre"></div>
+    </div>
+  </div>
+  <div class="card-body" style="border-top:1px solid var(--border)">
+    <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar socios</button></div>
+</form>
+
 <div class="card" style="max-width:760px;margin-top:16px">
   <div class="card-head"><h2>Copia de seguridad</h2></div>
   <div class="card-body">

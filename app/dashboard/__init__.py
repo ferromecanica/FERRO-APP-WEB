@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_login import login_required
 
 from ..extensions import db
-from ..models import ESTADOS_OT_ABIERTA, ConfigTaller, OrdenTrabajo, Repuesto, Turno, Venta
+from ..models import ESTADOS_OT_ABIERTA, ConfigTaller, OrdenTrabajo, Repuesto, Socio, Turno, Venta
 from ..services import drive
 from ..validaciones import numero_ar
 
@@ -60,8 +60,37 @@ def configuracion():
     from ..services.backup import ultimo_envio
 
     return render_template("dashboard/configuracion.html", cfg=cfg,
+                           socios=Socio.query.order_by(Socio.orden, Socio.nombre).all(),
                            ultimo_backup=ultimo_envio(current_app.instance_path),
                            drive_ok=drive.configurado())
+
+
+@bp.route("/configuracion/socios", methods=["POST"])
+@login_required
+def socios_guardar():
+    """Sueldo base, participación y orden de cobro de cada socio."""
+    nuevo = request.form.get("nombre_nuevo", "").strip()
+    if nuevo:
+        if Socio.query.filter(db.func.lower(Socio.nombre) == nuevo.lower()).first():
+            flash("Ya hay un socio con ese nombre.", "error")
+        else:
+            db.session.add(Socio(nombre=nuevo, orden=(db.session.query(db.func.max(Socio.orden)).scalar() or 0) + 1))
+    for socio in Socio.query.all():
+        if request.form.get(f"borrar_{socio.id}"):
+            if socio.aportes:
+                flash(f"{socio.nombre} tiene aportes cargados: no se puede borrar.", "error")
+            else:
+                db.session.delete(socio)
+            continue
+        socio.rol = request.form.get(f"rol_{socio.id}", "").strip() or None
+        socio.alias = request.form.get(f"alias_{socio.id}", "").strip() or None
+        socio.sueldo_base = numero_ar(request.form.get(f"sueldo_{socio.id}")) or 0
+        porcentaje = numero_ar(request.form.get(f"participacion_{socio.id}"))
+        socio.participacion = (porcentaje / 100) if porcentaje is not None else socio.participacion
+        socio.orden = request.form.get(f"orden_{socio.id}", type=int) or socio.orden
+    db.session.commit()
+    flash("Socios guardados.", "ok")
+    return redirect(url_for(".configuracion") + "#socios")
 
 
 @bp.route("/configuracion/backup", methods=["POST"])
