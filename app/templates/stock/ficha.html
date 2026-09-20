@@ -98,7 +98,7 @@
     <div class="card">
       {{ encabezado('fa-calculator', 'Precios') }}
       <div class="card-body stack-form">
-        <div><label>Costo de lista *</label><input name="costo_lista" id="costo_lista" inputmode="decimal" required
+        <div><label>Costo de lista *</label><input name="costo_lista" id="costo_lista" inputmode="decimal" class="plata" required
              value="{{ v('costo_lista', (r.costo_lista | numero(2)) if r.id else '') }}" placeholder="$">
           <label class="check" style="margin-top:6px"><input type="checkbox" name="costo_manual" value="1" {{ 'checked' if (f.get('costo_manual') if f else r.costo_manual) }}>
             Costo fijo: la actualización de listas no lo cambia</label></div>

@@ -7,7 +7,7 @@
   <div class="card-head"><h2>Taller</h2></div>
   <div class="card-body form-grid">
     <div><label>Valor de la hora de taller *</label>
-      <input name="valor_hora" inputmode="decimal" required value="{{ cfg.valor_hora | numero if cfg.valor_hora else '' }}" placeholder="$ 84.000">
+      <input name="valor_hora" inputmode="decimal" class="plata" required value="{{ cfg.valor_hora | numero if cfg.valor_hora else '' }}" placeholder="$ 84.000">
       <div class="muted small" style="margin-top:4px">Se usa para calcular la mano de obra de las OT y presupuestos.</div></div>
     <div></div>
     <div><label>Razón social</label><input name="razon_social" value="{{ cfg.razon_social or '' }}"></div>
@@ -33,7 +33,7 @@
         <tr>
           <td class="izq"><input name="nombre_{{ s.id }}" value="{{ s.nombre }}"></td>
           <td class="izq"><input name="rol_{{ s.id }}" value="{{ s.rol or '' }}" placeholder="Jefe de taller"></td>
-          <td class="num"><input name="sueldo_{{ s.id }}" inputmode="decimal" value="{{ s.sueldo_base | numero if s.sueldo_base else '' }}" placeholder="$"></td>
+          <td class="num"><input name="sueldo_{{ s.id }}" inputmode="decimal" class="plata" value="{{ s.sueldo_base | numero if s.sueldo_base else '' }}" placeholder="$"></td>
           <td class="num"><input name="participacion_{{ s.id }}" inputmode="decimal" style="max-width:90px"
                  value="{{ (s.participacion * 100) | numero(0) if s.participacion is not none }}" placeholder="50"> %</td>
           <td class="centro"><input name="orden_{{ s.id }}" inputmode="numeric" style="max-width:56px" value="{{ s.orden }}"></td>

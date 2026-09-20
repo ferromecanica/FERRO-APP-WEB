@@ -90,7 +90,7 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="c-desc"><label>Repuesto</label><input value="{{ i.repuesto.nombre }}" disabled></div>
               <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ i.cantidad | numero(2) | replace(',00', '') }}"></div>
-              <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" inputmode="decimal" value="{{ i.costo_unitario | numero(2) if i.costo_unitario else '' }}"></div>
+              <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" inputmode="decimal" class="plata" value="{{ i.costo_unitario | numero(2) if i.costo_unitario else '' }}"></div>
               <div class="c-btn"><span class="acciones-edicion"><button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
                 <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
             </form>
@@ -112,7 +112,7 @@
                    value="{{ (elegido.id ~ ' · ' ~ elegido.nombre) if elegido else '' }}" placeholder="Escribí para buscar…">
             <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}" data-costo="{{ r.costo_lista or 0 }}">stock {{ r.stock_actual | numero(1) }} · costo {{ r.precio_costo | pesos(2) }}</option>{% endfor %}</datalist></div>
           <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" id="costo-ingreso" inputmode="decimal"
+          <div class="c-plata"><label>Costo unit.</label><input name="costo_unitario" id="costo-ingreso" inputmode="decimal" class="plata"
                value="{{ (elegido.costo_lista | numero(2)) if elegido and elegido.costo_lista else '' }}" placeholder="$ (deja el actual)"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
@@ -164,7 +164,7 @@
   if (campoRepuesto) campoRepuesto.addEventListener('input', function () {
     var op = Array.prototype.find.call(document.querySelectorAll('#lista-repuestos option'), function (o) { return o.value === campoRepuesto.value; });
     var costo = document.getElementById('costo-ingreso');
-    if (op && (!costo.value || costo.dataset.sugerido)) costo.value = (parseFloat(op.dataset.costo) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (op && (!costo.value || costo.dataset.sugerido)) Plata.escribir(costo, parseFloat(op.dataset.costo) || 0, 2);
   });
   /* Editar un renglón en el lugar */
   document.querySelectorAll('[data-editar]').forEach(function (b) {

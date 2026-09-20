@@ -7,7 +7,7 @@
       {% with valor=f.get('cliente', ''), obligatorio=True %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% endif %}
     <div class="full"><label>Total cobrado *</label>
-      <input name="total_cobrado" inputmode="decimal" required class="input-grande"
+      <input name="total_cobrado" inputmode="decimal" required class="input-grande plata"
              value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
       <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}).</div></div>
     <div><label>Forma de pago *</label>

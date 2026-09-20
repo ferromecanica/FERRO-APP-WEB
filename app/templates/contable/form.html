@@ -43,12 +43,12 @@
   <div class="card-head seccion" style="border-top:1px solid var(--border)"><h2><i class="fa-solid fa-dollar-sign"></i> Importes</h2>
     <span class="muted small">si solo ponés el total, alcanza</span></div>
   <div class="card-body form-grid">
-    <div><label>Neto</label><input name="neto" inputmode="decimal" class="monto" value="{{ f.get('neto', (m.neto | numero(2)) if m.neto else '') }}"></div>
-    <div><label>IVA</label><input name="iva" inputmode="decimal" class="monto" value="{{ f.get('iva', (m.iva | numero(2)) if m.iva else '') }}"></div>
-    <div><label>Percepciones</label><input name="percepciones" inputmode="decimal" class="monto" value="{{ f.get('percepciones', (m.percepciones | numero(2)) if m.percepciones else '') }}"></div>
-    <div><label>No gravado</label><input name="no_gravado" inputmode="decimal" class="monto" value="{{ f.get('no_gravado', (m.no_gravado | numero(2)) if m.no_gravado else '') }}"></div>
+    <div><label>Neto</label><input name="neto" inputmode="decimal" class="monto plata" value="{{ f.get('neto', (m.neto | numero(2)) if m.neto else '') }}"></div>
+    <div><label>IVA</label><input name="iva" inputmode="decimal" class="monto plata" value="{{ f.get('iva', (m.iva | numero(2)) if m.iva else '') }}"></div>
+    <div><label>Percepciones</label><input name="percepciones" inputmode="decimal" class="monto plata" value="{{ f.get('percepciones', (m.percepciones | numero(2)) if m.percepciones else '') }}"></div>
+    <div><label>No gravado</label><input name="no_gravado" inputmode="decimal" class="monto plata" value="{{ f.get('no_gravado', (m.no_gravado | numero(2)) if m.no_gravado else '') }}"></div>
     <div class="full"><label>Total *</label>
-      <input name="total" id="total" inputmode="decimal" class="input-grande" value="{{ f.get('total', (m.total | numero(2)) if m.total else '') }}">
+      <input name="total" id="total" inputmode="decimal" class="input-grande plata" value="{{ f.get('total', (m.total | numero(2)) if m.total else '') }}">
       <div class="muted small" style="margin-top:4px" id="ayuda-total">Si cargás el detalle, se suma solo.</div></div>
     <div class="full" id="bloque-cobrado" hidden>
       <label class="check"><input type="checkbox" name="cobrado" value="1" {{ 'checked' if (m.cobrado if m.id else True) }}>
@@ -73,9 +73,9 @@
       if (tocado) return;
       var suma = 0;
       document.querySelectorAll('.monto').forEach(function (x) {
-        suma += parseFloat((x.value || '0').replace(/\./g, '').replace(',', '.')) || 0;
+        suma += Plata.aNumero(x.value);
       });
-      total.value = suma ? suma.toLocaleString('es-AR', {minimumFractionDigits: 2}) : '';
+      Plata.escribir(total, suma, 2);
     });
   });
 </script>

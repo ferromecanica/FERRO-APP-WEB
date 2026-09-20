@@ -47,7 +47,7 @@
       <div class="card-body" style="border-bottom:1px solid var(--border)">
         <div class="fila" style="align-items:flex-end">
           <div class="c-plata"><label>Colchón que querés dejar</label>
-            <input name="colchon_objetivo" id="objetivo" inputmode="decimal" class="input-grande"
+            <input name="colchon_objetivo" id="objetivo" inputmode="decimal" class="input-grande plata"
                    value="{{ p.apartado | numero if p.apartado else '' }}" placeholder="$ 900.000"></div>
           <div class="c-btn"><button class="btn" name="accion" value="recalcular"
                  title="Vuelve a la propuesta automática, descartando lo escrito a mano">
@@ -74,11 +74,11 @@
               <td class="num" data-titulo="Ganancia">{{ fila.ganancia | pesos }}</td>
               <td class="num" data-titulo="Total"><strong>{{ fila.total | pesos }}</strong></td>
             {% else %}
-              <td class="num"><input name="sueldo_{{ s.id }}" inputmode="decimal" class="manual" style="max-width:120px"
+              <td class="num"><input name="sueldo_{{ s.id }}" inputmode="decimal" class="manual plata" style="max-width:130px"
                      value="{{ fila.sueldo | numero }}"></td>
-              <td class="num"><input name="repago_{{ s.id }}" inputmode="decimal" class="manual" style="max-width:120px"
+              <td class="num"><input name="repago_{{ s.id }}" inputmode="decimal" class="manual plata" style="max-width:130px"
                      value="{{ fila.repago | numero }}"></td>
-              <td class="num"><input name="ganancia_{{ s.id }}" inputmode="decimal" class="manual" style="max-width:120px"
+              <td class="num"><input name="ganancia_{{ s.id }}" inputmode="decimal" class="manual plata" style="max-width:130px"
                      value="{{ fila.ganancia | numero }}"></td>
               <td class="num"><strong>{{ (fila.sueldo + fila.repago + fila.ganancia) | pesos }}</strong></td>
             {% endif %}
@@ -121,7 +121,7 @@
         {% endif %}
         <div class="precio-final" style="margin-top:12px"><span>Colchón</span>
           {% if cerrado %}<strong>{{ c.colchon | pesos }}</strong>
-          {% else %}<input name="colchon" inputmode="decimal" class="manual" style="max-width:140px;text-align:right"
+          {% else %}<input name="colchon" inputmode="decimal" class="manual plata" style="max-width:150px;text-align:right"
                   value="{{ p.colchon | numero }}">{% endif %}</div>
         <p class="muted small" style="margin:10px 0 0">Va como ingreso a {{ siguiente | mes_imputacion }}.</p>
         {% if p.deuda_usd %}
@@ -140,9 +140,9 @@
           <option value="Manual" {{ 'selected' if c and c.modo == 'Manual' }}>Manual (los números que puse yo)</option>
         </select></div>
       <div><label>Fecha de cierre</label><input type="date" name="fecha_cierre" value="{{ (c.fecha_cierre if c else hoy).isoformat() }}"></div>
-      <div><label>Cotización del dólar</label><input name="cotizacion" inputmode="decimal"
+      <div><label>Cotización del dólar</label><input name="cotizacion" inputmode="decimal" class="plata"
              value="{{ c.cotizacion | numero if c and c.cotizacion else '' }}" placeholder="Ej.: 1.535"></div>
-      <div><label>Notas</label><textarea name="notas" rows="2">{{ c.notas if c else '' }}</textarea></div>
+      <div><label>Notas</label><textarea name="notas" rows="2">{{ (c.notas or '') if c else '' }}</textarea></div>
       <button class="btn btn-primary" name="accion" value="guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar borrador</button>
       {% if reportes_configurados %}
       <button class="btn" formaction="{{ url_for('contable.circular', mes=mes) }}" formnovalidate
@@ -182,18 +182,27 @@
         <tbody>
         {% for k in (c.compromisos if c else []) %}
           <tr><td class="izq"><input name="compromiso_concepto" value="{{ k.concepto }}"></td>
-            <td class="num"><input name="compromiso_total" inputmode="decimal" value="{{ k.total | numero }}"></td>
-            <td class="num"><input name="compromiso_dejar" inputmode="decimal" value="{{ k.a_dejar | numero }}"></td>
+            <td class="num"><input name="compromiso_total" inputmode="decimal" class="plata" value="{{ k.total | numero }}"></td>
+            <td class="num"><input name="compromiso_dejar" inputmode="decimal" class="plata" value="{{ k.a_dejar | numero }}"></td>
             <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
         {% endfor %}
           <tr><td class="izq"><input name="compromiso_concepto" placeholder="Ej.: alquiler"></td>
-            <td class="num"><input name="compromiso_total" inputmode="decimal" placeholder="$"></td>
-            <td class="num"><input name="compromiso_dejar" inputmode="decimal" placeholder="$"></td>
+            <td class="num"><input name="compromiso_total" inputmode="decimal" class="plata" placeholder="$"></td>
+            <td class="num"><input name="compromiso_dejar" inputmode="decimal" class="plata" placeholder="$"></td>
             <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
         </tbody>
+        <tfoot>
+          <tr class="total-row"><td class="izq">Total</td>
+            <td class="num" id="total-compromisos">$ 0</td>
+            <td class="num" id="total-dejar">$ 0</td><td></td></tr>
+        </tfoot>
       </table>
-      <button type="button" class="btn btn-sm" id="agregar-compromiso" style="margin-top:10px">
-        <i class="fa-solid fa-plus"></i> Agregar</button>
+      <div class="actions" style="margin-top:10px">
+        <button type="button" class="btn btn-sm" id="agregar-compromiso">
+          <i class="fa-solid fa-plus"></i> Agregar</button>
+        <button type="button" class="btn btn-sm" id="usar-colchon">
+          <i class="fa-solid fa-arrow-up"></i> Usar el total como colchón</button>
+      </div>
       <p class="muted small" style="margin:10px 0 0">Estos importes no se descuentan de nada: son la explicación
         de por qué dejás ese colchón. Van en la circular.</p>
     </div>
@@ -205,14 +214,18 @@
     <div class="card-body">
       <div class="form-grid">
         <div><label>Caja chica (lo que tiene Iván)</label>
-          <input name="caja_chica" inputmode="decimal" value="{{ c.caja_chica | numero if c and c.caja_chica else '' }}" placeholder="$"></div>
+          <input name="caja_chica" id="caja-chica" class="plata" inputmode="decimal"
+                 value="{{ c.caja_chica | numero if c and c.caja_chica else '' }}" placeholder="$"></div>
         <div><label>Banco</label>
-          <input name="banco" inputmode="decimal" value="{{ c.banco | numero if c and c.banco else '' }}" placeholder="$"></div>
+          <input name="banco" id="banco" class="plata" inputmode="decimal"
+                 value="{{ c.banco | numero if c and c.banco else '' }}" placeholder="$"></div>
       </div>
+      <div class="linea-cuenta fuerte" style="margin-top:14px"><span>Total contado</span>
+        <span class="num" id="total-contado">$ 0</span></div>
       <div class="full" style="margin-top:12px"><label>Observaciones para la circular</label>
         <textarea name="observaciones" rows="5" placeholder="Una por renglón. Ej.:
 FERRO afrontó compras de herramientas por $845.457.
-Nuevo proveedor de aceites ENI, 50% pagado.">{{ c.observaciones if c else '' }}</textarea></div>
+Nuevo proveedor de aceites ENI, 50% pagado.">{{ (c.observaciones or '') if c else '' }}</textarea></div>
     </div>
   </div>
 </div>
@@ -226,6 +239,28 @@ Nuevo proveedor de aceites ENI, 50% pagado.">{{ c.observaciones if c else '' }}<
 
 {% if not cerrado %}
 <script>
+  function sumar(selector) {
+    var total = 0;
+    document.querySelectorAll(selector).forEach(function (c) { total += Plata.aNumero(c.value); });
+    return total;
+  }
+  function actualizarTotales() {
+    document.getElementById('total-compromisos').textContent = Plata.formatear(String(sumar('[name="compromiso_total"]'))) || '$ 0';
+    document.getElementById('total-dejar').textContent = Plata.formatear(String(sumar('[name="compromiso_dejar"]'))) || '$ 0';
+    document.getElementById('total-contado').textContent =
+      Plata.formatear(String(Plata.aNumero(document.getElementById('caja-chica').value) +
+                             Plata.aNumero(document.getElementById('banco').value))) || '$ 0';
+  }
+  document.addEventListener('plata-cambio', actualizarTotales);
+  document.addEventListener('DOMContentLoaded', actualizarTotales);
+  actualizarTotales();
+
+  document.getElementById('usar-colchon').addEventListener('click', function () {
+    var objetivo = document.getElementById('objetivo');
+    Plata.escribir(objetivo, sumar('[name="compromiso_dejar"]'));
+    objetivo.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
   // Compromisos: agregar y quitar renglones
   var tabla = document.querySelector('#compromisos tbody');
   document.getElementById('agregar-compromiso').addEventListener('click', function () {
@@ -233,6 +268,7 @@ Nuevo proveedor de aceites ENI, 50% pagado.">{{ c.observaciones if c else '' }}<
     fila.querySelectorAll('input').forEach(function (c) { c.value = ''; });
     tabla.appendChild(fila);
     engancharQuitar(fila);
+    actualizarTotales();
     fila.querySelector('input').focus();
   });
   function engancharQuitar(fila) {
@@ -240,6 +276,7 @@ Nuevo proveedor de aceites ENI, 50% pagado.">{{ c.observaciones if c else '' }}<
     if (b) b.addEventListener('click', function () {
       if (tabla.rows.length > 1) fila.remove();
       else fila.querySelectorAll('input').forEach(function (c) { c.value = ''; });
+      actualizarTotales();
     });
   }
   Array.prototype.forEach.call(tabla.rows, engancharQuitar);
@@ -253,15 +290,13 @@ Nuevo proveedor de aceites ENI, 50% pagado.">{{ c.observaciones if c else '' }}<
   // Y si cambiás el colchón, los sueldos se recalculan sin recargar
   var objetivo = document.getElementById('objetivo');
   var disponible = {{ p.disponible }}, bases = {{ socios | map(attribute='sueldo_base') | sum }};
-  function numero(t) { return parseFloat((t || '0').replace(/\./g, '').replace(',', '.')) || 0; }
-  function plata(n) { return n.toLocaleString('es-AR', {maximumFractionDigits: 0}); }
   if (objetivo) objetivo.addEventListener('input', function () {
     if (!bases) return;
-    var apartado = Math.min(Math.max(numero(objetivo.value), 0), disponible);
+    var apartado = Math.min(Math.max(Plata.aNumero(objetivo.value), 0), disponible);
     var prop = Math.min(1, (disponible - apartado) / bases);
     document.getElementById('porcentaje').textContent = (prop * 100).toFixed(1).replace('.', ',') + ' %';
     {% for s in socios %}
-    document.querySelector('[name="sueldo_{{ s.id }}"]').value = plata({{ s.sueldo_base or 0 }} * prop);
+    Plata.escribir(document.querySelector('[name="sueldo_{{ s.id }}"]'), {{ s.sueldo_base or 0 }} * prop);
     {% endfor %}
   });
 </script>

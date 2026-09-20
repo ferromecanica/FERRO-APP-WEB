@@ -140,8 +140,8 @@
               <div class="c-desc"><label>Descripción</label>
                 <input name="descripcion" value="{{ c.descripcion }}" {{ 'required' if es_varios else 'disabled' }}></div>
               <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ c.cantidad | numero(2) | replace(',00', '') }}"></div>
-              <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" value="{{ c.precio_unitario | numero }}"></div>
-              <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" value="{{ c.precio_costo | numero }}" {{ '' if es_varios else 'disabled title="El costo de un repuesto del stock se toma del stock"' }}></div>
+              <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" class="plata" value="{{ c.precio_unitario | numero }}"></div>
+              <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" class="plata" value="{{ c.precio_costo | numero }}" {{ '' if es_varios else 'disabled title="El costo de un repuesto del stock se toma del stock"' }}></div>
               <div class="c-btn">{{ botones_edicion() }}</div>
             </form>
             {% if not es_varios %}<div class="muted small" style="margin-top:6px">Si cambiás la cantidad, el stock se ajusta por la diferencia.</div>{% endif %}
@@ -164,8 +164,8 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="varios">
           <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Pastillas de freno delanteras" required></div>
           <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
-          <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" placeholder="$"></div>
+          <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" class="plata" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" class="plata" placeholder="$"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
         <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-stock" data-panel="stock" hidden>

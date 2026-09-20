@@ -47,8 +47,8 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="c-desc"><label>Descripción</label><input name="descripcion" value="{{ i.descripcion }}"></div>
               <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ i.cantidad | numero(2) | replace(',00', '') }}"></div>
-              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" value="{{ i.precio | numero(2) }}"></div>
-              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" value="{{ i.costo | numero(2) }}"></div>
+              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" class="plata" value="{{ i.precio | numero(2) }}"></div>
+              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" class="plata" value="{{ i.costo | numero(2) }}"></div>
               <div class="c-btn"><span class="acciones-edicion"><button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
                 <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
             </form>
@@ -77,8 +77,8 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="manual">
           <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Cambio de lamparita, revisión de frenos…" required></div>
           <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
-          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" placeholder="$ (lo que pagamos)"></div>
+          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" class="plata" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" class="plata" placeholder="$ (lo que pagamos)"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
       </div>

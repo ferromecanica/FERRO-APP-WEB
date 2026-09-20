@@ -615,6 +615,7 @@ dl.calculo dd { font-variant-numeric: tabular-nums; }
 .tabla-config tbody [data-col="material"] { background: inherit; box-shadow: 1px 0 0 var(--border); }
 .tabla-config [data-col="detalle"] { max-width: 220px; }
 .tabla-config .plata { font-variant-numeric: tabular-nums; }
+input.plata { font-variant-numeric: tabular-nums; }
 .asa { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 4; }
 .asa::after { content: ""; position: absolute; top: 25%; bottom: 25%; left: 3px; width: 1px; background: rgba(168, 86, 0, .25); }
 .asa:hover::after, body.redimensionando .asa::after { background: var(--accent); width: 2px; }

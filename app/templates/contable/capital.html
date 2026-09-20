@@ -64,8 +64,8 @@
       <div><label>Qué es</label>
         <select name="tipo">{% for t in tipos %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
       <div><label>Fecha</label><input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
-      <div><label>Monto en pesos *</label><input name="pesos" inputmode="decimal" required placeholder="$"></div>
-      <div><label>Cotización del dólar</label><input name="cotizacion" inputmode="decimal" placeholder="Ej.: 1.535">
+      <div><label>Monto en pesos *</label><input name="pesos" inputmode="decimal" class="plata" required placeholder="$"></div>
+      <div><label>Cotización del dólar</label><input name="cotizacion" inputmode="decimal" class="plata" placeholder="Ej.: 1.535">
         <div class="muted small" style="margin-top:4px">Para saber cuántos dólares fueron ese día.</div></div>
       <div><label>Notas</label><input name="notas" placeholder="Ej.: elevador, caballetes…"></div>
       <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Registrar</button>

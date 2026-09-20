@@ -87,8 +87,8 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="c-desc"><label>Descripción</label><input name="descripcion" value="{{ i.descripcion }}"></div>
               <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ i.cantidad | numero(2) | replace(',00', '') }}"></div>
-              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" value="{{ i.precio_unitario | numero(2) }}"></div>
-              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" value="{{ i.costo_unitario | numero(2) if i.costo_unitario else '' }}"></div>
+              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" class="plata" value="{{ i.precio_unitario | numero(2) }}"></div>
+              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" class="plata" value="{{ i.costo_unitario | numero(2) if i.costo_unitario else '' }}"></div>
               <div class="c-btn"><span class="acciones-edicion"><button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
                 <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
             </form>
@@ -119,8 +119,8 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="manual">
           <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Compresor de A/A" required></div>
           <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
-          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" placeholder="$ (lo que pagamos)"></div>
+          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" class="plata" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" class="plata" placeholder="$ (lo que pagamos)"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
       </div>
@@ -138,8 +138,8 @@
         </div>
         <div class="fila">
           <div class="c-cant"><label>Horas</label><input name="horas" inputmode="decimal" value="{{ p.horas_mano_obra | numero(1) if p.horas_mano_obra else '' }}" placeholder="1,5" {{ 'disabled' if not editable }}></div>
-          <div class="c-plata"><label>Valor de la hora</label><input name="valor_hora" inputmode="decimal" value="{{ p.valor_hora | numero if p.valor_hora else '' }}" {{ 'disabled' if not editable }}></div>
-          <div class="c-plata"><label>Monto fijo</label><input name="monto" inputmode="decimal" value="{{ p.monto_fijo_mo | numero if p.monto_fijo_mo else '' }}" placeholder="$" {{ 'disabled' if not editable }}></div>
+          <div class="c-plata"><label>Valor de la hora</label><input name="valor_hora" inputmode="decimal" class="plata" value="{{ p.valor_hora | numero if p.valor_hora else '' }}" {{ 'disabled' if not editable }}></div>
+          <div class="c-plata"><label>Monto fijo</label><input name="monto" inputmode="decimal" class="plata" value="{{ p.monto_fijo_mo | numero if p.monto_fijo_mo else '' }}" placeholder="$" {{ 'disabled' if not editable }}></div>
           {% if editable %}<div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button></div>{% endif %}
         </div>
       </div>

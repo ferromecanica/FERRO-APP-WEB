@@ -47,8 +47,8 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="c-desc"><label>Descripción</label><input name="descripcion" value="{{ i.descripcion }}"></div>
               <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ i.cantidad | numero(2) | replace(',00', '') }}"></div>
-              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" value="{{ i.precio | numero(2) }}"></div>
-              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" value="{{ i.costo | numero(2) }}"></div>
+              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" class="plata" value="{{ i.precio | numero(2) }}"></div>
+              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" class="plata" value="{{ i.costo | numero(2) }}"></div>
               <div class="c-btn"><span class="acciones-edicion"><button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
                 <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
             </form>
@@ -77,8 +77,8 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="manual">
           <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Pastillas de freno delanteras" required></div>
           <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
-          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" placeholder="$ (lo que pagamos)"></div>
+          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" class="plata" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" class="plata" placeholder="$ (lo que pagamos)"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
       </div>
@@ -96,7 +96,7 @@
         <div class="fila">
           <div class="c-cant"><label>Horas</label><input name="horas" inputmode="decimal" value="{{ coti['horas'] | numero(1) if coti['horas'] else '' }}" placeholder="1,5"></div>
           <div class="c-plata"><label>Valor de la hora</label><input value="{{ t.valor_hora | numero }}" disabled></div>
-          <div class="c-plata"><label>Monto fijo</label><input name="monto_mo" inputmode="decimal" value="{{ coti['monto_mo'] | numero if coti['monto_mo'] else '' }}" placeholder="$"></div>
+          <div class="c-plata"><label>Monto fijo</label><input name="monto_mo" inputmode="decimal" class="plata" value="{{ coti['monto_mo'] | numero if coti['monto_mo'] else '' }}" placeholder="$"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Calcular</button></div>
         </div>
         {% if not t.valor_hora %}<p class="small" style="margin:10px 0 0"><i class="fa-solid fa-circle-info"></i>

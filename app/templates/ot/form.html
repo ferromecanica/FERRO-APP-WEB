@@ -60,7 +60,7 @@
          placeholder="{{ vehiculo.kilometraje if vehiculo and vehiculo.kilometraje else '' }}"></div>
     <div class="full"><label>Qué trae / trabajo a realizar *</label>
       <textarea name="detalle" required placeholder="Ej.: Service 10.000 km, ruido en tren delantero…">{{ f.get('detalle', ot.detalle or '') }}</textarea></div>
-    <div><label>Presupuesto inicial</label><input name="presupuesto_cliente" inputmode="decimal"
+    <div><label>Presupuesto inicial</label><input name="presupuesto_cliente" inputmode="decimal" class="plata"
          value="{{ f.get('presupuesto_cliente', (ot.presupuesto_cliente | numero) if ot.presupuesto_cliente else '') }}" placeholder="$"></div>
   </div>
   <div class="card-body actions" style="border-top:1px solid var(--border)">

@@ -29,7 +29,7 @@
     <div class="full bloque-cobro" {{ '' if f.get('cobrado') == 'si' else 'hidden' }}>
       <div class="form-grid">
         <div class="full"><label>Total cobrado *</label>
-          <input name="total_cobrado" inputmode="decimal" class="input-grande"
+          <input name="total_cobrado" inputmode="decimal" class="input-grande plata"
                  value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
           <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}). Cambialo por lo que realmente se cobró.</div></div>
         <div><label>Forma de pago *</label>
