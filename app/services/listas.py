@@ -285,15 +285,16 @@ def previsualizar(ruta, nombre, perfil):
 
     repuestos = Repuesto.query.filter(Repuesto.proveedor == perfil["proveedor"],
                                       Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
-    # Los nuestros, indexados por código (y por código+marca cuando hay columna de marca)
-    por_codigo, por_par = {}, {}
+    # Los nuestros, indexados por código + marca. Sin columna de marca, la marca es "".
+    por_par, sin_marca = {}, {}
     for r in repuestos:
         codigo = _normalizar(getattr(r, campo, None))
         if not codigo:
             continue
-        por_codigo.setdefault(codigo, []).append(r)
-        if i_marca is not None:
-            por_par.setdefault((codigo, _normalizar(r.marca_proveedor or r.marca)), []).append(r)
+        marca = _normalizar(r.marca_proveedor or r.marca) if i_marca is not None else ""
+        por_par.setdefault((codigo, marca), []).append(r)
+        if i_marca is not None and not marca:
+            sin_marca.setdefault(codigo, []).append(r)
 
     costos, sobrantes, leidas, con_precio = {}, 0, 0, 0
     for fila in filas:
@@ -301,12 +302,12 @@ def previsualizar(ruta, nombre, perfil):
         codigo = _normalizar(fila[i_codigo]) if i_codigo < len(fila) else ""
         if not codigo:
             continue
-        nuestros = por_par.get((codigo, _normalizar(fila[i_marca] if i_marca < len(fila) else "")), []) \
-            if i_marca is not None else []
-        if not nuestros:
-            mismos = por_codigo.get(codigo, [])
-            # sin marca, o con marca que no coincide: solo sirve si no hay ambigüedad
-            nuestros = mismos if (i_marca is None or len(mismos) == 1) else []
+        marca = _normalizar(fila[i_marca] if i_marca < len(fila) else "") if i_marca is not None else ""
+        nuestros = por_par.get((codigo, marca), [])
+        if not nuestros and i_marca is not None:
+            # El mismo código con otra marca es otro repuesto (KIT26 de MAHLE no es el de BOSCH):
+            # solo se lo queda el nuestro que no tenga marca cargada.
+            nuestros = sin_marca.get(codigo, [])
         if not nuestros:
             sobrantes += 1
             continue

@@ -129,4 +129,30 @@ assert 'No pude' in post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.By
                           content_type='multipart/form-data')
 assert 'tiene que ser Excel' in post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(b'x'), 'lista.docx')},
                                      content_type='multipart/form-data')
+# mismo código, distinta marca: cada uno con su precio (el KIT26 de MAHLE no es el de BOSCH)
+with app.app_context():
+    for marca_rsf, marca, costo in [('MAHFI', 'MAHLE', 52698.05), ('BOSFI', 'BOSCH', 80000.0)]:
+        db.session.add(Repuesto(nombre=f'KIT26 FILTROS {marca}', nro_parte='KIT26', marca=marca,
+                                marca_proveedor=marca_rsf, proveedor='Maugeri', costo_lista=costo))
+    db.session.add(Repuesto(nombre='KIT26 sin marca cargada', nro_parte='KIT26-SM', marca='', marca_proveedor='',
+                            proveedor='Maugeri', costo_lista=1000.0))
+    db.session.commit()
+    ids = {r.marca_proveedor or 'sin': r.id for r in Repuesto.query.filter_by(proveedor='Maugeri').all()}
+# el archivo trae las tres marcas, y la de Bosch primero
+kit26 = ('"BOSFI","KIT26","RUBRO","desc",158880.98,0.00,"","R1","KIT26"\n'
+         '"FREMA","KIT26","RUBRO","desc",342497.01,0.00,"","R2","KIT26"\n'
+         '"MAHFI","KIT26","RUBRO","desc",101502.12,0.00,"","R3","KIT26"\n'
+         '"LOQUESEA","KIT26-SM","RUBRO","desc",10000.00,0.00,"","R4","KIT26-SM"\n')
+post('/stock/listas', {'proveedor': 'Maugeri', 'archivo': (io.BytesIO(kit26.encode()), 'lista.TXT')},
+     content_type='multipart/form-data')
+mapeo_rsf = {'col_codigo': 'Columna 2', 'col_marca': 'Columna 1', 'col_precio': 'Columna 5',
+             'campo_codigo': 'nro_parte', 'factor': '0,5711'}
+b = post('/stock/listas/revisar', dict(mapeo_rsf, accion='aplicar'))
+assert '3 precios actualizados' in b, b[b.find('Qué cambiaría'):][:300]
+with app.app_context():
+    assert db.session.get(Repuesto, ids['MAHFI']).costo_lista == round(101502.12 * 0.5711, 2), 'tomó otra marca'
+    assert db.session.get(Repuesto, ids['BOSFI']).costo_lista == round(158880.98 * 0.5711, 2)
+    # el que no tiene marca cargada sí se lleva la fila de cualquier marca
+    assert db.session.get(Repuesto, ids['sin']).costo_lista == round(10000.00 * 0.5711, 2)
+
 print('TODO OK')
