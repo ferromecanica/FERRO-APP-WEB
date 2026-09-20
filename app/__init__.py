@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask
+from flask import Flask, request
 
 from config import Config
 
@@ -62,5 +62,13 @@ def create_app(config_class=Config):
         from .auth import ingreso_automatico
 
         app.before_request(ingreso_automatico)
+
+    from .services.backup import respaldar_si_toca
+
+    @app.before_request
+    def _backup_diario():
+        """La primera visita del día manda la copia a Drive (acá no hay tareas programadas)."""
+        if request.endpoint and request.endpoint != "static":
+            respaldar_si_toca(app)
 
     return app

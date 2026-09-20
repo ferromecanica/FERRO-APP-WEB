@@ -1,10 +1,11 @@
 from datetime import date
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
 from ..extensions import db
 from ..models import ESTADOS_OT_ABIERTA, ConfigTaller, OrdenTrabajo, Repuesto, Turno, Venta
+from ..services import drive
 from ..validaciones import numero_ar
 
 bp = Blueprint("dashboard", __name__)
@@ -55,4 +56,22 @@ def configuracion():
             db.session.commit()
             flash("Configuración guardada.", "ok")
             return redirect(url_for(".configuracion"))
-    return render_template("dashboard/configuracion.html", cfg=cfg)
+    from ..services.backup import ultimo_envio
+
+    return render_template("dashboard/configuracion.html", cfg=cfg,
+                           ultimo_backup=ultimo_envio(current_app.instance_path),
+                           drive_ok=drive.configurado())
+
+
+@bp.route("/configuracion/backup", methods=["POST"])
+@login_required
+def backup_ahora():
+    """Manda la copia a Drive en el momento (la de todos los días sale sola)."""
+    from ..services.backup import mandar_a_drive
+
+    try:
+        nombre = mandar_a_drive(current_app._get_current_object())
+        flash(f"Copia guardada en Drive: {nombre}.", "ok")
+    except Exception as e:
+        flash(f"No pude mandar la copia a Drive: {e}", "error")
+    return redirect(url_for(".configuracion"))

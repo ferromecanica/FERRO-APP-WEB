@@ -19,6 +19,32 @@
 </form>
 
 <div class="card" style="max-width:760px;margin-top:16px">
+  <div class="card-head"><h2>Copia de seguridad</h2></div>
+  <div class="card-body">
+    {% if drive_ok %}
+      <p style="margin:0 0 10px">
+        {% if ultimo_backup == hoy %}<i class="fa-solid fa-circle-check" style="color:var(--ok)"></i>
+          La copia de hoy ya está guardada en tu Drive.
+        {% elif ultimo_backup %}<i class="fa-solid fa-circle-exclamation" style="color:var(--warn)"></i>
+          La última copia en Drive es del <strong>{{ ultimo_backup | fecha }}</strong>.
+        {% else %}<i class="fa-solid fa-circle-exclamation" style="color:var(--danger)"></i>
+          <strong>Todavía no hay ninguna copia en Drive.</strong>
+        {% endif %}
+      </p>
+      <p class="muted small" style="margin:0 0 12px">Ferro manda una copia por día, en la primera vez que alguien
+        entra. Se guardan las de los últimos 60 días en tu carpeta de backups.</p>
+      <form method="post" action="{{ url_for('dashboard.backup_ahora') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn"><i class="fa-solid fa-cloud-arrow-up"></i> Hacer una copia ahora</button>
+      </form>
+    {% else %}
+      <p class="muted" style="margin:0"><i class="fa-solid fa-plug-circle-xmark"></i>
+        Falta configurar la conexión con Google Drive.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="max-width:760px;margin-top:16px">
   <div class="card-head"><h2>Tamaño de la pantalla</h2></div>
   <div class="card-body">
     <p class="muted small" style="margin:0 0 12px">Achica o agranda todo: letra, panel del costado y tablas.

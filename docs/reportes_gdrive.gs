@@ -14,6 +14,9 @@
  *   por "|"; copia a la carpeta de fotos de Ferro los que falten y devuelve el id de cada uno.
  * accion=ver_carpetas: lista las carpetas que se llaman como dice nombre, con su id, dónde
  *   están y cuántos archivos tienen. Sirve cuando hay más de una con el mismo nombre.
+ * accion=guardar_backup: guarda la copia diaria de la base en la carpeta de backups y
+ *   manda a la papelera las de más de DIAS_BACKUP días. La manda Ferro solo, una vez por
+ *   día: en PythonAnywhere gratis no hay tareas programadas.
  *
  * Instalación (una sola vez), en el MISMO proyecto de Apps Script donde está el backup diario:
  *  1. Archivo → "+" → Script → pegar este código y completar SECRETO.
@@ -35,6 +38,8 @@ const FOLDER_LOGO_ID = '1hKdsArmHtOGlBSA_ZQ_LCeRv4UKKfyC3';
 const NOMBRE_LOGO = 'SOBRIO FONDO BLANCO.jpeg';
 const NOMBRE_FIRMA = 'FIRMA.jpg';
 const FOLDER_FOTOS_ID = '1XbCu2_FdiR08_mzfzhPcsNifW2Cr1qjf';
+const FOLDER_BACKUPS_ID = '1Mimm6jGOAwV0iV_nCtq7wnC_k5aohcSq';
+const DIAS_BACKUP = 60;  // las copias más viejas que esto se van a la papelera
 
 function doPost(e) {
   try {
@@ -46,6 +51,7 @@ function doPost(e) {
     if (accion === 'borrar_foto') return borrarFoto(p);
     if (accion === 'copiar_fotos') return copiarFotos(p);
     if (accion === 'ver_carpetas') return verCarpetas(p);
+    if (accion === 'guardar_backup') return guardarBackup(p);
     return json({ ok: false, error: 'acción desconocida: ' + accion });
   } catch (err) {
     return json({ ok: false, error: String(err.message || err) });
@@ -90,6 +96,28 @@ function borrarFoto(p) {
   if (!p.id) return json({ ok: false, error: 'falta el id' });
   DriveApp.getFileById(p.id).setTrashed(true);
   return json({ ok: true });
+}
+
+function guardarBackup(p) {
+  if (!p.nombre || !p.contenido) return json({ ok: false, error: 'faltan datos' });
+  const carpeta = DriveApp.getFolderById(FOLDER_BACKUPS_ID);
+
+  const iguales = carpeta.getFilesByName(p.nombre);   // si ya hay una de hoy, se reemplaza
+  while (iguales.hasNext()) iguales.next().setTrashed(true);
+  const blob = Utilities.newBlob(Utilities.base64Decode(p.contenido), 'application/gzip', p.nombre);
+  const archivo = carpeta.createFile(blob);
+
+  const limite = new Date(Date.now() - DIAS_BACKUP * 24 * 60 * 60 * 1000);
+  let borradas = 0;
+  const viejas = carpeta.getFiles();
+  while (viejas.hasNext()) {
+    const f = viejas.next();
+    if (f.getName().indexOf('ferro-backup-') === 0 && f.getDateCreated() < limite) {
+      f.setTrashed(true);
+      borradas++;
+    }
+  }
+  return json({ ok: true, id: archivo.getId(), nombre: archivo.getName(), borradas: borradas });
 }
 
 function verCarpetas(p) {
