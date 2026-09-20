@@ -1,0 +1,169 @@
+{# Circular contable del mes, con el mismo formato que la que se hacía a mano. #}
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { font-family: sans-serif; color: #333; margin: 0; padding: 0; font-size: 11px; }
+      .container { margin: 0; border: 1px solid #eee; padding: 14px 16px; border-radius: 10px; }
+      .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E48A06; padding-bottom: 10px; margin-bottom: 14px; }
+      .logo-box { width: 55%; }
+      .logo-img { width: 200px; height: auto; }
+      .services-text { font-size: 9px; color: #555; margin-top: 4px; line-height: 1.3; font-weight: bold; }
+      .doc-title { text-align: right; width: 45%; }
+      .doc-title h2 { color: #E48A06; margin: 0; font-size: 20px; text-transform: uppercase; }
+      .taller-data { font-size: 9px; color: #666; margin-top: 6px; line-height: 1.4; }
+      h3 { border-left: 5px solid #E48A06; padding: 5px 10px; background: #f2f2f2; font-size: 12px; text-transform: uppercase;
+           color: #333; margin: 16px 0 5px; page-break-after: avoid; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #f2f2f2; padding: 5px 7px; text-align: left; font-size: 9.5px; border-bottom: 2px solid #ddd;
+           text-transform: uppercase; letter-spacing: .03em; }
+      td { font-size: 10px; border-bottom: 1px solid #eee; padding: 4px 7px; vertical-align: top; }
+      .num { text-align: right; white-space: nowrap; }
+      .fecha { white-space: nowrap; width: 72px; }
+      tr.subtotal td { background: #fafafa; font-weight: bold; border-top: 1px solid #ddd; }
+      tr.total td { background: #fff3e3; font-weight: bold; color: #a85600; border-top: 2px solid #E48A06; font-size: 11px; }
+      .chica { width: 62%; margin-left: auto; }
+      .nota { font-size: 9px; color: #666; margin-top: 6px; line-height: 1.5; }
+      .observaciones li { margin-bottom: 4px; }
+      .pie { margin-top: 18px; padding-top: 8px; border-top: 1px solid #eee; font-size: 9px; color: #888; text-align: center; }
+      .salarios td { border: 0; padding: 2px 0; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-box">
+          <img src="{{ logo }}" class="logo-img">
+          <div class="services-text">Mecánica - Electricidad<br>Inyección – Cambios de aceite<br>Escaneo profesional – Tren delantero<br>Servicio Integral del Automotor</div>
+        </div>
+        <div class="doc-title">
+          <h2>Circular contable{% if c.numero %} N°{{ c.numero }}{% endif %}</h2>
+          <p style="font-weight: bold; font-size: 14px; margin: 4px 0;"># {{ mes_largo | upper }}</p>
+          <p style="font-size: 10px; margin: 3px 0;">Fecha: {{ (c.fecha_cierre or hoy) | fecha }}</p>
+          <div class="taller-data">{{ taller.direccion }}<br>{{ taller.localidad }}<br>Cel/Wzp: {{ taller.telefono }}<br>
+            Inicio Actividades: {{ taller.inicio }}<br>IVA {{ taller.iva }}</div>
+        </div>
+      </div>
+
+      <h3>1) Ingresos</h3>
+      <table>
+        <colgroup><col style="width:72px"><col style="width:26%"><col><col style="width:90px"></colgroup>
+        <thead><tr><th>Fecha</th><th>Proveedor / Cliente</th><th>Concepto</th><th class="num">Importe</th></tr></thead>
+        <tbody>
+        {% for m in ingresos %}
+          <tr><td class="fecha">{{ m.fecha | fecha }}</td><td>{{ m.quien or '' }}</td>
+            <td>{{ m.concepto or '' }}</td><td class="num">{{ m.total | pesos }}</td></tr>
+        {% else %}<tr><td colspan="4">Sin ingresos cargados.</td></tr>{% endfor %}
+          <tr class="total"><td colspan="3">Total ingresos</td><td class="num">{{ c.ingresos | pesos }}</td></tr>
+        </tbody>
+      </table>
+
+      {% if colchon_entrante %}
+      <h3>2) Colchón mes anterior</h3>
+      <table>
+        <colgroup><col style="width:72px"><col style="width:26%"><col><col style="width:90px"></colgroup>
+        <tbody>
+        {% for m in colchon_entrante %}
+          <tr><td class="fecha">{{ m.fecha | fecha }}</td><td>{{ m.quien or '' }}</td>
+            <td>{{ m.concepto or '' }}</td><td class="num">{{ m.total | pesos }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      <h3>3) Egresos</h3>
+      <table>
+        <colgroup><col style="width:72px"><col style="width:20%"><col style="width:22%"><col><col style="width:90px"></colgroup>
+        <thead><tr><th>Fecha</th><th>Clasificación</th><th>Proveedor</th><th>Concepto</th><th class="num">Importe</th></tr></thead>
+        <tbody>
+        {% for grupo in egresos %}
+          {% for m in grupo.movimientos %}
+            <tr><td class="fecha">{{ m.fecha | fecha }}</td><td>{{ m.clasificacion or '' }}</td>
+              <td>{{ m.quien or '' }}</td><td>{{ m.concepto or '' }}</td>
+              <td class="num">{{ m.total | pesos }}</td></tr>
+          {% endfor %}
+          <tr class="subtotal"><td colspan="4">Total {{ grupo.nombre | lower }}</td>
+            <td class="num">{{ grupo.total | pesos }}</td></tr>
+        {% else %}<tr><td colspan="5">Sin egresos cargados.</td></tr>{% endfor %}
+          <tr class="total"><td colspan="4">Total egresos</td><td class="num">{{ c.egresos | pesos }}</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4) Resultado operativo</h3>
+      <table class="chica">
+        <tbody>
+          <tr><td>Ingresos</td><td class="num">{{ c.ingresos | pesos }}</td></tr>
+          <tr><td>Colchón mes anterior</td><td class="num">{{ c.colchon_entrante | pesos }}</td></tr>
+          <tr><td>Egresos</td><td class="num">{{ c.egresos | pesos }}</td></tr>
+          <tr class="total"><td>Resultado operativo</td><td class="num">{{ c.resultado | pesos }}</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5) Colchón próximo mes</h3>
+      <table class="chica">
+        <thead><tr><th></th><th class="num">Total</th><th class="num">A dejar</th></tr></thead>
+        <tbody>
+        {% for k in c.compromisos %}
+          <tr><td>{{ k.concepto }}</td><td class="num">{{ k.total | pesos }}</td><td class="num">{{ k.a_dejar | pesos }}</td></tr>
+        {% endfor %}
+          <tr class="total"><td>Total próximos compromisos</td>
+            <td class="num">{{ c.compromisos_total | pesos }}</td><td class="num">{{ c.colchon | pesos }}</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6) Salarios</h3>
+      <p style="margin:6px 0 4px"><strong>a) Salarios vigentes</strong></p>
+      <table class="salarios" style="width:auto">
+        <tbody>
+        {% for s in socios %}
+          <tr><td style="padding-right:24px">{{ s.nombre }}{% if s.nota %} (**){% endif %}:</td>
+            <td class="num">{{ s.sueldo_base | pesos }}</td></tr>
+        {% endfor %}
+          <tr><td style="border-top:1px solid #ddd;padding-top:4px"><strong>Total salarios:</strong></td>
+            <td class="num" style="border-top:1px solid #ddd;padding-top:4px"><strong>{{ total_salarios | pesos }}</strong>
+              {% if incidencias %}<span style="font-weight:normal"> ({{ incidencias }})</span>{% endif %}</td></tr>
+        </tbody>
+      </table>
+      {% for s in socios if s.nota %}<div class="nota">(**) {{ s.nota }}</div>{% endfor %}
+
+      <p style="margin:12px 0 4px"><strong>b) Liquidación de haberes</strong></p>
+      <p style="margin:0 0 6px">Disponible para salarios: <strong>{{ (c.resultado - c.colchon) | pesos }}</strong>
+        (R.O. {{ c.resultado | pesos }} − colchón {{ c.colchon | pesos }})</p>
+      <table class="chica">
+        <tbody>
+        {% for fila in c.socios %}
+          <tr><td>Sueldo {{ fila.socio.nombre }}{% if porcentajes.get(fila.socio.id) %}
+              ({{ porcentajes[fila.socio.id] }}){% endif %}</td>
+            <td class="num">{{ fila.sueldo | pesos }}</td></tr>
+        {% endfor %}
+        {% if c.repago %}<tr><td>Repago de capital</td><td class="num">{{ c.repago | pesos }}</td></tr>{% endif %}
+        {% if c.ganancia %}<tr><td>Ganancia de socios</td><td class="num">{{ c.ganancia | pesos }}</td></tr>{% endif %}
+        </tbody>
+      </table>
+
+      {% if c.disponible_real %}
+      <p style="margin:12px 0 4px"><strong>c) Dinero disponible</strong></p>
+      <table class="chica">
+        <tbody>
+          <tr><td>Caja chica</td><td class="num">{{ c.caja_chica | pesos }}</td></tr>
+          <tr><td>Banco</td><td class="num">{{ c.banco | pesos }}</td></tr>
+          <tr class="total"><td>Total</td><td class="num">{{ c.disponible_real | pesos }}</td></tr>
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if c.observaciones %}
+      <h3>7) Observaciones finales</h3>
+      <ul class="observaciones">
+        {% for linea in c.observaciones.splitlines() if linea.strip() %}
+          <li>{{ linea.strip().lstrip('- ') }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      <div class="pie">FERRO MECÁNICA - Servicio Integral del Automotor &nbsp;|&nbsp;
+        Documento interno de uso administrativo &nbsp;|&nbsp; Emitido el {{ hoy | fecha }}
+        {% if not c.cerrado %} &nbsp;|&nbsp; <strong>PRELIMINAR — el mes todavía no está cerrado</strong>{% endif %}</div>
+    </div>
+  </body>
+</html>

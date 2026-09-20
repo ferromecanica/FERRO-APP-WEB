@@ -131,6 +131,11 @@
              value="{{ c.cotizacion | numero if c and c.cotizacion else '' }}" placeholder="Ej.: 1.535"></div>
       <div><label>Notas</label><textarea name="notas" rows="2">{{ c.notas if c else '' }}</textarea></div>
       <button class="btn" name="accion" value="guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar borrador</button>
+      {% if reportes_configurados %}
+      <button class="btn" formaction="{{ url_for('contable.circular', mes=mes) }}" formnovalidate
+              {{ 'disabled title="Guardá el borrador primero"' if not c }}>
+        <i class="fa-solid fa-file-pdf"></i> Circular preliminar</button>
+      {% endif %}
       <button class="btn btn-primary" name="accion" value="cerrar"
               data-confirmar="¿Cerrar {{ mes | mes_imputacion }}?"
               data-confirmar-detalle="Se registran las liquidaciones de sueldo, la devolución de capital y el colchón para el mes que viene."
@@ -152,10 +157,80 @@
     {% endif %}
   </div>
 </div>
+
+{% if not cerrado %}
+<div class="grid grid-2" style="margin-top:16px">
+  <div class="card">
+    <div class="card-head seccion"><h2><i class="fa-solid fa-file-invoice"></i> Compromisos del mes que viene</h2>
+      <span class="muted small">justifican el colchón</span></div>
+    <div class="card-body">
+      <table class="tabla-densa lista-movil" id="compromisos">
+        <thead><tr><th class="izq">Concepto</th><th class="num">Total</th><th class="num">A dejar</th><th></th></tr></thead>
+        <tbody>
+        {% for k in (c.compromisos if c else []) %}
+          <tr><td class="izq"><input name="compromiso_concepto" value="{{ k.concepto }}"></td>
+            <td class="num"><input name="compromiso_total" inputmode="decimal" value="{{ k.total | numero }}"></td>
+            <td class="num"><input name="compromiso_dejar" inputmode="decimal" value="{{ k.a_dejar | numero }}"></td>
+            <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
+        {% endfor %}
+          <tr><td class="izq"><input name="compromiso_concepto" placeholder="Ej.: alquiler"></td>
+            <td class="num"><input name="compromiso_total" inputmode="decimal" placeholder="$"></td>
+            <td class="num"><input name="compromiso_dejar" inputmode="decimal" placeholder="$"></td>
+            <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn btn-sm" id="agregar-compromiso" style="margin-top:10px">
+        <i class="fa-solid fa-plus"></i> Agregar</button>
+      <p class="muted small" style="margin:10px 0 0">Estos importes no se descuentan de nada: son la explicación
+        de por qué dejás ese colchón. Van en la circular.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head seccion"><h2><i class="fa-solid fa-wallet"></i> Plata contada</h2>
+      <span class="muted small">antes de liquidar</span></div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div><label>Caja chica (lo que tiene Iván)</label>
+          <input name="caja_chica" inputmode="decimal" value="{{ c.caja_chica | numero if c and c.caja_chica else '' }}" placeholder="$"></div>
+        <div><label>Banco</label>
+          <input name="banco" inputmode="decimal" value="{{ c.banco | numero if c and c.banco else '' }}" placeholder="$"></div>
+      </div>
+      <div class="full" style="margin-top:12px"><label>Observaciones para la circular</label>
+        <textarea name="observaciones" rows="5" placeholder="Una por renglón. Ej.:
+FERRO afrontó compras de herramientas por $845.457.
+Nuevo proveedor de aceites ENI, 50% pagado.">{{ c.observaciones if c else '' }}</textarea></div>
+    </div>
+  </div>
+</div>
+{% elif c.link_circular %}
+<div class="card card-body" style="margin-top:16px">
+  <a class="btn" href="{{ c.link_circular }}" target="_blank" rel="noopener">
+    <i class="fa-solid fa-file-pdf" style="color:#d93025"></i> Ver la circular de {{ mes | mes_imputacion }}</a>
+</div>
+{% endif %}
 </form>
 
 {% if not cerrado %}
 <script>
+  // Compromisos: agregar y quitar renglones
+  var tabla = document.querySelector('#compromisos tbody');
+  document.getElementById('agregar-compromiso').addEventListener('click', function () {
+    var fila = tabla.rows[tabla.rows.length - 1].cloneNode(true);
+    fila.querySelectorAll('input').forEach(function (c) { c.value = ''; });
+    tabla.appendChild(fila);
+    engancharQuitar(fila);
+    fila.querySelector('input').focus();
+  });
+  function engancharQuitar(fila) {
+    var b = fila.querySelector('[data-quitar]');
+    if (b) b.addEventListener('click', function () {
+      if (tabla.rows.length > 1) fila.remove();
+      else fila.querySelectorAll('input').forEach(function (c) { c.value = ''; });
+    });
+  }
+  Array.prototype.forEach.call(tabla.rows, engancharQuitar);
+
   // Si tocás un número a mano, el modo pasa a Manual solo
   var modo = document.getElementById('modo');
   document.querySelectorAll('.manual').forEach(function (c) {

@@ -54,6 +54,11 @@ def configuracion():
             cfg.valor_hora = valor
             for campo in ("razon_social", "cuit", "direccion", "telefono"):
                 setattr(cfg, campo, request.form.get(campo, "").strip() or None)
+            # se puede pegar el link de la carpeta o el id pelado
+            carpeta = request.form.get("carpeta_circulares", "").strip()
+            if "/folders/" in carpeta:
+                carpeta = carpeta.split("/folders/")[1].split("?")[0].split("/")[0]
+            cfg.carpeta_circulares = carpeta or None
             db.session.commit()
             flash("Configuración guardada.", "ok")
             return redirect(url_for(".configuracion"))

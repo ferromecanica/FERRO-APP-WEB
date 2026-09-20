@@ -13,6 +13,7 @@ from ..models import (
     CLASIFICACIONES,
     CierreMensual,
     CierreSocio,
+    CompromisoCierre,
     COMPROBANTES,
     TIPOS_CAPITAL,
     TIPOS_MOVIMIENTO_CONTABLE,
@@ -21,6 +22,7 @@ from ..models import (
     Socio,
 )
 from ..services import cierre as calculo
+from ..services import reporte
 from ..validaciones import formatear_cuit, numero_ar
 
 bp = Blueprint("contable", __name__)
@@ -244,6 +246,10 @@ def cierre(mes):
         c.cotizacion = numero_ar(request.form.get("cotizacion"))
         c.fecha_cierre = _fecha("fecha_cierre", date.today())
         c.notas = request.form.get("notas", "").strip() or None
+        c.observaciones = request.form.get("observaciones", "").strip() or None
+        c.caja_chica = numero_ar(request.form.get("caja_chica"))
+        c.banco = numero_ar(request.form.get("banco"))
+        _guardar_compromisos(c)
         c.ingresos, c.egresos = propuesta["ingresos"], propuesta["egresos"]
         c.colchon_entrante = propuesta["colchon_entrante"]
         if guardado is None:
@@ -292,4 +298,74 @@ def cierre(mes):
         objetivo = guardado.colchon
     propuesta = calculo.calcular(mes, socios, objetivo)
     return render_template("contable/cierre.html", mes=mes, c=guardado, p=propuesta, socios=socios,
-                           hoy=date.today(), siguiente=calculo.mes_siguiente(mes))
+                           hoy=date.today(), siguiente=calculo.mes_siguiente(mes),
+                           reportes_configurados=reporte.configurado())
+
+
+def _guardar_compromisos(c):
+    """Los compromisos del mes que viene, que justifican cuánto colchón dejar."""
+    for viejo in list(c.compromisos):
+        db.session.delete(viejo)
+    c.compromisos = []
+    conceptos = request.form.getlist("compromiso_concepto")
+    totales = request.form.getlist("compromiso_total")
+    dejar = request.form.getlist("compromiso_dejar")
+    for i, concepto in enumerate(conceptos):
+        concepto = concepto.strip()
+        if not concepto:
+            continue
+        db.session.add(CompromisoCierre(
+            cierre=c, concepto=concepto[:120],
+            total=numero_ar(totales[i] if i < len(totales) else None) or 0,
+            a_dejar=numero_ar(dejar[i] if i < len(dejar) else None) or 0))
+
+
+@bp.route("/cierres/<mes>/circular", methods=["POST"])
+def circular(mes):
+    """Arma la circular en PDF para compartir con el equipo (sirve con el mes abierto)."""
+    c = CierreMensual.query.filter_by(mes=mes).first()
+    if c is None:
+        flash("Guardá primero el borrador del cierre.", "error")
+        return redirect(url_for(".cierre", mes=mes))
+
+    if not c.cerrado:  # mes abierto: los totales se recalculan, si no la circular miente
+        n = calculo.numeros_del_mes(mes)
+        c.ingresos, c.egresos, c.colchon_entrante = n["ingresos"], n["egresos"], n["colchon_entrante"]
+
+    movs = MovimientoContable.query.filter_by(mes_imputacion=mes).order_by(
+        MovimientoContable.fecha.desc()).all()
+    egresos = []
+    for m in movs:
+        if m.tipo != "Egreso" or m.comprobante == "Liquidación" or m.clasificacion == "Inversión de Capital":
+            continue
+        grupo = next((g for g in egresos if g["nombre"] == (m.clasificacion or "Sin clasificar")), None)
+        if grupo is None:
+            grupo = {"nombre": m.clasificacion or "Sin clasificar", "movimientos": [], "total": 0}
+            egresos.append(grupo)
+        grupo["movimientos"].append(m)
+        grupo["total"] += m.total or 0
+
+    socios = Socio.query.order_by(Socio.orden, Socio.nombre).all()
+    total_salarios = sum(s.sueldo_base or 0 for s in socios)
+    incidencias = " - ".join(
+        f"{s.nombre}: {(s.sueldo_base or 0) / total_salarios:.1%}".replace(".", ",") for s in socios
+    ) if total_salarios else ""
+    porcentajes = {f.socio_id: f"{(f.sueldo or 0) / (f.socio.sueldo_base or 1):.1%}".replace(".", ",")
+                   for f in c.socios}
+
+    if c.numero is None:
+        c.numero = CierreMensual.query.filter(CierreMensual.mes <= mes).count()
+    try:
+        reporte.generar_circular(c, {
+            "mes_largo": mes_lindo(mes),
+            "ingresos": [m for m in movs if m.tipo == "Ingreso"],
+            "colchon_entrante": [m for m in movs if m.tipo == "Colchón"],
+            "egresos": egresos, "socios": socios, "total_salarios": total_salarios,
+            "incidencias": incidencias, "porcentajes": porcentajes,
+        })
+        db.session.commit()
+        flash("Circular generada en Drive." + ("" if c.cerrado else " Dice PRELIMINAR porque el mes está abierto."), "ok")
+    except reporte.ErrorReporte as e:
+        db.session.rollback()
+        flash(str(e), "error")
+    return redirect(url_for(".cierre", mes=mes))

@@ -132,4 +132,42 @@ with app.app_context():
     assert p['repago'] == 0
     assert abs(p['ganancia'] - p['remanente'] * .50) < 1
     assert abs(p['colchon'] - p['remanente'] * .50) < 1
+# ── la circular para el equipo ──
+from app.services import drive, reporte
+enviados = []
+def falso(accion, **datos):
+    enviados.append(dict(datos, accion=accion))
+    return {"ok": True, "url": "https://drive.google.com/file/d/xyz/view"}
+drive.llamar, original = falso, drive.llamar
+reporte.configurado, original_cfg = (lambda: True), reporte.configurado
+
+# con el mes abierto sale el preliminar, con sus compromisos y observaciones
+post(f'/administracion/cierres/{MES}', {'accion': 'guardar', 'colchon_objetivo': '900.000',
+                                        'compromiso_concepto': 'Alquiler', 'compromiso_total': '988.735',
+                                        'compromiso_dejar': '800.000', 'caja_chica': '947.800',
+                                        'banco': '1.992.931', 'observaciones': 'Compramos herramientas.'})
+b = post(f'/administracion/cierres/{MES}/circular')
+assert 'Circular generada' in b and 'PRELIMINAR' in b
+html = enviados[-1]['html']
+assert 'CIRCULAR CONTABLE' in html.upper()
+assert 'Alquiler' in html and '988.735' in html
+assert 'Compramos herramientas' in html
+assert '947.800' in html and '1.992.931' in html
+assert 'PRELIMINAR' in html, 'con el mes abierto tiene que avisar que es preliminar'
+with app.app_context():
+    cc = CierreMensual.query.filter_by(mes=MES).one()
+    assert cc.link_circular and cc.numero and cc.compromisos
+    assert cc.compromisos[0].concepto == 'Alquiler'
+
+# ya cerrado, la circular sale definitiva
+post(f'/administracion/cierres/{MES}', {'accion': 'cerrar', 'modo': 'Automático', 'colchon_objetivo': '900.000',
+                                        'fecha_cierre': '2026-08-31', 'cotizacion': '1.535',
+                                        'compromiso_concepto': 'Alquiler', 'compromiso_total': '988.735',
+                                        'compromiso_dejar': '800.000'})
+b = post(f'/administracion/cierres/{MES}/circular')
+assert 'Circular generada' in b and 'PRELIMINAR' not in b
+assert 'PRELIMINAR' not in enviados[-1]['html']
+
+drive.llamar, reporte.configurado = original, original_cfg
+
 print('TODO OK')

@@ -58,6 +58,7 @@ class ConfigTaller(db.Model):
     cuit = db.Column(db.String(20))
     direccion = db.Column(db.String(200))
     telefono = db.Column(db.String(30))
+    carpeta_circulares = db.Column(db.String(60))  # id de la carpeta de Drive donde van las circulares
 
     @classmethod
     def get(cls):
@@ -499,6 +500,7 @@ class Socio(db.Model):
     participacion = db.Column(db.Float, default=0.5)  # 0,5 = mitad y mitad
     alias = db.Column(db.String(60))
     orden = db.Column(db.Integer, default=0)  # en el reparto de sueldos, el primero cobra primero
+    nota = db.Column(db.String(300))  # aclaración al pie en la circular (ej.: la escala de SMATA)
 
     aportes = db.relationship("AporteCapital", back_populates="socio")
 
@@ -606,6 +608,13 @@ class CierreMensual(db.Model):
     modo = db.Column(db.String(12), default="Automático")  # Automático | Manual
     notas = db.Column(db.Text)
 
+    # Para la circular que se comparte con el equipo
+    numero = db.Column(db.Integer)  # "Circular contable N° 6"
+    caja_chica = db.Column(db.Float)
+    banco = db.Column(db.Float)
+    observaciones = db.Column(db.Text)
+    link_circular = db.Column(db.String(300))
+
     # Cómo quedó (se completa al cerrar)
     ingresos = db.Column(db.Float, default=0)
     egresos = db.Column(db.Float, default=0)
@@ -615,6 +624,8 @@ class CierreMensual(db.Model):
     colchon = db.Column(db.Float, default=0)  # lo que se guarda para el mes que viene
 
     socios = db.relationship("CierreSocio", back_populates="cierre", cascade="all, delete-orphan")
+    compromisos = db.relationship("CompromisoCierre", back_populates="cierre", cascade="all, delete-orphan",
+                                  order_by="CompromisoCierre.id")
     movimientos = db.relationship("MovimientoContable", back_populates="cierre")
     devoluciones = db.relationship("AporteCapital", back_populates="cierre")
 
@@ -629,6 +640,31 @@ class CierreMensual(db.Model):
     @property
     def cerrado(self):
         return self.estado == "Cerrado"
+
+    @property
+    def disponible_real(self):
+        """Lo que hay contado: la caja chica de Iván más el banco."""
+        return (self.caja_chica or 0) + (self.banco or 0)
+
+    @property
+    def compromisos_total(self):
+        return sum(c.total or 0 for c in self.compromisos)
+
+    @property
+    def compromisos_a_dejar(self):
+        return sum(c.a_dejar or 0 for c in self.compromisos)
+
+
+class CompromisoCierre(db.Model):
+    """Lo que hay que pagar el mes que viene y justifica cuánto colchón dejar."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    cierre_id = db.Column(db.Integer, db.ForeignKey("cierre_mensual.id"), nullable=False)
+    concepto = db.Column(db.String(120), nullable=False)
+    total = db.Column(db.Float, default=0)     # cuánto es en total
+    a_dejar = db.Column(db.Float, default=0)   # cuánto se aparta este mes
+
+    cierre = db.relationship("CierreMensual", back_populates="compromisos")
 
 
 class CierreSocio(db.Model):

@@ -5,6 +5,7 @@ Apps Script de docs/reportes_gdrive.gs, que agrega logo, firma y fotos desde
 Drive, lo convierte a PDF, lo guarda en la carpeta de reportes y devuelve el link.
 """
 import posixpath
+from datetime import date
 
 from flask import render_template
 
@@ -92,6 +93,27 @@ def generar_pdf_presupuesto(presupuesto):
 def nombre_archivo(ot):
     fecha = ot.fecha_fin or ot.fecha_ingreso
     return f"{fecha:%Y%m%d}_{ot.vehiculo.patente}_OT{ot.id}.pdf"
+
+
+def generar_circular(cierre, datos):
+    """Arma la circular contable del mes y la guarda en Drive. Devuelve el link."""
+    cfg = ConfigTaller.get()
+    taller = dict(TALLER_POR_DEFECTO)
+    if cfg.direccion:
+        taller["direccion"] = cfg.direccion
+    if cfg.telefono:
+        taller["telefono"] = cfg.telefono
+
+    html = render_template("reportes/circular.html", c=cierre, taller=taller, logo="__LOGO__",
+                           hoy=date.today(), **datos)
+    nombre = f"{cierre.mes.replace('-', '')} circular{f' N{cierre.numero}' if cierre.numero else ''}.pdf"
+    donde = {"carpeta_id": cfg.carpeta_circulares} if cfg.carpeta_circulares else {"carpeta": "circulares"}
+    try:
+        resultado = drive.llamar("reporte", nombre=nombre, html=html, **donde)
+    except drive.ErrorDrive as e:
+        raise ErrorReporte(str(e))
+    cierre.link_circular = resultado["url"]
+    return cierre.link_circular
 
 
 def configurado():
