@@ -68,9 +68,12 @@ def main():
     consola = consolas[0]["id"]
 
     marca = f"DEPLOY-{version}-{int(time.time())}"
+    # Las librerías solo se reinstalan si cambió requirements.txt: en la cuenta
+    # gratis hay 100 segundos de CPU por día y cada pip se lleva un buen pedazo.
     comando = (
-        "cd ~/FERRO && git pull --ff-only"
-        " && ~/.venvs/ferro/bin/pip install -q -r requirements.txt"
+        "cd ~/FERRO && ANTES=$(git rev-parse HEAD) && git pull --ff-only"
+        " && { git diff --name-only $ANTES HEAD | grep -q requirements.txt"
+        " && ~/.venvs/ferro/bin/pip install -q -r requirements.txt || true; }"
         " && ~/.venvs/ferro/bin/python scripts/migrar.py"
         f" && echo {marca}-OK || echo {marca}-FALLO\n"
     )
