@@ -4,8 +4,9 @@
   <meta charset="utf-8">
   <script>
     // Tamaño y letra elegidos en Configuración. Va antes del CSS para que no parpadee.
+    // Roboto ya viene en el <link> de arriba; estas se bajan solo si se eligen
     window.FUENTES_WEB = {
-      roboto: 'Roboto:wght@400;500;700',
+      inter: 'Inter:wght@400;500;600',
       condensada: 'Roboto+Condensed:wght@400;500;700',
       serif: 'Source+Serif+4:wght@400;600;700'
     };
@@ -31,7 +32,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ taller_nombre }}{% endblock %} · Ferro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ferro.css') }}">
