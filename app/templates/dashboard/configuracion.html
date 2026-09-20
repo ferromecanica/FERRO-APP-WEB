@@ -30,6 +30,18 @@
     </div>
     <p class="muted small" style="margin:10px 0 0">Viene en <strong>Compacto</strong>, que es lo que entra en una notebook.
       En un monitor de 24" o más, probá <strong>Normal</strong>.</p>
+
+    <label style="margin-top:18px">Letra</label>
+    <div class="segmented" id="fuente" style="flex-wrap:wrap">
+      <button type="button" class="seg" data-valor="">Inter</button>
+      <button type="button" class="seg" data-valor="sistema">La del sistema</button>
+      <button type="button" class="seg" data-valor="roboto">Roboto</button>
+      <button type="button" class="seg" data-valor="condensada">Angosta</button>
+      <button type="button" class="seg" data-valor="serif">Con serifa</button>
+    </div>
+    <p class="muted small" style="margin:10px 0 0" id="ejemplo-fuente">
+      Ejemplo: Kit distribución SKF Renault K4M · 3 unidades · $ 154.099 · 27/08/2026.
+      <span class="muted">Los títulos y el logo no cambian.</span></p>
   </div>
 </div>
 
@@ -51,6 +63,26 @@
       });
     });
     marcar(leer());
+
+    // Letra
+    var cajaF = document.getElementById('fuente');
+    function marcarF(valor) {
+      cajaF.querySelectorAll('.seg').forEach(function (b) { b.classList.toggle('active', b.dataset.valor === valor); });
+    }
+    cajaF.querySelectorAll('.seg').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var valor = b.dataset.valor;
+        if (valor) {
+          document.documentElement.dataset.fuente = valor;
+          window.bajarFuente(valor);
+        } else {
+          delete document.documentElement.dataset.fuente;
+        }
+        try { valor ? localStorage.setItem('ferro-fuente', valor) : localStorage.removeItem('ferro-fuente'); } catch (e) {}
+        marcarF(valor);
+      });
+    });
+    try { marcarF(localStorage.getItem('ferro-fuente') || ''); } catch (e) { marcarF(''); }
   })();
 </script>
 {% endblock %}

@@ -3,11 +3,30 @@
 <head>
   <meta charset="utf-8">
   <script>
-    // Tamaño elegido en Configuración. Va antes del CSS para que no parpadee.
+    // Tamaño y letra elegidos en Configuración. Va antes del CSS para que no parpadee.
+    window.FUENTES_WEB = {
+      roboto: 'Roboto:wght@400;500;700',
+      condensada: 'Roboto+Condensed:wght@400;500;700',
+      serif: 'Source+Serif+4:wght@400;600;700'
+    };
+    window.bajarFuente = function (clave) {
+      var familia = window.FUENTES_WEB[clave];
+      if (!familia) return;  // Inter y la del sistema no hay que bajarlas
+      var l = document.getElementById('fuente-elegida');
+      if (!l) {
+        l = document.createElement('link');
+        l.id = 'fuente-elegida';
+        l.rel = 'stylesheet';
+        document.head.appendChild(l);
+      }
+      l.href = 'https://fonts.googleapis.com/css2?family=' + familia + '&display=swap';
+    };
     try {
       var d = localStorage.getItem('ferro-densidad');
       if (d) document.documentElement.dataset.densidad = d;
-    } catch (e) { /* navegador sin almacenamiento: queda el tamaño normal */ }
+      var f = localStorage.getItem('ferro-fuente');
+      if (f) { document.documentElement.dataset.fuente = f; window.bajarFuente(f); }
+    } catch (e) { /* navegador sin almacenamiento: queda como viene de fábrica */ }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ taller_nombre }}{% endblock %} · Ferro</title>
