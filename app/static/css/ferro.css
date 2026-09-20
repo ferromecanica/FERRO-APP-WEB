@@ -18,20 +18,8 @@
   --font-display: "Exo 2", system-ui, sans-serif;
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
 
-  /* Tamaño de todo: se elige en Configuración y queda guardado en cada pantalla */
-  --escala: 1;
-  --ancho-sidebar: 240px;
-  --pad-sidebar: 18px 12px;
-  --pad-main: 28px 32px 48px;
-  --pad-card: 18px;
-  --pad-card-head: 14px 18px;
-  --pad-celda: 11px 14px;
-  --pad-celda-densa: 6px 10px;
-  --pad-celda-densa-th: 8px 10px;
-}
-
-/* Compacto: para notebooks de 13" o 14", donde si no entra poco y nada */
-html[data-densidad="compacto"] {
+  /* Tamaño de todo. Por defecto va compacto, que es lo que entra en una
+     notebook de 13" o 14"; en monitores grandes se agranda en Configuración. */
   --escala: .86;
   --ancho-sidebar: 194px;
   --pad-sidebar: 12px 8px;
@@ -42,13 +30,30 @@ html[data-densidad="compacto"] {
   --pad-celda-densa: 4px 7px;
   --pad-celda-densa-th: 5px 7px;
 }
+
+/* Normal: el tamaño de antes, para monitores de 24" en adelante */
+html[data-densidad="normal"] {
+  --escala: 1;
+  --ancho-sidebar: 240px;
+  --pad-sidebar: 18px 12px;
+  --pad-main: 28px 32px 48px;
+  --pad-card: 18px;
+  --pad-card-head: 14px 18px;
+  --pad-celda: 11px 14px;
+  --pad-celda-densa: 6px 10px;
+  --pad-celda-densa-th: 8px 10px;
+}
 /* Amplio: pantallas grandes o para ver de lejos */
 html[data-densidad="amplio"] {
   --escala: 1.12;
   --ancho-sidebar: 262px;
+  --pad-sidebar: 18px 12px;
   --pad-main: 32px 38px 56px;
   --pad-card: 22px;
+  --pad-card-head: 16px 20px;
   --pad-celda: 14px 16px;
+  --pad-celda-densa: 8px 12px;
+  --pad-celda-densa-th: 9px 12px;
 }
 
 html { font-size: calc(16px * var(--escala)); }
@@ -479,6 +484,9 @@ body.visor-abierto { overflow: hidden; }
 .barra-filtros select { width: auto; min-width: 190px; }
 .tabla-scroll { overflow: auto; max-height: calc(100vh - 290px); border-radius: var(--radius) var(--radius) 0 0; }
 .tabla-densa { font-size: .8rem; }
+.centro { text-align: center; }
+.fecha-chica { font-size: .85em; color: #4b5563; white-space: nowrap; }
+
 /* Listados largos: mejor barra para ir al costado que palabras partidas en 5 renglones */
 .tabla-ot { min-width: 960px; }
 .tabla-densa td.envuelve { white-space: normal; }
