@@ -273,6 +273,9 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .dialogo-avisos { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 10px 22px 0; font-size: .84rem; color: var(--warn); }
 .dialogo-body { padding: 16px 22px 22px; }
 .atenuado > td { opacity: .55; }
+.banda-mes > td { background: #f4f5f7; font-weight: 700; border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border); padding-top: 9px; padding-bottom: 9px; }
+
 /* Almanaque de turnos */
 .almanaque { padding: 0 14px 14px; }
 .almanaque-encabezado, .almanaque-semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }

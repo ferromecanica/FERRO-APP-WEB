@@ -628,6 +628,14 @@ class Venta(TimestampMixin, db.Model):
     def ganancia(self):
         return self.total - self.costo_total
 
+    @property
+    def detalle(self):
+        """Qué se vendió: lo que decía la OT, o los renglones del mostrador."""
+        if self.ot is not None and self.ot.detalle:
+            return self.ot.detalle.strip()
+        renglones = [i.descripcion or (i.repuesto.nombre if i.repuesto else "") for i in self.items]
+        return " · ".join(r for r in renglones if r)
+
 
 class VentaItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)

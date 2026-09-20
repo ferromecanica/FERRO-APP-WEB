@@ -2,37 +2,50 @@
 {% from "partials/macros.html" import vacio %}
 {% block title %}Ventas{% endblock %}
 {% block content %}
-<div class="page-head"><div><div class="eyebrow">Gestión</div><h1>Ventas</h1></div></div>
-
-{% if por_mes %}
-<div class="card" style="margin-bottom:16px">
-  <div class="card-head"><h2>Resultado mensual</h2></div>
-  <div class="table-wrap"><table>
-    <thead><tr><th>Mes</th><th class="num hide-sm">Ventas</th><th class="num">Facturado</th><th class="num hide-sm">Costo</th><th class="num">Ganancia neta</th></tr></thead>
-    <tbody>
-    {% for clave, m in por_mes.items() %}
-      <tr><td><strong>{{ m.fecha | fecha('%m/%Y') }}</strong></td><td class="num hide-sm">{{ m.cant }}</td>
-        <td class="num">{{ m.total | pesos }}</td><td class="num hide-sm">{{ m.costo | pesos }}</td>
-        <td class="num"><strong>{{ (m.total - m.costo) | pesos }}</strong></td></tr>
-    {% endfor %}
-    </tbody>
-  </table></div>
+<div class="page-head">
+  <div><div class="eyebrow">Gestión</div><h1>Ventas</h1>
+    <div class="muted small" style="margin-top:4px">{{ cantidad }} venta{{ 's' if cantidad != 1 }}</div></div>
+  <div class="actions">
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Cliente, nº de venta u OT…"
+             hx-get="{{ url_for('ventas.lista') }}" hx-trigger="input changed delay:250ms, search"
+             hx-target="body" hx-push-url="true"></div>
+    <a class="btn btn-primary" href="{{ url_for('ventas.mostrador') }}"><i class="fa-solid fa-cash-register"></i> Venta de mostrador</a>
+  </div>
 </div>
-{% endif %}
 
+{% if cantidad %}
 <div class="card">
-  <div class="card-head"><h2>Detalle de ventas</h2></div>
-  {% if ventas %}
-  <div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Cliente</th><th class="hide-sm">OT</th><th class="hide-sm">Pago</th><th class="num">Total</th><th class="num hide-sm">Ganancia</th></tr></thead>
+  <div class="table-wrap"><table class="tabla-densa">
+    <thead><tr><th class="izq">Fecha</th><th class="izq">Cliente</th><th class="izq">Detalle</th>
+      <th class="izq hide-sm">Pago</th><th class="num">Total</th><th class="num hide-sm">Costo</th>
+      <th class="num">Ganancia</th></tr></thead>
     <tbody>
-    {% for v in ventas %}
-      <tr><td>{{ v.fecha | fecha }}</td><td>{{ v.cliente.nombre if v.cliente else 'Mostrador' }}</td>
-        <td class="hide-sm">{% if v.ot_id %}<a href="{{ url_for('ot.detalle', id=v.ot_id) }}">#{{ v.ot_id }}</a>{% endif %}</td>
-        <td class="hide-sm">{{ v.metodo_pago or '—' }}</td><td class="num">{{ v.total | pesos }}</td><td class="num hide-sm">{{ v.ganancia | pesos }}</td></tr>
+    {% for m in meses %}
+      <tr class="banda-mes"><td colspan="4" class="izq">{{ m.fecha | mes_largo | capitalize }}
+          <span class="muted">· {{ m.ventas | length }} venta{{ 's' if m.ventas | length != 1 }}</span></td>
+        <td class="num"><strong>{{ m.total | pesos }}</strong></td>
+        <td class="num hide-sm">{{ m.costo | pesos }}</td>
+        <td class="num"><strong style="color:var(--ok)">{{ (m.total - m.costo) | pesos }}</strong></td></tr>
+      {% for v in m.ventas %}
+      <tr class="clickable" onclick="location='{{ url_for('ventas.detalle', id=v.id) }}'">
+        <td class="izq" style="white-space:nowrap">{{ v.fecha | fecha('%d/%m/%Y') }}
+          <div class="muted small">Nº {{ v.id }}</div></td>
+        <td class="izq">{{ v.cliente.nombre if v.cliente else 'Mostrador' }}</td>
+        <td class="izq">{{ v.detalle | truncate(70) if v.detalle else '—' }}
+          <div class="muted small">
+            {%- if v.ot_id %}<a href="{{ url_for('ot.detalle', id=v.ot_id) }}" onclick="event.stopPropagation()">OT #{{ v.ot_id }}</a>
+            {%- else %}Mostrador{% endif %} · {{ v.items | length }} ítem{{ 's' if v.items | length != 1 }}</div></td>
+        <td class="izq hide-sm">{{ v.metodo_pago or '—' }}</td>
+        <td class="num"><strong>{{ v.total | pesos }}</strong></td>
+        <td class="num hide-sm muted">{{ v.costo_total | pesos }}</td>
+        <td class="num" style="color:var(--ok)">{{ v.ganancia | pesos }}</td></tr>
+      {% endfor %}
     {% endfor %}
     </tbody>
   </table></div>
-  {% else %}{{ vacio('fa-cash-register', 'Sin ventas registradas.') }}{% endif %}
 </div>
+{% else %}
+<div class="card">{{ vacio('fa-cash-register', 'No hay ventas' ~ (' que coincidan.' if q else ' registradas todavía.')) }}</div>
+{% endif %}
 {% endblock %}

@@ -9,7 +9,7 @@ from difflib import SequenceMatcher
 from flask_login import current_user
 
 from ..extensions import db
-from ..models import ConfigMarkup, ConsumoOT, MovimientoStock, Repuesto
+from ..models import ConfigMarkup, ConsumoOT, MovimientoStock, Repuesto, VentaItem
 
 
 def _usuario_id():
@@ -192,6 +192,38 @@ def anular_ingreso(ingreso):
             detalle=f"Anulación de ingreso {ingreso.nro_factura or ingreso.id}", ingreso_id=ingreso.id,
         )
     ingreso.estado = "Anulado"
+
+
+def vender_en_mostrador(venta, repuesto, cantidad, precio_unitario=None, descripcion=None, costo_unitario=None):
+    """Agrega un renglón a una venta de mostrador y descuenta stock.
+
+    Igual que el consumo en una OT, pero sin OT: el mostrador vende directo.
+    """
+    item = VentaItem(
+        venta=venta,
+        repuesto=repuesto,
+        cantidad=cantidad,
+        precio_unitario=(repuesto.precio_venta or 0) if precio_unitario is None else precio_unitario,
+        costo_unitario=(repuesto.precio_costo or 0) if costo_unitario is None else costo_unitario,
+        descripcion=descripcion or (repuesto.nombre if repuesto else ""),
+    )
+    db.session.add(item)
+    if repuesto is not None:
+        db.session.flush()  # la venta necesita id para el movimiento
+        registrar_movimiento(repuesto, -cantidad, "Venta", detalle=item.descripcion, venta_id=venta.id)
+    return item
+
+
+def anular_venta(venta):
+    """Deshace una venta de mostrador: lo que salió del stock vuelve."""
+    if venta.ot_id:
+        raise ValueError("Esta venta salió de una OT: se maneja desde la OT.")
+    for item in venta.items:
+        if item.repuesto_id:
+            registrar_movimiento(
+                item.repuesto, item.cantidad, "Reversion",
+                detalle=f"Anulación de la venta {venta.id}: {item.descripcion}", venta_id=venta.id,
+            )
 
 
 def clave_markup(repuesto):

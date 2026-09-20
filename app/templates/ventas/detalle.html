@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Venta {{ v.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">Ventas · {{ v.fecha | fecha }}</div>
+    <h1>Venta {{ v.id }}</h1>
+    <div class="muted small" style="margin-top:4px">
+      {{ v.cliente.nombre if v.cliente else 'Mostrador' }} · {{ v.metodo_pago or 'sin método de pago' }}
+      {%- if v.ot_id %} · de la <a href="{{ url_for('ot.detalle', id=v.ot_id) }}">OT #{{ v.ot_id }}</a>{% endif %}</div>
+  </div>
+  <div class="actions"><a class="btn" href="{{ url_for('ventas.lista') }}"><i class="fa-solid fa-arrow-left"></i> Ventas</a></div>
+</div>
+
+<div class="grid grid-3-1">
+  <div class="card">
+    <div class="card-head seccion"><h2><i class="fa-solid fa-receipt"></i> Detalle</h2>
+      <span class="muted small">{{ v.items | length }} ítems</span></div>
+    <div class="table-wrap"><table class="tabla-densa">
+      <thead><tr><th class="izq">Descripción</th><th class="num">Cant.</th><th class="num">Precio</th>
+        <th class="num">Subtotal</th><th class="num hide-sm">Costo</th></tr></thead>
+      <tbody>
+      {% for i in v.items %}
+        <tr><td class="izq">{{ i.descripcion or (i.repuesto.nombre if i.repuesto else '') }}
+            {% if i.repuesto_id %}<div class="muted small">
+              <a href="{{ url_for('stock.ficha', id=i.repuesto_id) }}">#{{ i.repuesto_id }}</a> · salió del stock</div>{% endif %}</td>
+          <td class="num">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+          <td class="num">{{ i.precio_unitario | pesos }}</td>
+          <td class="num"><strong>{{ i.subtotal | pesos }}</strong></td>
+          <td class="num hide-sm muted">{{ i.subtotal_costo | pesos }}</td></tr>
+      {% endfor %}
+        <tr class="total-row"><td colspan="3">Total</td><td class="num">{{ v.total | pesos }}</td>
+          <td class="num hide-sm">{{ v.costo_total | pesos }}</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="stack">
+    <div class="card resultado">
+      <div class="card-head seccion"><h2><i class="fa-solid fa-calculator"></i> Números</h2></div>
+      <div class="card-body">
+        <div class="precio-final"><span>Total</span><strong>{{ v.total | pesos }}</strong></div>
+        <dl class="props totales" style="margin-top:14px">
+          <dt>Costo</dt><dd class="num">{{ v.costo_total | pesos }}</dd>
+          <dt><strong>Ganancia</strong></dt><dd class="num"><strong style="color:var(--ok)">{{ v.ganancia | pesos }}</strong></dd>
+        </dl>
+      </div>
+    </div>
+
+    {% if not v.ot_id %}
+    <div class="card card-body">
+      <form method="post" action="{{ url_for('ventas.anular', id=v.id) }}"
+            data-confirmar="¿Anular la venta {{ v.id }}?"
+            data-confirmar-detalle="Se borra la venta y lo que salió del stock vuelve."
+            data-confirmar-boton="Anular" data-confirmar-tono="peligro">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger btn-sm"><i class="fa-solid fa-rotate-left"></i> Anular venta</button>
+      </form>
+    </div>
+    {% else %}
+    <div class="card card-body muted small"><i class="fa-solid fa-circle-info"></i>
+      Esta venta salió del cierre de la OT #{{ v.ot_id }}: se maneja desde ahí.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

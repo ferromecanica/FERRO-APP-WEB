@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}Venta de mostrador{% endblock %}
+{% macro encabezado(icono, titulo, extra='') -%}
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2><span class="muted small">{{ extra }}</span></div>
+{%- endmacro %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Comercial</div><h1>Venta de mostrador</h1>
+    <div class="muted small" style="margin-top:4px">Para lo que se vende sin OT. Al cobrar se descuenta del stock.</div></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('ventas.lista') }}"><i class="fa-solid fa-list"></i> Ventas</a>
+    {% if venta["items"] %}
+    <form method="post" action="{{ url_for('ventas.limpiar') }}" data-confirmar="¿Vaciar el mostrador?"
+          data-confirmar-detalle="Se borra lo cargado. No se registra ninguna venta." data-confirmar-boton="Vaciar" data-confirmar-tono="peligro">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn"><i class="fa-solid fa-broom"></i> Vaciar</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-3-1">
+  <div class="stack">
+    <div class="card" id="items">
+      {{ encabezado('fa-cart-shopping', 'Lo que se lleva', (venta["items"] | length) ~ ' ítems') }}
+      {% if venta["items"] %}
+      <div class="table-wrap"><table class="tabla-densa">
+        <thead><tr><th class="izq">Descripción</th><th class="num">Cant.</th><th class="num">Precio</th>
+          <th class="num">Subtotal</th><th class="num hide-sm">Costo</th><th></th></tr></thead>
+        <tbody>
+        {% for i in venta["items"] %}
+          <tr id="venta-{{ i.id }}">
+            <td class="izq">{{ i.descripcion }}{% if i.repuesto_id %}<div class="muted small">#{{ i.repuesto_id }} · del stock</div>{% endif %}</td>
+            <td class="num">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+            <td class="num">{{ i.precio | pesos }}</td>
+            <td class="num"><strong>{{ (i.cantidad * i.precio) | pesos }}</strong></td>
+            <td class="num hide-sm muted">{{ (i.cantidad * i.costo) | pesos }}</td>
+            <td class="num"><span class="acciones-fila">
+              <button type="button" class="btn-icon btn-editar" data-editar="venta-{{ i.id }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
+              <form method="post" action="{{ url_for('ventas.item_eliminar', iid=i.id) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn-icon" title="Quitar"><i class="fa-solid fa-xmark"></i></button></form>
+            </span></td>
+          </tr>
+          <tr id="venta-{{ i.id }}-edicion" class="fila-edicion" hidden><td colspan="6">
+            <form method="post" action="{{ url_for('ventas.item_editar', iid=i.id) }}" class="fila">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="c-desc"><label>Descripción</label><input name="descripcion" value="{{ i.descripcion }}"></div>
+              <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="{{ i.cantidad | numero(2) | replace(',00', '') }}"></div>
+              <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" value="{{ i.precio | numero(2) }}"></div>
+              <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" value="{{ i.costo | numero(2) }}"></div>
+              <div class="c-btn"><span class="acciones-edicion"><button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
+                <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
+            </form>
+          </td></tr>
+        {% endfor %}
+          <tr class="total-row"><td colspan="3">Total</td><td class="num">{{ t.total | pesos }}</td>
+            <td class="num hide-sm">{{ t.costo | pesos }}</td><td></td></tr>
+        </tbody>
+      </table></div>
+      {% else %}{{ vacio('fa-cart-shopping', 'Escaneá o buscá lo que se lleva el cliente.') }}{% endif %}
+
+      <div class="add-box">
+        <div class="segmented" role="tablist">
+          <button type="button" class="seg active" data-tab="stock"><i class="fa-solid fa-boxes-stacked"></i> Del stock</button>
+          <button type="button" class="seg" data-tab="manual"><i class="fa-solid fa-screwdriver-wrench"></i> Servicio o a mano</button>
+        </div>
+        <form method="post" action="{{ url_for('ventas.item_agregar') }}" class="tab-panel fila" data-panel="stock">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="stock">
+          <div class="c-repuesto"><label>Repuesto (nombre, código o escáner)</label>
+            <input name="repuesto" list="lista-repuestos" autocomplete="off" required data-escaner autofocus placeholder="Escribí para buscar…">
+            <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}">stock {{ r.stock_actual | numero(1) }} · {{ r.precio_venta | pesos }}</option>{% endfor %}</datalist></div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+        </form>
+        <form method="post" action="{{ url_for('ventas.item_agregar') }}" class="tab-panel fila" data-panel="manual" hidden>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="manual">
+          <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Cambio de lamparita, revisión de frenos…" required></div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-plata"><label>Precio</label><input name="precio" inputmode="decimal" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo</label><input name="costo" inputmode="decimal" placeholder="$ (lo que pagamos)"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ───── Cobro ───── #}
+  <div class="stack">
+    <form class="card resultado" method="post" action="{{ url_for('ventas.cobrar') }}"
+          {% if venta["items"] %}data-confirmar="¿Registrar la venta por {{ t.total | pesos }}?"
+          data-confirmar-detalle="Se descuenta del stock lo que salió." data-confirmar-boton="Cobrar"{% endif %}>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {{ encabezado('fa-cash-register', 'Cobro') }}
+      <div class="card-body">
+        <div class="precio-final"><span>Total</span><strong>{{ t.total | pesos }}</strong></div>
+        <dl class="props totales" style="margin-top:14px">
+          <dt>Costo</dt><dd class="num">{{ t.costo | pesos }}</dd>
+          <dt><strong>Ganancia</strong></dt><dd class="num"><strong style="color:var(--ok)">{{ t.ganancia | pesos }}</strong></dd>
+        </dl>
+        <div style="margin-top:14px">
+          <label>Cliente</label>
+          <select name="cliente_id">
+            <option value="">Mostrador (sin cliente)</option>
+            {% for c in clientes %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="margin-top:10px"><label>Cómo paga</label>
+          <select name="metodo_pago">{% for m in metodos %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select></div>
+        <div style="margin-top:10px"><label>Fecha</label>
+          <input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:14px"
+                {{ 'disabled' if not venta["items"] }}>
+          <i class="fa-solid fa-cash-register"></i> Cobrar y registrar</button>
+        <p class="muted small" style="margin:10px 0 0">La venta queda en el mes de la fecha que pongas.</p>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.add-box .segmented .seg').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var caja = b.closest('.add-box');
+      caja.querySelectorAll('.seg').forEach(function (t) { t.classList.toggle('active', t === b); });
+      caja.querySelectorAll('.tab-panel').forEach(function (p) { p.hidden = p.dataset.panel !== b.dataset.tab; });
+    });
+  });
+  document.querySelectorAll('[data-editar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById(b.dataset.editar).hidden = true;
+      document.getElementById(b.dataset.editar + '-edicion').hidden = false;
+    });
+  });
+  document.querySelectorAll('[data-cancelar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ed = b.closest('.fila-edicion'); ed.hidden = true;
+      document.getElementById(ed.id.replace(/-edicion$/, '')).hidden = false;
+    });
+  });
+</script>
+{% endblock %}
