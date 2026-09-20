@@ -33,11 +33,13 @@ def numeros_del_mes(mes):
     }
 
 
-def calcular(mes, socios=None, colchon_objetivo=None):
+def calcular(mes, socios=None, colchon_objetivo=None, pct_repago=None, pct_ganancia=None):
     """La propuesta de cierre del mes, socio por socio. No toca nada.
 
     colchon_objetivo: cuánto se quiere dejar guardado para el mes siguiente. Si no
     se dice nada, se pagan los sueldos hasta donde alcance y el resto se reparte.
+    pct_repago / pct_ganancia: cómo partir lo que sobra (0 a 1). Si no se dicen,
+    salen de la regla de siempre según haya o no deuda de capital.
     """
     socios = socios or Socio.query.order_by(Socio.orden, Socio.nombre).all()
     n = numeros_del_mes(mes)
@@ -56,7 +58,11 @@ def calcular(mes, socios=None, colchon_objetivo=None):
 
     remanente = max(disponible - apartado - sueldos, 0)
     deuda_usd = sum(s.capital_usd for s in socios)
-    p = PORCENTAJES["con_deuda" if deuda_usd > 0 else "sin_deuda"]
+    p = dict(PORCENTAJES["con_deuda" if deuda_usd > 0 else "sin_deuda"])
+    if pct_repago is not None:
+        p["repago"] = pct_repago
+    if pct_ganancia is not None:
+        p["ganancia"] = pct_ganancia
     repago = round(remanente * p["repago"], 2) if remanente > 0 else 0.0
     ganancia = round(remanente * p["ganancia"], 2) if remanente > 0 else 0.0
     colchon = round(apartado + remanente - repago - ganancia, 2)

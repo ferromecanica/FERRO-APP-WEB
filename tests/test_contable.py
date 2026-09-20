@@ -132,6 +132,42 @@ with app.app_context():
     assert p['repago'] == 0
     assert abs(p['ganancia'] - p['remanente'] * .50) < 1
     assert abs(p['colchon'] - p['remanente'] * .50) < 1
+# ── bajarse el sueldo a mano: lo que se guarda es lo que queda ──
+with app.app_context():
+    ids = {s.nombre: s.id for s in Socio.query.all()}
+b = post(f'/administracion/cierres/{MES}', {'accion': 'guardar', 'modo': 'Manual', 'colchon_objetivo': '900.000',
+                                            f'sueldo_{ids["Iván"]}': '1.726.364',
+                                            f'sueldo_{ids["Lucio"]}': '200.000',
+                                            f'repago_{ids["Iván"]}': '0', f'repago_{ids["Lucio"]}': '0',
+                                            f'ganancia_{ids["Iván"]}': '0', f'ganancia_{ids["Lucio"]}': '0'})
+assert 'Borrador guardado' in b
+with app.app_context():
+    guardado = {f.socio.nombre: f.sueldo for f in CierreMensual.query.filter_by(mes=MES).one().socios}
+    assert guardado['Lucio'] == 200000, guardado
+# y al volver a entrar, sigue estando el sueldo que puse (no el calculado)
+b = B(c.get(f'/administracion/cierres/{MES}'))
+assert 'value="200.000"' in b, 'la pantalla pisó el sueldo escrito a mano'
+
+# "Recalcular" sí vuelve a la propuesta
+b = post(f'/administracion/cierres/{MES}', {'accion': 'recalcular', 'colchon_objetivo': '900.000'})
+assert 'recalculados' in b
+with app.app_context():
+    guardado = {f.socio.nombre: f.sueldo for f in CierreMensual.query.filter_by(mes=MES).one().socios}
+    assert guardado['Lucio'] != 200000, 'recalcular tenía que volver a la propuesta'
+
+# ── los porcentajes del reparto se pueden cambiar ──
+with app.app_context():
+    # que haya remanente: sin colchón apartado y con sueldos bajos
+    ids = {s.nombre: s.id for s in Socio.query.all()}
+b = post(f'/administracion/cierres/{MES}', {'accion': 'guardar', 'modo': 'Manual', 'colchon_objetivo': '0',
+                                            'pct_repago': '10', 'pct_ganancia': '20',
+                                            f'sueldo_{ids["Iván"]}': '0', f'sueldo_{ids["Lucio"]}': '0'})
+with app.app_context():
+    cc = CierreMensual.query.filter_by(mes=MES).one()
+    assert abs(cc.pct_repago - 0.10) < 0.001 and abs(cc.pct_ganancia - 0.20) < 0.001
+b = B(c.get(f'/administracion/cierres/{MES}'))
+assert 'value="10"' in b and 'value="20"' in b, 'no recordó los porcentajes'
+
 # ── la circular para el equipo ──
 from app.services import drive, reporte
 enviados = []

@@ -622,6 +622,9 @@ class CierreMensual(db.Model):
     repago = db.Column(db.Float, default=0)
     ganancia = db.Column(db.Float, default=0)
     colchon = db.Column(db.Float, default=0)  # lo que se guarda para el mes que viene
+    # Cómo se parte lo que sobra después de los sueldos (se puede cambiar mes a mes)
+    pct_repago = db.Column(db.Float)
+    pct_ganancia = db.Column(db.Float)
 
     socios = db.relationship("CierreSocio", back_populates="cierre", cascade="all, delete-orphan")
     compromisos = db.relationship("CompromisoCierre", back_populates="cierre", cascade="all, delete-orphan",

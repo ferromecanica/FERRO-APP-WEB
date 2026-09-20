@@ -49,7 +49,9 @@
           <div class="c-plata"><label>Colchón que querés dejar</label>
             <input name="colchon_objetivo" id="objetivo" inputmode="decimal" class="input-grande"
                    value="{{ p.apartado | numero if p.apartado else '' }}" placeholder="$ 900.000"></div>
-          <div class="c-btn"><button class="btn" name="accion" value="ver"><i class="fa-solid fa-rotate"></i> Recalcular</button></div>
+          <div class="c-btn"><button class="btn" name="accion" value="recalcular"
+                 title="Vuelve a la propuesta automática, descartando lo escrito a mano">
+            <i class="fa-solid fa-rotate"></i> Recalcular</button></div>
           <div style="flex:1;min-width:200px" class="muted small">
             Lo que sobra va a sueldos, repartido entre los socios según cuánto gana cada uno
             (<strong id="porcentaje">{{ (p.proporcion * 100) | numero(1) }} %</strong> de su sueldo base).
@@ -61,7 +63,7 @@
         <thead><tr><th class="izq">Socio</th><th class="num">Sueldo</th><th class="num">Repago de capital</th>
           <th class="num">Ganancia</th><th class="num">Total</th></tr></thead>
         <tbody>
-        {% for fila in (c.socios if cerrado else p.reparto) %}
+        {% for fila in (c.socios if cerrado else filas) %}
           {% set s = fila.socio %}
           <tr>
             <td class="izq destacado">{{ s.nombre }}
@@ -100,12 +102,23 @@
         {{ plata('Sueldos', (c.sueldos if cerrado else p.sueldos),
                  ((p.proporcion * 100) | numero(1)) ~ ' % de los sueldos base' if not cerrado else '') }}
         {{ plata('Sobra después de sueldos', (p.remanente if not cerrado else (c.resultado - c.sueldos - c.colchon))) }}
+        {% if cerrado %}
         <dl class="props totales" style="margin-top:12px">
-          <dt>Repago de capital {% if not cerrado %}<span class="muted small">({{ (p.porcentajes.repago * 100) | int }} %)</span>{% endif %}</dt>
-          <dd class="num">{{ (c.repago if cerrado else p.repago) | pesos }}</dd>
-          <dt>Ganancia de socios {% if not cerrado %}<span class="muted small">({{ (p.porcentajes.ganancia * 100) | int }} %)</span>{% endif %}</dt>
-          <dd class="num">{{ (c.ganancia if cerrado else p.ganancia) | pesos }}</dd>
+          <dt>Repago de capital</dt><dd class="num">{{ c.repago | pesos }}</dd>
+          <dt>Ganancia de socios</dt><dd class="num">{{ c.ganancia | pesos }}</dd>
         </dl>
+        {% else %}
+        <div class="linea-cuenta" style="margin-top:12px">
+          <span>Repago de capital
+            <input name="pct_repago" inputmode="decimal" class="pct" value="{{ (p.porcentajes.repago * 100) | numero(0) }}"> %</span>
+          <span class="num">{{ p.repago | pesos }}</span></div>
+        <div class="linea-cuenta">
+          <span>Ganancia de socios
+            <input name="pct_ganancia" inputmode="decimal" class="pct" value="{{ (p.porcentajes.ganancia * 100) | numero(0) }}"> %</span>
+          <span class="num">{{ p.ganancia | pesos }}</span></div>
+        <p class="muted small" style="margin:6px 0 0">Lo que no va a ninguno de los dos queda de colchón.
+          De fábrica es 40 / 30 cuando hay deuda de capital y 0 / 50 cuando no.</p>
+        {% endif %}
         <div class="precio-final" style="margin-top:12px"><span>Colchón</span>
           {% if cerrado %}<strong>{{ c.colchon | pesos }}</strong>
           {% else %}<input name="colchon" inputmode="decimal" class="manual" style="max-width:140px;text-align:right"
@@ -130,13 +143,13 @@
       <div><label>Cotización del dólar</label><input name="cotizacion" inputmode="decimal"
              value="{{ c.cotizacion | numero if c and c.cotizacion else '' }}" placeholder="Ej.: 1.535"></div>
       <div><label>Notas</label><textarea name="notas" rows="2">{{ c.notas if c else '' }}</textarea></div>
-      <button class="btn" name="accion" value="guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar borrador</button>
+      <button class="btn btn-primary" name="accion" value="guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar borrador</button>
       {% if reportes_configurados %}
       <button class="btn" formaction="{{ url_for('contable.circular', mes=mes) }}" formnovalidate
               {{ 'disabled title="Guardá el borrador primero"' if not c }}>
         <i class="fa-solid fa-file-pdf"></i> Circular preliminar</button>
       {% endif %}
-      <button class="btn btn-primary" name="accion" value="cerrar"
+      <button class="btn" name="accion" value="cerrar"
               data-confirmar="¿Cerrar {{ mes | mes_imputacion }}?"
               data-confirmar-detalle="Se registran las liquidaciones de sueldo, la devolución de capital y el colchón para el mes que viene."
               data-confirmar-boton="Cerrar el mes">

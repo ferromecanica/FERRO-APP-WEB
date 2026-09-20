@@ -240,9 +240,17 @@ def cierre(mes):
             flash(f"{mes_lindo(mes)} quedó abierto de nuevo: se borraron los sueldos y el colchón que había generado.", "ok")
             return redirect(url_for(".cierre", mes=mes))
 
-        propuesta = calculo.calcular(mes, socios, numero_ar(request.form.get("colchon_objetivo")))
+        pct_repago = numero_ar(request.form.get("pct_repago"))
+        pct_ganancia = numero_ar(request.form.get("pct_ganancia"))
+        propuesta = calculo.calcular(mes, socios, numero_ar(request.form.get("colchon_objetivo")),
+                                     None if pct_repago is None else pct_repago / 100,
+                                     None if pct_ganancia is None else pct_ganancia / 100)
         c = guardado or CierreMensual(mes=mes)
-        c.modo = "Manual" if request.form.get("modo") == "Manual" else "Automático"
+        # "Recalcular" vuelve a la propuesta; lo demás respeta lo que haya escrito
+        recalcula = accion == "recalcular"
+        c.modo = "Automático" if recalcula else ("Manual" if request.form.get("modo") == "Manual" else "Automático")
+        c.pct_repago = None if pct_repago is None else pct_repago / 100
+        c.pct_ganancia = None if pct_ganancia is None else pct_ganancia / 100
         c.cotizacion = numero_ar(request.form.get("cotizacion"))
         c.fecha_cierre = _fecha("fecha_cierre", date.today())
         c.notas = request.form.get("notas", "").strip() or None
@@ -264,7 +272,7 @@ def cierre(mes):
         repago = ganancia = 0
         for fila in propuesta["reparto"]:
             s = fila["socio"]
-            if c.modo == "Manual":
+            if c.modo == "Manual" and not recalcula:
                 sueldo = numero_ar(request.form.get(f"sueldo_{s.id}")) or 0
                 suyo_repago = numero_ar(request.form.get(f"repago_{s.id}")) or 0
                 suya_ganancia = numero_ar(request.form.get(f"ganancia_{s.id}")) or 0
@@ -278,7 +286,7 @@ def cierre(mes):
 
         disponible = max(c.resultado, 0)
         remanente = max(disponible - c.sueldos, 0)
-        colchon = numero_ar(request.form.get("colchon")) if c.modo == "Manual" else propuesta["colchon"]
+        colchon = numero_ar(request.form.get("colchon")) if (c.modo == "Manual" and not recalcula) else propuesta["colchon"]
         c.colchon = colchon if colchon is not None else max(remanente - repago - ganancia, 0)
 
         if accion == "cerrar":
@@ -290,15 +298,25 @@ def cierre(mes):
         else:
             c.estado = "Abierto"
             db.session.commit()
-            flash("Borrador guardado.", "ok")
+            flash("Números recalculados." if recalcula else "Borrador guardado.", "ok")
         return redirect(url_for(".cierre", mes=mes))
 
     objetivo = numero_ar(request.args.get("colchon_objetivo"))
     if objetivo is None and guardado is not None:
         objetivo = guardado.colchon
-    propuesta = calculo.calcular(mes, socios, objetivo)
-    return render_template("contable/cierre.html", mes=mes, c=guardado, p=propuesta, socios=socios,
-                           hoy=date.today(), siguiente=calculo.mes_siguiente(mes),
+    propuesta = calculo.calcular(mes, socios, objetivo,
+                                 guardado.pct_repago if guardado else None,
+                                 guardado.pct_ganancia if guardado else None)
+    # Si hay un borrador guardado, se muestra lo que quedó guardado, no el cálculo
+    if guardado is not None and guardado.socios:
+        por_socio = {f.socio_id: f for f in guardado.socios}
+        filas = [{"socio": s, "sueldo": (por_socio[s.id].sueldo if s.id in por_socio else 0),
+                  "repago": (por_socio[s.id].repago if s.id in por_socio else 0),
+                  "ganancia": (por_socio[s.id].ganancia if s.id in por_socio else 0)} for s in socios]
+    else:
+        filas = propuesta["reparto"]
+    return render_template("contable/cierre.html", mes=mes, c=guardado, p=propuesta, filas=filas,
+                           socios=socios, hoy=date.today(), siguiente=calculo.mes_siguiente(mes),
                            reportes_configurados=reporte.configurado())
 
 

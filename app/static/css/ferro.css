@@ -395,6 +395,7 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
   border-bottom: 1px dashed var(--border); }
 .linea-cuenta:last-child { border-bottom: 0; }
 .linea-cuenta .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.linea-cuenta .pct { width: 56px; padding: 3px 6px; text-align: right; margin: 0 2px 0 6px; font-size: .85rem; }
 .linea-cuenta.fuerte { border-top: 2px solid var(--accent); border-bottom: 0; margin-top: 8px; padding-top: 10px;
   font-weight: 700; font-size: 1.05rem; }
 .linea-cuenta.fuerte .num { color: var(--accent-ink); }
