@@ -11,11 +11,11 @@
   {% for s in socios %}
   <div class="card kpi"><div class="kpi-label"><i class="fa-solid fa-user-tie"></i> {{ s.nombre }}</div>
     <div class="kpi-value">{{ s.capital_pesos | pesos }}</div>
-    <div class="kpi-foot">{{ s.capital_usd | numero(0) }} dólares</div></div>
+    <div class="kpi-foot">USD {{ s.capital_usd | numero(0) }}</div></div>
   {% endfor %}
   <div class="card kpi"><div class="kpi-label"><i class="fa-solid fa-piggy-bank"></i> Capital invertido</div>
     <div class="kpi-value">{{ total_pesos | pesos }}</div>
-    <div class="kpi-foot">{{ total_usd | numero(0) }} dólares · es la deuda del taller con ustedes</div></div>
+    <div class="kpi-foot">USD {{ total_usd | numero(0) }} · es la deuda del taller con ustedes</div></div>
 </div>
 
 <div class="grid grid-3-1">
@@ -24,18 +24,18 @@
       <span class="muted small">{{ aportes | length }}</span></div>
     {% if aportes %}
     <div class="table-wrap"><table class="tabla-densa lista-movil">
-      <colgroup><col style="width:96px"><col style="width:100px"><col style="width:130px"><col style="width:110px"><col><col style="width:44px"></colgroup>
-      <thead><tr><th class="centro">Fecha</th><th class="izq">Socio</th><th class="num">Pesos</th>
+      <colgroup><col style="width:96px"><col style="width:110px"><col style="width:130px"><col style="width:124px"><col><col style="width:44px"></colgroup>
+      <thead><tr><th class="centro">Fecha</th><th class="centro">Socio</th><th class="num">Pesos</th>
         <th class="num">Dólares</th><th class="izq hide-sm">Notas</th><th></th></tr></thead>
       <tbody>
       {% for a in aportes %}
         <tr>
           <td class="centro fecha-chica" data-titulo="Fecha">{{ a.fecha | fecha }}</td>
-          <td class="izq destacado">{{ a.socio.nombre }}
+          <td class="centro destacado" data-titulo="Socio">{{ a.socio.nombre }}
             {% if a.devuelve %}<div class="muted small">devolución</div>{% endif %}</td>
           <td class="num" data-titulo="Pesos" style="color:{{ 'var(--danger)' if a.devuelve else 'inherit' }}">
             {{ a.pesos_con_signo | pesos }}</td>
-          <td class="num muted" data-titulo="Dólares">{% if a.cotizacion %}{{ a.usd_con_signo | numero(2) }}
+          <td class="num muted" data-titulo="Dólares">{% if a.cotizacion %}USD {{ a.usd_con_signo | numero(2) }}
             <div class="muted small">a {{ a.cotizacion | pesos }}</div>{% else %}—{% endif %}</td>
           <td class="izq envuelve hide-sm muted small" data-titulo="Notas">{{ a.notas or '' }}</td>
           <td class="num">
