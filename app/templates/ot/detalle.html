@@ -68,6 +68,12 @@
   <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
   <span><i class="fa-solid fa-hourglass-half"></i> <strong>Por cobrar</strong> · calculado {{ total_calculado | pesos }}</span>
 </div>
+{% elif ot.sin_cargo %}
+<div class="flash flash-info" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
+  <span><i class="fa-solid fa-gift"></i> <strong>Sin cargo</strong>{% if ot.motivo_sin_cargo %} · {{ ot.motivo_sin_cargo }}{% endif %}
+    {%- if ot.costo_repuestos %} · costó {{ ot.costo_repuestos | pesos }} en repuestos{% endif %}</span>
+</div>
 {% else %}
 <div class="flash flash-ok" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>

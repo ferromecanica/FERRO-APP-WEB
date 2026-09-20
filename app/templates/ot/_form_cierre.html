@@ -7,7 +7,20 @@
       <div class="filters">
         <label class="chip-radio"><input type="radio" name="cobrado" value="si" required {{ 'checked' if f.get('cobrado') == 'si' }}> Sí, registrar el cobro</label>
         <label class="chip-radio"><input type="radio" name="cobrado" value="no" required {{ 'checked' if f.get('cobrado') == 'no' }}> Todavía no: queda por cobrar</label>
+        <label class="chip-radio"><input type="radio" name="cobrado" value="sin_cargo" required {{ 'checked' if f.get('cobrado') == 'sin_cargo' }}> No se cobra</label>
       </div></div>
+
+    <div class="full bloque-sin-cargo" {{ '' if f.get('cobrado') == 'sin_cargo' else 'hidden' }}>
+      <label>¿Por qué no se cobra?</label>
+      <div class="filters">
+        {% for m in motivos_sin_cargo %}
+          <label class="chip-radio"><input type="radio" name="motivo_sin_cargo" value="{{ m }}"
+            {{ 'checked' if f.get('motivo_sin_cargo', 'Auto propio') == m }}> {{ m }}</label>
+        {% endfor %}
+      </div>
+      <div class="muted small" style="margin-top:6px">No se registra ninguna venta y la OT no queda por cobrar.
+        Los repuestos que salieron del stock siguen contando como costo.</div>
+    </div>
 
     {% if not ot.cliente %}
       {% with valor=f.get('cliente', ''), obligatorio=(f.get('cobrado') != 'no') %}{% include "ot/_cliente_picker.html" %}{% endwith %}
@@ -65,10 +78,13 @@
   function actualizarCobro() {
     var si = form.querySelector('input[name="cobrado"][value="si"]').checked;
     var no = form.querySelector('input[name="cobrado"][value="no"]').checked;
+    var caja = form.querySelector('.bloque-sin-cargo');
+    if (caja) caja.hidden = !form.querySelector('input[name="cobrado"][value="sin_cargo"]').checked;
     cobro.hidden = !si;
     cobro.querySelectorAll('input, select').forEach(function (c) { c.required = si; });
     if (picker) picker.setObligatorio(!no);
-    textoBoton.textContent = si ? 'Cerrar y registrar venta' : (no ? 'Cerrar (queda por cobrar)' : 'Cerrar OT');
+    textoBoton.textContent = si ? 'Cerrar y registrar venta'
+      : (no ? 'Cerrar (queda por cobrar)' : 'Cerrar sin cobrar');
   }
   form.querySelectorAll('input[name="cobrado"]').forEach(function (r) { r.addEventListener('change', actualizarCobro); });
   form.querySelectorAll('input[name="clasificacion"]').forEach(function (r) {

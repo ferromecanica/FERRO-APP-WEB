@@ -9,6 +9,7 @@ from sqlalchemy import or_
 from ..extensions import db
 from ..models import (
     CLASIFICACIONES_CIERRE,
+    MOTIVOS_SIN_CARGO,
     ESTADOS_OT,
     ESTADOS_OT_ABIERTA,
     METODOS_PAGO,
@@ -92,7 +93,8 @@ def lista():
     q = request.args.get("q", "").strip()
     consulta = OrdenTrabajo.query.join(Vehiculo).outerjoin(Cliente, OrdenTrabajo.cliente_id == Cliente.id)
     if estado == "por_cobrar":
-        consulta = consulta.filter(OrdenTrabajo.estado == "Finalizada", ~OrdenTrabajo.ventas.any())
+        consulta = consulta.filter(OrdenTrabajo.estado == "Finalizada", ~OrdenTrabajo.ventas.any(),
+                                   OrdenTrabajo.sin_cargo.is_(False))
     elif estado:
         consulta = consulta.filter(OrdenTrabajo.estado == estado)
     if q:
@@ -565,6 +567,7 @@ def _contexto_cierre(ot):
         valor_hora=valor_hora, mano_obra=ot.horas_insumidas * valor_hora,
         total_calculado=ot.horas_insumidas * valor_hora + ot.total_repuestos,
         metodos=METODOS_PAGO, clasificaciones=CLASIFICACIONES_CIERRE, checklist=CHECKLIST,
+        motivos_sin_cargo=MOTIVOS_SIN_CARGO,
         clientes=_clientes() if ot.cliente is None else [],
     )
 
@@ -613,11 +616,13 @@ def cerrar(id):
     if request.method == "GET":
         return _volver(ot, "cerrar")  # el cierre se hace desde la ventana de la ficha
 
-    cobra_ahora = request.form.get("cobrado") == "si"
+    cobro = request.form.get("cobrado")
+    cobra_ahora = cobro == "si"
+    sin_cargo = cobro == "sin_cargo"
     clasificacion = request.form.get("clasificacion")
     errores, cliente, cobrado, metodo = [], None, None, None
-    if request.form.get("cobrado") not in ("si", "no"):
-        errores.append("Indicá si el trabajo ya se cobró.")
+    if cobro not in ("si", "no", "sin_cargo"):
+        errores.append("Indicá si el trabajo se cobró.")
     elif cobra_ahora:
         cliente, cobrado, metodo, errores = _datos_cobro(ot)
     elif ot.cliente is None:
@@ -636,9 +641,14 @@ def cerrar(id):
     ot.fecha_fin = _fecha("fecha_fin", date.today())
     ot.clasificacion_cierre = clasificacion
     ot.estado = "Finalizada"
+    ot.sin_cargo = sin_cargo
+    ot.motivo_sin_cargo = (request.form.get("motivo_sin_cargo", "").strip()[:120] or None) if sin_cargo else None
     if cobra_ahora:
         _registrar_venta(ot, cobrado, metodo, ot.fecha_fin)
         mensaje = f"OT #{ot.id} cerrada. Venta registrada por ${cobrado:,.0f}.".replace(",", ".")
+    elif sin_cargo:
+        ot.total_cobrado = 0
+        mensaje = f"OT #{ot.id} cerrada sin cargo{' (' + ot.motivo_sin_cargo + ')' if ot.motivo_sin_cargo else ''}."
     else:
         mensaje = f"OT #{ot.id} cerrada. Queda por cobrar."
     db.session.commit()
@@ -701,6 +711,7 @@ def reabrir(id):
         ot.estado = "En proceso"
         ot.fecha_fin = None
         ot.total_cobrado = None
+        ot.sin_cargo, ot.motivo_sin_cargo = False, None
         db.session.commit()
         flash(f"OT #{ot.id} reabierta. Se anuló la venta asociada.", "info")
     return _volver(ot)

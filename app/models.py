@@ -165,6 +165,7 @@ class Turno(TimestampMixin, db.Model):
 ESTADOS_OT = ["Pendiente", "En proceso", "Finalizada"]
 ESTADOS_OT_ABIERTA = ESTADOS_OT[:2]
 CLASIFICACIONES_CIERRE = ["Servicio", "Otro"]  # "Servicio" = mantenimiento con reporte
+MOTIVOS_SIN_CARGO = ["Auto propio", "Cortesía", "Garantía", "Otro"]
 
 
 class OrdenTrabajo(TimestampMixin, db.Model):
@@ -182,6 +183,8 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     total_cobrado = db.Column(db.Float)
     fecha_fin = db.Column(db.Date)
     clasificacion_cierre = db.Column(db.String(40))
+    sin_cargo = db.Column(db.Boolean, default=False, nullable=False)  # auto propio, cortesía, garantía
+    motivo_sin_cargo = db.Column(db.String(120))
     km_proximo_service = db.Column(db.Integer)
     link_reporte = db.Column(db.String(300))
 
@@ -230,8 +233,11 @@ class OrdenTrabajo(TimestampMixin, db.Model):
 
     @property
     def por_cobrar(self):
-        """Trabajo terminado pero todavía sin cobrar (sin venta registrada)."""
-        return self.estado == "Finalizada" and not self.ventas
+        """Trabajo terminado pero todavía sin cobrar (sin venta registrada).
+
+        Las que se cerraron sin cargo no cuentan: no hay nada que cobrar.
+        """
+        return self.estado == "Finalizada" and not self.ventas and not self.sin_cargo
 
     @classmethod
     def proximo_numero(cls):
