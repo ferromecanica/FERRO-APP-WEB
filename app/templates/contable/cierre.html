@@ -33,7 +33,21 @@
 
     <div class="card">
       <div class="card-head seccion"><h2><i class="fa-solid fa-users"></i> Reparto</h2>
-        <span class="muted small">{{ 'sueldos por orden de cobro' if not cerrado }}</span></div>
+        <span class="muted small">{% if not cerrado %}los dos cobran el mismo % de su sueldo base{% endif %}</span></div>
+      {% if not cerrado %}
+      <div class="card-body" style="border-bottom:1px solid var(--border)">
+        <div class="fila" style="align-items:flex-end">
+          <div class="c-plata"><label>Colchón que querés dejar</label>
+            <input name="colchon_objetivo" id="objetivo" inputmode="decimal" class="input-grande"
+                   value="{{ p.apartado | numero if p.apartado else '' }}" placeholder="$ 900.000"></div>
+          <div class="c-btn"><button class="btn" name="accion" value="ver"><i class="fa-solid fa-rotate"></i> Recalcular</button></div>
+          <div style="flex:1;min-width:200px" class="muted small">
+            Lo que sobra va a sueldos, repartido entre los socios según cuánto gana cada uno
+            (<strong id="porcentaje">{{ (p.proporcion * 100) | numero(1) }} %</strong> de su sueldo base).
+          </div>
+        </div>
+      </div>
+      {% endif %}
       <div class="table-wrap"><table class="tabla-densa lista-movil">
         <thead><tr><th class="izq">Socio</th><th class="num">Sueldo</th><th class="num">Repago de capital</th>
           <th class="num">Ganancia</th><th class="num">Total</th></tr></thead>
@@ -63,8 +77,8 @@
       </table></div>
       {% if not cerrado %}
       <div class="card-body" style="border-top:1px solid var(--border)">
-        <p class="muted small" style="margin:0">Los importes de arriba son la propuesta automática. Si los cambiás,
-          elegí <strong>Manual</strong> en el panel de la derecha antes de guardar.</p>
+        <p class="muted small" style="margin:0">Si querés poner un importe distinto en alguna casilla, escribilo:
+          el modo pasa a <strong>Manual</strong> solo.</p>
       </div>
       {% endif %}
     </div>
@@ -74,8 +88,9 @@
     <div class="card resultado">
       <div class="card-head seccion"><h2><i class="fa-solid fa-chart-pie"></i> Qué queda</h2></div>
       <div class="card-body">
-        {{ plata('Sueldos', (c.sueldos if cerrado else p.sueldos)) }}
-        {{ plata('Remanente', (p.remanente if not cerrado else (c.resultado - c.sueldos))) }}
+        {{ plata('Sueldos', (c.sueldos if cerrado else p.sueldos),
+                 ((p.proporcion * 100) | numero(1)) ~ ' % de los sueldos base' if not cerrado else '') }}
+        {{ plata('Sobra después de sueldos', (p.remanente if not cerrado else (c.resultado - c.sueldos - c.colchon))) }}
         <dl class="props totales" style="margin-top:12px">
           <dt>Repago de capital {% if not cerrado %}<span class="muted small">({{ (p.porcentajes.repago * 100) | int }} %)</span>{% endif %}</dt>
           <dd class="num">{{ (c.repago if cerrado else p.repago) | pesos }}</dd>
@@ -136,6 +151,21 @@
   var modo = document.getElementById('modo');
   document.querySelectorAll('.manual').forEach(function (c) {
     c.addEventListener('input', function () { modo.value = 'Manual'; });
+  });
+
+  // Y si cambiás el colchón, los sueldos se recalculan sin recargar
+  var objetivo = document.getElementById('objetivo');
+  var disponible = {{ p.disponible }}, bases = {{ socios | map(attribute='sueldo_base') | sum }};
+  function numero(t) { return parseFloat((t || '0').replace(/\./g, '').replace(',', '.')) || 0; }
+  function plata(n) { return n.toLocaleString('es-AR', {maximumFractionDigits: 0}); }
+  if (objetivo) objetivo.addEventListener('input', function () {
+    if (!bases) return;
+    var apartado = Math.min(Math.max(numero(objetivo.value), 0), disponible);
+    var prop = Math.min(1, (disponible - apartado) / bases);
+    document.getElementById('porcentaje').textContent = (prop * 100).toFixed(1).replace('.', ',') + ' %';
+    {% for s in socios %}
+    document.querySelector('[name="sueldo_{{ s.id }}"]').value = plata({{ s.sueldo_base or 0 }} * prop);
+    {% endfor %}
   });
 </script>
 {% endif %}

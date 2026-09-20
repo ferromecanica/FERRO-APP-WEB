@@ -232,7 +232,7 @@ def cierre(mes):
             flash(f"{mes_lindo(mes)} quedó abierto de nuevo: se borraron los sueldos y el colchón que había generado.", "ok")
             return redirect(url_for(".cierre", mes=mes))
 
-        propuesta = calculo.calcular(mes, socios)
+        propuesta = calculo.calcular(mes, socios, numero_ar(request.form.get("colchon_objetivo")))
         c = guardado or CierreMensual(mes=mes)
         c.modo = "Manual" if request.form.get("modo") == "Manual" else "Automático"
         c.cotizacion = numero_ar(request.form.get("cotizacion"))
@@ -281,6 +281,9 @@ def cierre(mes):
             flash("Borrador guardado.", "ok")
         return redirect(url_for(".cierre", mes=mes))
 
-    propuesta = calculo.calcular(mes, socios)
+    objetivo = numero_ar(request.args.get("colchon_objetivo"))
+    if objetivo is None and guardado is not None:
+        objetivo = guardado.colchon
+    propuesta = calculo.calcular(mes, socios, objetivo)
     return render_template("contable/cierre.html", mes=mes, c=guardado, p=propuesta, socios=socios,
                            hoy=date.today(), siguiente=calculo.mes_siguiente(mes))

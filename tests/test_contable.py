@@ -59,9 +59,17 @@ with app.app_context():
 
     p = calculo.calcular(MES)
     assert p['resultado'] == round(7141326 - 528795.20 + 900000, 2)
-    # los sueldos salen por orden: Iván primero
+    # los dos cobran el mismo porcentaje de su sueldo base
     sueldos = {f['socio'].nombre: f['sueldo'] for f in p['reparto']}
-    assert sueldos['Iván'] == 2449987 and sueldos['Lucio'] == 435000
+    assert sueldos['Iván'] == 2449987 and sueldos['Lucio'] == 435000  # alcanza para los dos enteros
+
+    # apartando un colchón, los sueldos bajan a prorrata (como los cierres reales)
+    con_colchon = calculo.calcular(MES, colchon_objetivo=5000000)
+    s = {f['socio'].nombre: f['sueldo'] for f in con_colchon['reparto']}
+    proporcion = (con_colchon['disponible'] - 5000000) / (2449987 + 435000)
+    assert abs(s['Iván'] - 2449987 * proporcion) < 1 and abs(s['Lucio'] - 435000 * proporcion) < 1
+    assert abs(s['Iván'] / s['Lucio'] - 2449987 / 435000) < 0.01, 'la proporción entre socios se mantiene'
+    assert con_colchon['colchon'] >= 5000000
     # con deuda de capital: 40 % repago, 30 % ganancia, 30 % colchón
     assert abs(p['repago'] - p['remanente'] * .40) < 1
     assert abs(p['ganancia'] - p['remanente'] * .30) < 1

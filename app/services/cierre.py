@@ -1,15 +1,16 @@
 """El cierre mensual: la cuenta de cómo se reparte la plata del mes.
 
-La lógica es la que venía de la app contable de AppSheet:
-
   resultado  = ingresos cobrados − egresos (sin sueldos ni capital) + colchón que entra
-  sueldos    = cada socio cobra hasta su sueldo base, por orden, mientras alcance
-  remanente  = lo que queda después de los sueldos
-  del remanente: con deuda de capital → 40 % repago, 30 % ganancia, 30 % colchón
-                 sin deuda            →  0 % repago, 50 % ganancia, 50 % colchón
 
-El repago va proporcional a lo que puso cada socio (medido en dólares, que es
-como se lleva la deuda) y la ganancia según la participación de cada uno.
+De ahí se aparta el colchón que se quiere dejar para el mes siguiente, y lo que
+queda se reparte en sueldos: los dos socios cobran **el mismo porcentaje de su
+sueldo base**, con tope en el base. (Así salieron los seis cierres reales: 70,5 %
+en agosto, 100 % en junio, 10,8 % en abril.)
+
+Si después de pagar los sueldos completos todavía sobra, ese remanente se
+reparte: con deuda de capital 40 % repago, 30 % ganancia y 30 % al colchón; sin
+deuda, mitad ganancia y mitad colchón. El repago va proporcional a lo que puso
+cada socio (medido en dólares) y la ganancia según su participación.
 """
 from ..extensions import db
 from ..models import CierreMensual, MovimientoContable, Socio
@@ -32,27 +33,33 @@ def numeros_del_mes(mes):
     }
 
 
-def calcular(mes, socios=None):
-    """La propuesta de cierre del mes, socio por socio. No toca nada."""
+def calcular(mes, socios=None, colchon_objetivo=None):
+    """La propuesta de cierre del mes, socio por socio. No toca nada.
+
+    colchon_objetivo: cuánto se quiere dejar guardado para el mes siguiente. Si no
+    se dice nada, se pagan los sueldos hasta donde alcance y el resto se reparte.
+    """
     socios = socios or Socio.query.order_by(Socio.orden, Socio.nombre).all()
     n = numeros_del_mes(mes)
     resultado = n["ingresos"] - n["egresos"] + n["colchon_entrante"]
     disponible = max(resultado, 0)
 
-    # Los sueldos se pagan por orden: el primero cobra hasta su base, y así
-    queda = disponible
-    reparto = []
-    for socio in socios:
-        sueldo = min(queda, socio.sueldo_base or 0)
-        queda -= sueldo
-        reparto.append({"socio": socio, "sueldo": sueldo, "repago": 0.0, "ganancia": 0.0})
+    apartado = min(max(colchon_objetivo or 0, 0), disponible)
+    para_sueldos = disponible - apartado
 
-    remanente = max(queda, 0)
+    # Los dos cobran el mismo porcentaje de su sueldo base, hasta el tope
+    bases = sum(s.sueldo_base or 0 for s in socios)
+    proporcion = min(1.0, para_sueldos / bases) if bases else 0.0
+    reparto = [{"socio": s, "sueldo": round((s.sueldo_base or 0) * proporcion, 2),
+                "repago": 0.0, "ganancia": 0.0} for s in socios]
+    sueldos = sum(f["sueldo"] for f in reparto)
+
+    remanente = max(disponible - apartado - sueldos, 0)
     deuda_usd = sum(s.capital_usd for s in socios)
     p = PORCENTAJES["con_deuda" if deuda_usd > 0 else "sin_deuda"]
     repago = round(remanente * p["repago"], 2) if remanente > 0 else 0.0
     ganancia = round(remanente * p["ganancia"], 2) if remanente > 0 else 0.0
-    colchon = round(remanente - repago - ganancia, 2)
+    colchon = round(apartado + remanente - repago - ganancia, 2)
 
     # El repago sigue a lo que puso cada uno; la ganancia, a la participación
     for fila in reparto:
@@ -60,9 +67,9 @@ def calcular(mes, socios=None):
         fila["repago"] = round(repago * parte, 2)
         fila["ganancia"] = round(ganancia * (fila["socio"].participacion or 0), 2)
 
-    return dict(n, mes=mes, resultado=resultado, disponible=disponible, sueldos=disponible - queda,
-                remanente=remanente, deuda_usd=deuda_usd, repago=repago, ganancia=ganancia,
-                colchon=colchon, reparto=reparto, porcentajes=p)
+    return dict(n, mes=mes, resultado=resultado, disponible=disponible, sueldos=sueldos,
+                proporcion=proporcion, apartado=apartado, remanente=remanente, deuda_usd=deuda_usd,
+                repago=repago, ganancia=ganancia, colchon=colchon, reparto=reparto, porcentajes=p)
 
 
 def limpiar_generado(cierre):
