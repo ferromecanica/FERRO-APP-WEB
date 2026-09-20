@@ -41,12 +41,10 @@
       {% if ot.link_reporte %}
       <a class="btn" href="{{ ot.link_reporte }}" target="_blank" rel="noopener"><i class="fa-solid fa-file-pdf" style="color:#d93025"></i> Reporte PDF</a>
       {% endif %}
-      {% if ot.clasificacion_cierre == 'Servicio' %}
-        {% if reportes_configurados %}
-        <form method="post" action="{{ url_for('ot.reporte_generar', id=ot.id) }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('span').textContent='Generando…'">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn"><i class="fa-solid fa-rotate"></i> <span>{{ 'Regenerar' if ot.link_reporte else 'Generar' }} reporte</span></button></form>
-        {% endif %}
+      {% if reportes_configurados and not ot.abierta %}
+      <form method="post" action="{{ url_for('ot.reporte_generar', id=ot.id) }}" onsubmit="this.querySelector('button').disabled=true;this.querySelector('span').textContent='Generando…'">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn"><i class="fa-solid fa-rotate"></i> <span>{{ 'Regenerar' if ot.link_reporte else 'Generar' }} reporte</span></button></form>
       {% endif %}
       <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" data-confirmar="¿Reabrir la OT {{ ot.id }}?" data-confirmar-detalle="{{ 'Se anula la venta registrada al cerrarla.' if ot.venta else 'Vuelve a estar en proceso.' }}" data-confirmar-boton="Reabrir">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -664,7 +664,8 @@ def cerrar(id):
         mensaje = f"OT #{ot.id} cerrada. Queda por cobrar."
     db.session.commit()
     flash(mensaje, "ok")
-    if clasificacion == "Servicio" and reporte.configurado():
+    # El reporte sale siempre: en las que no son service, el checklist va todo en NO
+    if reporte.configurado():
         _generar_reporte(ot)
     return _volver(ot)
 
