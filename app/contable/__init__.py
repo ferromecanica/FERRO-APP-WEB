@@ -49,6 +49,12 @@ def _filtro_mes(valor):
     return mes_lindo(valor)
 
 
+def _clasificaciones():
+    """Las de siempre, más las que se hayan escrito a mano."""
+    usadas = {c for (c,) in db.session.query(MovimientoContable.clasificacion).distinct() if c}
+    return CLASIFICACIONES + sorted(usadas - set(CLASIFICACIONES))
+
+
 def _meses_cargados():
     """Los meses que tienen movimientos, del más nuevo al más viejo."""
     meses = [m for (m,) in db.session.query(MovimientoContable.mes_imputacion).distinct().all() if m]
@@ -135,7 +141,7 @@ def form(id=None):
             return redirect(url_for(".movimientos", mes=mov.mes_imputacion))
 
     return render_template("contable/form.html", m=mov, tipos=TIPOS_MOVIMIENTO_CONTABLE,
-                           clasificaciones=CLASIFICACIONES, comprobantes=COMPROBANTES,
+                           clasificaciones=_clasificaciones(), comprobantes=COMPROBANTES,
                            meses=_meses_cargados())
 
 

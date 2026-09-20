@@ -21,10 +21,11 @@
       </select>
       <div class="muted small" style="margin-top:4px">Por defecto, el mes de la fecha.</div></div>
     <div><label>Clasificación</label>
-      <select name="clasificacion">
-        <option value="">Sin clasificar</option>
-        {% for c in clasificaciones %}<option value="{{ c }}" {{ 'selected' if f.get('clasificacion', m.clasificacion) == c }}>{{ c }}</option>{% endfor %}
-      </select></div>
+      <input name="clasificacion" list="lista-clasificaciones" autocomplete="off"
+             value="{{ f.get('clasificacion', m.clasificacion or '') }}" placeholder="Elegí o escribí una nueva">
+      <datalist id="lista-clasificaciones">
+        {% for c in clasificaciones %}<option value="{{ c }}">{% endfor %}
+      </datalist></div>
 
     <div><label>Proveedor o cliente</label><input name="quien" value="{{ f.get('quien', m.quien or '') }}" placeholder="A quién se le pagó o quién pagó"></div>
     <div><label>CUIT</label><input name="cuit" value="{{ f.get('cuit', m.cuit or '') }}" placeholder="30-12345678-9"></div>

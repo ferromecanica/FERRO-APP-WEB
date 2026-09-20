@@ -482,8 +482,9 @@ class Repuesto(TimestampMixin, db.Model):
 # ────────────────────────────── Administración ──────────────────────────────
 
 TIPOS_MOVIMIENTO_CONTABLE = ["Ingreso", "Egreso", "Colchón"]
-CLASIFICACIONES = ["Ventas", "Repuestos y Proveedores", "Gasto Corriente", "Gasto Operativo",
-                   "Gasto menor", "Bien de uso", "Inversión de Capital", "Sueldos"]
+# Las mismas de la app contable, en el mismo orden. Se puede escribir otra.
+CLASIFICACIONES = ["Gasto Corriente", "Inversión de Capital", "Ventas", "Repuestos y Proveedores",
+                   "Gasto Operativo", "Gasto menor", "Bien de uso", "Sueldos"]
 COMPROBANTES = ["S/C", "Factura A", "Factura B", "Factura C", "Ticket", "Liquidación", "Recibo"]
 TIPOS_CAPITAL = ["Aporte de Capital", "Devolución de Capital"]
 

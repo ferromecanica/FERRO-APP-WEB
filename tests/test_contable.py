@@ -50,6 +50,17 @@ with app.app_context():
     con_iva = MovimientoContable.query.filter_by(concepto='Con IVA').one()
     assert con_iva.total == 121000, con_iva.total
 
+# se puede escribir una clasificación que no está en la lista
+post('/administracion/nuevo', {'tipo': 'Egreso', 'fecha': '2026-08-12', 'mes_imputacion': MES,
+                               'quien': 'Municipalidad', 'concepto': 'Habilitación', 'total': '80.000',
+                               'clasificacion': 'Impuestos y tasas'})
+with app.app_context():
+    assert MovimientoContable.query.filter_by(clasificacion='Impuestos y tasas').count() == 1
+assert 'Impuestos y tasas' in B(c.get('/administracion/nuevo')), 'la nueva clasificación tiene que quedar en la lista'
+with app.app_context():
+    MovimientoContable.query.filter_by(clasificacion='Impuestos y tasas').delete()
+    db.session.commit()
+
 # ── la cuenta del mes ──
 with app.app_context():
     n = calculo.numeros_del_mes(MES)
