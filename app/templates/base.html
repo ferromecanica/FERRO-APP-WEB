@@ -39,6 +39,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.12/htmx.min.js" defer></script>
   <script src="{{ url_for('static', filename='js/plata.js') }}"></script>
   <script src="{{ url_for('static', filename='js/cobro.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/desplegable.js') }}"></script>
 </head>
 {% set seccion = request.blueprint %}
 <body class="{{ 'modulo-contable' if seccion == 'contable' }}" hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>

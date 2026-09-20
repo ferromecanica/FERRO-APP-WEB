@@ -1,5 +1,6 @@
 /* Ferro — tema claro, acento naranja (inspirado en la app AppSheet) */
 :root {
+  color-scheme: light;
   --bg: #f3f4f6;
   --surface: #ffffff;
   --surface-2: #f9fafb;
@@ -700,18 +701,30 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
   margin-bottom: 16px; overflow: hidden; }
 .aviso-conciliacion .aviso-titulo { color: var(--accent-ink); }
 .aviso-conciliacion .aviso-pie { border-top: 1px solid var(--accent); background: transparent; }
-.aviso-conciliacion table { background: var(--card); }
+.aviso-conciliacion table { background: var(--surface); }
 .aviso-conciliacion .aviso-pie { display: block; }
 table.cuadre { width: auto; min-width: 340px; margin-left: auto; background: transparent !important; }
 table.cuadre td { border: 0; padding: 3px 0; font-size: .92em; }
 table.cuadre td.num { padding-left: 24px; font-variant-numeric: tabular-nums; }
 table.cuadre tr.total td { border-top: 1px solid var(--accent); padding-top: 6px; font-weight: 700; color: var(--accent-ink); }
 
+/* ── Desplegables de búsqueda (reemplazan al del navegador) ─ */
+.desplegable { position: fixed; z-index: 90; max-height: 292px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(17, 24, 39, .14); padding: 5px; }
+.desplegable-op { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: 8px;
+  cursor: pointer; border: 1px solid transparent; }
+.desplegable-valor { font-weight: 600; font-size: .92rem; color: var(--text); line-height: 1.25; }
+.desplegable-nota { font-size: .8rem; color: var(--muted); }
+.desplegable-op.activa { background: var(--accent-soft); border-color: var(--accent); }
+.desplegable-op.activa .desplegable-valor { color: var(--accent-ink); }
+.desplegable-op.activa .desplegable-nota { color: var(--accent-ink); opacity: .75; }
+
 /* ── Configuración: panel de la izquierda ───────────────── */
 .config-layout { display: grid; grid-template-columns: 228px minmax(0, 1fr); gap: 20px; align-items: start; }
 .config-nav { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 16px; }
 .config-nav a { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px;
-  color: var(--ink); text-decoration: none; font-weight: 600; font-size: .93rem; }
+  color: var(--text); text-decoration: none; font-weight: 600; font-size: .93rem; }
 .config-nav a i { width: 18px; color: var(--muted); }
 .config-nav a:hover { background: var(--surface-2); }
 .config-nav a.active { background: var(--accent-soft); color: var(--accent-ink); }
@@ -722,7 +735,7 @@ table.cuadre tr.total td { border-top: 1px solid var(--accent); padding-top: 6px
 @media (max-width: 860px) {
   .config-layout { grid-template-columns: 1fr; gap: 12px; }
   .config-nav { position: static; flex-direction: row; flex-wrap: wrap; gap: 6px; }
-  .config-nav a { padding: 7px 12px; border: 1px solid var(--border); background: var(--card); font-size: .88rem; }
+  .config-nav a { padding: 7px 12px; border: 1px solid var(--border); background: var(--surface); font-size: .88rem; }
 }
 
 .aviso-tarjeta { background: var(--accent-soft); border: 1px solid #f5b56b; border-radius: 10px;
@@ -760,7 +773,7 @@ table.cuadre tr.total td { border-top: 1px solid var(--accent); padding-top: 6px
 .barra-mes { flex: 0 0 118px; color: var(--muted); white-space: nowrap; }
 .barra-pista { flex: 1 1 auto; height: 14px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
 .barra-pista > span { display: block; height: 100%; background: #b9c3cc; border-radius: 999px; }
-.barra-fila.actual .barra-mes { color: var(--ink); font-weight: 700; }
+.barra-fila.actual .barra-mes { color: var(--text); font-weight: 700; }
 .barra-fila.actual .barra-pista > span { background: var(--accent); }
 .barra-valor { flex: 0 0 auto; font-variant-numeric: tabular-nums; text-align: right; min-width: 118px; }
 
