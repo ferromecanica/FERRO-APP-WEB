@@ -345,14 +345,21 @@ def foto_eliminar(fid):
 
 CARPETA_LISTAS = "listas"
 VIDA_ARCHIVO = 24 * 60 * 60  # se borran solos al día siguiente
+MAX_ARCHIVOS = 3  # las listas pesan (la de RSF, 18 MB) y el disco del servidor es chico
 
 
 def _carpeta_listas():
+    """La carpeta donde esperan las listas subidas, ya limpia de lo que quedó a medias."""
     carpeta = Path(current_app.instance_path) / CARPETA_LISTAS
     carpeta.mkdir(parents=True, exist_ok=True)
-    for viejo in carpeta.iterdir():  # limpieza de archivos que quedaron a medio camino
-        if time.time() - viejo.stat().st_mtime > VIDA_ARCHIVO:
-            viejo.unlink(missing_ok=True)
+    quedan = []
+    for archivo in carpeta.iterdir():
+        if time.time() - archivo.stat().st_mtime > VIDA_ARCHIVO:
+            archivo.unlink(missing_ok=True)
+        else:
+            quedan.append(archivo)
+    for archivo in sorted(quedan, key=lambda a: a.stat().st_mtime)[:-MAX_ARCHIVOS]:
+        archivo.unlink(missing_ok=True)  # si se subieron varias seguidas, queda la última
     return carpeta
 
 
