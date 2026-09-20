@@ -74,9 +74,12 @@
 
     function abrir() {
       if (eligiendo) return;
-      var buscado = pelado(campo.value);
+      /* Todas las palabras tienen que aparecer, en cualquier orden y en
+         cualquier parte: "fil bos cro" encuentra "Kit filtro Bosch Cronos". */
+      var palabras = pelado(campo.value).split(/\s+/).filter(Boolean);
       visibles = opciones().filter(function (o) {
-        return !buscado || pelado(o.valor + ' ' + o.nota).indexOf(buscado) !== -1;
+        var texto = pelado(o.valor + ' ' + o.nota);
+        return palabras.every(function (p) { return texto.indexOf(p) !== -1; });
       }).slice(0, MAXIMO);
 
       if (!visibles.length) { cerrar(); return; }
