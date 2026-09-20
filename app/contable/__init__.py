@@ -20,8 +20,10 @@ from ..models import (
     AporteCapital,
     MovimientoContable,
     Socio,
+    Venta,
 )
 from ..services import cierre as calculo
+from ..services import contable
 from ..services import reporte
 from ..validaciones import formatear_cuit, numero_ar
 
@@ -93,7 +95,7 @@ def movimientos():
     colchon = sum(m.total for m in del_mes if m.tipo == "Colchón")
     return render_template(
         "contable/movimientos.html", movimientos=movs, mes=mes, meses=_meses_cargados(), tipo=tipo, q=q,
-        tipos=TIPOS_MOVIMIENTO_CONTABLE,
+        tipos=TIPOS_MOVIMIENTO_CONTABLE, control=contable.control_del_mes(mes),
         totales={"ingresos": ingresos, "por_cobrar": por_cobrar, "egresos": egresos, "colchon": colchon,
                  "resultado": ingresos - egresos + colchon},
     )
@@ -170,6 +172,21 @@ def cobrado(id):
 
 
 # ─────────────────────────────────── Capital ────────────────────────────────
+
+
+@bp.route("/ventas/<int:id>/ingreso", methods=["POST"])
+def ingreso_de_venta(id):
+    """Carga en la administración una venta del taller que había quedado afuera."""
+    venta = db.get_or_404(Venta, id)
+    if contable.ingreso_de(venta) is not None:
+        flash("Esa venta ya tiene su ingreso cargado.", "info")
+    elif not venta.total:
+        flash("Esa venta es de $0: no genera ingreso.", "error")
+    else:
+        mov = contable.registrar_venta(venta)
+        db.session.commit()
+        flash(f"Ingreso cargado: {mov.quien} · ${mov.total:,.0f}".replace(",", ".") + ".", "ok")
+    return redirect(url_for(".movimientos", mes=MovimientoContable.mes_de(venta.fecha)))
 
 
 @bp.route("/capital")

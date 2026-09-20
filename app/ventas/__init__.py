@@ -12,6 +12,7 @@ from flask_login import login_required
 
 from ..extensions import db
 from ..models import METODOS_PAGO, Cliente, Repuesto, Venta
+from ..services import contable
 from ..services.stock import anular_venta, buscar_repuesto, vender_en_mostrador
 from ..validaciones import numero_ar
 
@@ -38,12 +39,15 @@ def lista():
 
     meses = OrderedDict()
     for v in ventas:
-        mes = meses.setdefault(v.fecha.strftime("%Y-%m"),
-                               {"fecha": v.fecha.replace(day=1), "total": 0, "costo": 0, "ventas": []})
+        clave = v.fecha.strftime("%Y-%m")
+        mes = meses.setdefault(clave, {"clave": clave, "fecha": v.fecha.replace(day=1),
+                                       "total": 0, "costo": 0, "ventas": []})
         mes["total"] += v.total
         mes["costo"] += v.costo_total
         mes["ventas"].append(v)
-    return render_template("ventas/lista.html", meses=meses.values(), cantidad=len(ventas), q=q)
+    # El mes en curso viene abierto; los anteriores, plegados con su resumen.
+    return render_template("ventas/lista.html", meses=meses.values(), cantidad=len(ventas), q=q,
+                           mes_actual=date.today().strftime("%Y-%m"))
 
 
 @bp.route("/<int:id>")
@@ -60,6 +64,7 @@ def anular(id):
     except ValueError as e:
         flash(str(e), "error")
         return redirect(url_for(".detalle", id=id))
+    contable.borrar_venta(venta)
     db.session.delete(venta)
     db.session.commit()
     flash(f"Venta {id} anulada: los repuestos volvieron al stock.", "ok")
@@ -194,6 +199,7 @@ def cobrar():
             item["cantidad"], precio_unitario=item["precio"], costo_unitario=item["costo"],
             descripcion=item["descripcion"],
         )
+    contable.registrar_venta(venta)
     db.session.commit()
     session.pop("mostrador", None)
     flash(f"Venta {venta.id} registrada por {venta.total:,.0f}".replace(",", ".") + ".", "ok")

@@ -22,13 +22,18 @@
       <th class="num">Ganancia</th></tr></thead>
     <tbody>
     {% for m in meses %}
-      <tr class="banda-mes"><td colspan="4" class="izq">{{ m.fecha | mes_largo | capitalize }}
+      {% set abierto = q or m.clave == mes_actual %}
+      <tr class="banda-mes plegable {{ 'abierto' if abierto }}" data-mes="{{ m.clave }}"
+          title="{{ 'Plegar' if abierto else 'Ver las ventas' }} {{ m.fecha | mes_largo }}">
+        <td colspan="4" class="izq"><i class="fa-solid fa-chevron-right flecha"></i>
+          {{ m.fecha | mes_largo | capitalize }}
           <span class="muted">· {{ m.ventas | length }} venta{{ 's' if m.ventas | length != 1 }}</span></td>
-        <td class="num"><strong>{{ m.total | pesos }}</strong></td>
-        <td class="num hide-sm">{{ m.costo | pesos }}</td>
-        <td class="num"><strong style="color:var(--ok)">{{ (m.total - m.costo) | pesos }}</strong></td></tr>
+        <td class="num" data-titulo="Total"><strong>{{ m.total | pesos }}</strong></td>
+        <td class="num hide-sm" data-titulo="Costo">{{ m.costo | pesos }}</td>
+        <td class="num" data-titulo="Ganancia"><strong style="color:var(--ok)">{{ (m.total - m.costo) | pesos }}</strong></td></tr>
       {% for v in m.ventas %}
-      <tr class="clickable" onclick="location='{{ url_for('ventas.detalle', id=v.id) }}'">
+      <tr class="clickable fila-mes" data-mes="{{ m.clave }}" {{ '' if abierto else 'hidden' }}
+          onclick="location='{{ url_for('ventas.detalle', id=v.id) }}'">
         <td class="izq" style="white-space:nowrap">{{ v.fecha | fecha('%d/%m/%Y') }}
           <div class="muted small">Nº {{ v.id }}</div></td>
         <td class="izq destacado">{{ v.cliente.nombre if v.cliente else 'Mostrador' }}</td>
@@ -45,6 +50,16 @@
     </tbody>
   </table></div>
 </div>
+<script>
+  /* Los meses anteriores arrancan plegados: se abren de a uno. */
+  document.querySelectorAll('tr.banda-mes.plegable').forEach(function (banda) {
+    banda.addEventListener('click', function () {
+      var abierto = banda.classList.toggle('abierto');
+      document.querySelectorAll('tr.fila-mes[data-mes="' + banda.dataset.mes + '"]')
+        .forEach(function (fila) { fila.hidden = !abierto; });
+    });
+  });
+</script>
 {% else %}
 <div class="card">{{ vacio('fa-cash-register', 'No hay ventas' ~ (' que coincidan.' if q else ' registradas todavía.')) }}</div>
 {% endif %}

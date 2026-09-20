@@ -27,6 +27,76 @@
     <div class="kpi-value" style="color:{{ 'var(--ok)' if totales.resultado >= 0 else 'var(--danger)' }}">{{ totales.resultado | pesos }}</div></div>
 </div>
 
+{% if control and (control.faltantes or control.distintos) %}
+<div class="aviso-conciliacion">
+  <div class="aviso-titulo"><i class="fa-solid fa-triangle-exclamation"></i>
+    El taller y la administración no dicen lo mismo
+    <span class="muted small" style="margin-left:auto;font-weight:400">
+      diferencia {{ control.diferencia | pesos }}</span></div>
+
+  {% if control.faltantes %}
+  <div class="table-wrap"><table class="tabla-densa lista-movil">
+    <colgroup><col style="width:90px"><col style="width:100px"><col style="width:24%"><col>
+      <col style="width:110px"><col style="width:156px"></colgroup>
+    <tbody>
+    {% for v in control.faltantes %}
+      <tr>
+        <td class="centro fecha-chica" data-titulo="Fecha">{{ v.fecha | fecha }}</td>
+        <td class="centro"><a href="{{ url_for('ventas.detalle', id=v.id) }}">
+          {% if v.ot_id %}OT #{{ v.ot_id }}{% else %}Venta {{ v.id }}{% endif %}</a></td>
+        <td class="izq envuelve destacado">{{ v.cliente.nombre if v.cliente else 'Mostrador' }}</td>
+        <td class="izq envuelve muted small" data-titulo="Detalle">{{ v.detalle | truncate(70) }}</td>
+        <td class="num" data-titulo="Importe"><strong>{{ v.total | pesos }}</strong></td>
+        <td class="num">
+          <form method="post" action="{{ url_for('contable.ingreso_de_venta', id=v.id) }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm"><i class="fa-solid fa-plus"></i> Cargar el ingreso</button></form></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+
+  {% if control.distintos %}
+  <div class="table-wrap"><table class="tabla-densa lista-movil">
+    <colgroup><col style="width:90px"><col style="width:100px"><col><col style="width:110px">
+      <col style="width:110px"><col style="width:110px"></colgroup>
+    <thead><tr><th class="centro">Fecha</th><th class="centro">Venta</th><th class="izq">Concepto</th>
+      <th class="num">En el taller</th><th class="num">Acá</th><th class="num">Diferencia</th></tr></thead>
+    <tbody>
+    {% for d in control.distintos %}
+      <tr>
+        <td class="centro fecha-chica" data-titulo="Fecha">{{ d.venta.fecha | fecha }}</td>
+        <td class="centro"><a href="{{ url_for('ventas.detalle', id=d.venta.id) }}">
+          {% if d.venta.ot_id %}OT #{{ d.venta.ot_id }}{% else %}Venta {{ d.venta.id }}{% endif %}</a></td>
+        <td class="izq envuelve muted small" data-titulo="Concepto">{{ d.movimiento.concepto | truncate(60) }}</td>
+        <td class="num" data-titulo="En el taller">{{ d.venta.total | pesos }}</td>
+        <td class="num" data-titulo="Acá">{{ d.movimiento.total | pesos }}</td>
+        <td class="num" data-titulo="Diferencia"
+            style="color:{{ 'var(--danger)' if d.diferencia > 0 else 'var(--ok)' }}">
+          <strong>{{ d.diferencia | pesos }}</strong></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+
+  <div class="aviso-pie">
+    <table class="cuadre">
+      <tr><td>Facturado en Ventas</td><td class="num">{{ control.facturado | pesos }}</td></tr>
+      {% if control.falta %}<tr><td>Ventas que falta cargar acá ({{ control.faltantes | length }})</td>
+        <td class="num">− {{ control.falta | pesos }}</td></tr>{% endif %}
+      {% if control.ajuste %}<tr><td>Cargado por otro importe ({{ control.distintos | length }})</td>
+        <td class="num">{{ '−' if control.ajuste > 0 else '+' }} {{ control.ajuste | abs | pesos }}</td></tr>{% endif %}
+      {% if control.otros %}<tr><td>Ingresos que no salen de una venta ({{ control.sin_venta | length }})</td>
+        <td class="num">+ {{ control.otros | pesos }}</td></tr>{% endif %}
+      <tr class="total"><td>Ingresos cargados en {{ mes | mes_imputacion }}</td>
+        <td class="num">{{ control.ingresos | pesos }}</td></tr>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <div class="filters" style="margin-bottom:14px">
   <form method="get" style="display:contents">
     <select name="mes" onchange="this.form.submit()" style="max-width:200px">

@@ -27,7 +27,7 @@ from ..models import (
     VentaItem,
 )
 from ..filters import dia
-from ..services import drive, reporte
+from ..services import contable, drive, reporte
 from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
 from ..validaciones import MARCAS_COMUNES, normalizar_patente, numero_ar, patente_valida
 
@@ -594,6 +594,8 @@ def _registrar_venta(ot, cobrado, metodo, fecha):
     ))
     db.session.add(venta)
     venta.ot = ot
+    db.session.flush()  # la venta necesita id para atarle el ingreso
+    contable.registrar_venta(venta)
 
 
 def _datos_cobro(ot):
@@ -707,6 +709,7 @@ def reabrir(id):
     ot = db.get_or_404(OrdenTrabajo, id)
     if not ot.abierta:
         for venta in list(ot.ventas):
+            contable.borrar_venta(venta)
             db.session.delete(venta)
         ot.estado = "En proceso"
         ot.fecha_fin = None
