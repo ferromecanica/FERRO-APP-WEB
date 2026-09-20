@@ -14,7 +14,7 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = BASE_DIR / "app" / "static" / "uploads"
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+    MAX_CONTENT_LENGTH = 64 * 1024 * 1024  # las listas de precios de los proveedores son grandes
     MAX_FORM_MEMORY_SIZE = 16 * 1024 * 1024  # Werkzeug limita los campos de texto a 500 KB por defecto
     TALLER_NOMBRE = "Ferro"
     # Mientras no haya datos reales se entra sin login. Poner LOGIN_OBLIGATORIO=1 en .env para exigirlo.

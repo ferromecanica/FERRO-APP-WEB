@@ -384,17 +384,23 @@ def lista_precios():
         if not proveedor or not archivo or not archivo.filename:
             flash("Elegí el proveedor y el archivo con la lista.", "error")
             return redirect(url_for(".lista_precios"))
-        datos = archivo.read()
+        extension = Path(archivo.filename).suffix.lower()
+        if extension not in listas.EXTENSIONES:
+            flash("El archivo tiene que ser Excel (.xlsx), CSV, TXT o PDF.", "error")
+            return redirect(url_for(".lista_precios"))
+        nombre = f"{secrets.token_hex(8)}{extension}"
+        ruta = _carpeta_listas() / nombre
+        archivo.save(ruta)  # puede pesar bastante: va derecho al disco
         try:
-            listas.leer(datos, archivo.filename)
+            listas.muestra(ruta, archivo.filename)
         except listas.ErrorLista as e:
+            ruta.unlink(missing_ok=True)
             flash(str(e), "error")
             return redirect(url_for(".lista_precios"))
         except Exception:
-            flash("No pude leer el archivo. ¿Es el Excel o el CSV que manda el proveedor?", "error")
+            ruta.unlink(missing_ok=True)
+            flash("No pude leer el archivo. ¿Es el que manda el proveedor?", "error")
             return redirect(url_for(".lista_precios"))
-        nombre = f"{secrets.token_hex(8)}{Path(archivo.filename).suffix.lower()}"
-        (_carpeta_listas() / nombre).write_bytes(datos)
         session["lista_precios"] = {"archivo": nombre, "original": archivo.filename, "proveedor": proveedor}
         return redirect(url_for(".lista_precios_revisar"))
 
@@ -414,7 +420,7 @@ def lista_precios_revisar():
         flash("Subí de nuevo el archivo: el anterior ya no está.", "error")
         return redirect(url_for(".lista_precios"))
     try:
-        columnas, filas = listas.leer(ruta.read_bytes(), subida["original"])
+        columnas, primeras = listas.muestra(ruta, subida["original"])
     except listas.ErrorLista as e:
         flash(str(e), "error")
         return redirect(url_for(".lista_precios"))
@@ -430,14 +436,13 @@ def lista_precios_revisar():
             "factor": numero_ar(request.form.get("factor")) or 1.0,
             "equivalencias": request.form.get("equivalencias", "").strip() or None,
         })
-    if not perfil.get("col_codigo") or not perfil.get("col_precio"):
-        perfil.setdefault("col_codigo", None)
+    if perfil.get("col_codigo") not in columnas or perfil.get("col_precio") not in columnas:
         cambios = sin_cambio = no_encontrados = []
         sobrantes = 0
         if request.method == "POST":
             flash("Decime al menos qué columna trae el código y cuál el precio.", "error")
     else:
-        cambios, sin_cambio, no_encontrados, sobrantes = listas.previsualizar(filas, perfil)
+        cambios, sin_cambio, no_encontrados, sobrantes = listas.previsualizar(ruta, subida["original"], perfil)
         if request.form.get("accion") == "aplicar":
             cantidad = listas.aplicar(cambios)
             _guardar_perfil(perfil)
@@ -447,10 +452,12 @@ def lista_precios_revisar():
             flash(f"Listo: {cantidad} precios actualizados de {perfil['proveedor']}.", "ok")
             return redirect(url_for(".lista"))
 
-    return render_template("stock/listas_revisar.html", columnas=columnas, filas=filas[:5], perfil=perfil,
+    return render_template("stock/listas_revisar.html", columnas=columnas, filas=primeras, perfil=perfil,
                            subida=subida, cambios=cambios, sin_cambio=sin_cambio,
                            no_encontrados=no_encontrados, sobrantes=sobrantes,
-                           campos_codigo=listas.CAMPOS_CODIGO, total_filas=len(filas))
+                           campos_codigo=listas.CAMPOS_CODIGO,
+                           ejemplos={c: next((str(f[c]) for f in primeras if str(f.get(c) or "").strip()), "")
+                                     for c in columnas})
 
 
 def _guardar_perfil(perfil):

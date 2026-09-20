@@ -67,7 +67,23 @@ assert '1 precios actualizados de Shell' in b
 with app.app_context():
     assert db.session.get(Repuesto, rid).costo_lista == round(64000 / 4 * 0.88, 2)
 
+# archivo sin fila de títulos (como el TXT de RSF): las columnas se llaman "Columna N"
+with app.app_context():
+    r = Repuesto.query.filter_by(proveedor='RSF').filter(Repuesto.nro_parte.isnot(None)).first()
+    rid, parte, marca = r.id, r.nro_parte, r.marca
+sin_titulos = f'"{marca}","{parte}","RUBRO","lo que sea",1234.50,0.00,"","R01",""\n"OTRA","ZZZ","X","y",99.00,0.00,"","R02",""\n'
+b = post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(sin_titulos.encode()), 'RSF-Lista.TXT')},
+         content_type='multipart/form-data')
+assert 'Columna 5' in b and 'RUBRO' in b, 'no tomó las columnas genéricas'
+b = post('/stock/listas/revisar', {'col_codigo': 'Columna 2', 'col_marca': 'Columna 1', 'col_precio': 'Columna 5',
+                                   'campo_codigo': 'nro_parte', 'factor': '0,5711', 'accion': 'aplicar'})
+assert '1 precios actualizados' in b
+with app.app_context():
+    assert db.session.get(Repuesto, rid).costo_lista == round(1234.50 * 0.5711, 2)
+
 # archivo que no se puede leer
-assert 'tiene que ser Excel' in post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(b'%PDF-1.4'), 'lista.pdf')},
+assert 'No pude' in post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(b'%PDF-1.4 roto'), 'lista.pdf')},
+                          content_type='multipart/form-data')
+assert 'tiene que ser Excel' in post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(b'x'), 'lista.docx')},
                                      content_type='multipart/form-data')
 print('TODO OK')

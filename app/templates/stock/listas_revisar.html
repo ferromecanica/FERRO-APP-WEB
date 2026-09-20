@@ -5,14 +5,14 @@
   <div><label>{{ etiqueta }}{{ ' *' if obligatoria }}</label>
     <select name="{{ nombre }}">
       <option value="">{{ '—' if not obligatoria else 'Elegí…' }}</option>
-      {% for c in columnas %}<option value="{{ c }}" {{ 'selected' if perfil.get(nombre) == c }}>{{ c }}</option>{% endfor %}
+      {% for c in columnas %}<option value="{{ c }}" {{ 'selected' if perfil.get(nombre) == c }}>{{ c }}{% if ejemplos.get(c) %} · {{ ejemplos[c] | truncate(34) }}{% endif %}</option>{% endfor %}
     </select>
     {% if ayuda %}<div class="muted small" style="margin-top:4px">{{ ayuda }}</div>{% endif %}</div>
 {%- endmacro %}
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Listas de precios · {{ subida.proveedor }}</div><h1>Revisar antes de aplicar</h1>
-    <div class="muted small" style="margin-top:4px">{{ subida.original }} · {{ total_filas }} filas</div></div>
+    <div class="muted small" style="margin-top:4px">{{ subida.original }}</div></div>
   <div class="actions">
     <form method="post" action="{{ url_for('stock.lista_precios_cancelar') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -83,7 +83,8 @@
       <i class="fa-solid fa-check"></i> Aplicar los {{ cambios | length }} cambios</button>
   </div>
   {% else %}
-  <div class="card-body">{{ vacio('fa-equals', 'Con este mapeo no cambia ningún precio. Revisá las columnas de arriba.') }}</div>
+  <div class="card-body">{{ vacio('fa-equals', ('Los ' ~ (sin_cambio | length) ~ ' repuestos de ' ~ subida.proveedor ~ ' ya están al precio de esta lista: no hay nada que actualizar.')
+      if sin_cambio else 'Con este mapeo no cambia ningún precio. Revisá las columnas de arriba.') }}</div>
   {% endif %}
 
   {% if no_encontrados %}
