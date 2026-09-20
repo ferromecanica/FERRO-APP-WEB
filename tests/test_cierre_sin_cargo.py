@@ -33,7 +33,8 @@ with app.app_context():
 
 # no aparece en el filtro "Por cobrar" ni en ventas
 assert str(otid) not in B(c.get('/ot/?estado=por_cobrar'))
-assert 'Sin cargo' in B(c.get('/ot/'))
+# en el listado se ve como cualquier OT terminada: el detalle es el que aclara
+assert 'Sin cargo' not in B(c.get('/ot/'))
 assert f'OT #{otid}' not in B(c.get('/ventas/'))
 
 # y el costo de los repuestos sigue contando en la OT

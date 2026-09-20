@@ -18,8 +18,7 @@
   {% for ot in ordenes %}
     <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
       <td class="centro" data-movil="OT"><strong>{{ ot.id }}</strong></td>
-      <td class="centro">{{ badge(ot.estado) }}{% if ot.por_cobrar %} {{ badge('Por cobrar') }}{% endif %}
-        {%- if ot.sin_cargo %} {{ badge('Sin cargo') }}{% endif %}</td>
+      <td class="centro">{{ badge(ot.estado) }}{% if ot.por_cobrar %} {{ badge('Por cobrar') }}{% endif %}</td>
       <td class="centro"><span class="plate">{{ ot.vehiculo.patente }}</span>
         <div class="muted small">{{ ((ot.vehiculo.marca or '') ~ ' ' ~ (ot.vehiculo.modelo or '')).strip() | truncate(18) }}</div></td>
       <td class="izq envuelve hide-sm destacado">{% if ot.cliente %}{{ ot.cliente.nombre }}{% else %}<span class="muted">Sin cliente</span>{% endif %}</td>
