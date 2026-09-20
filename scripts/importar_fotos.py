@@ -1,6 +1,6 @@
 """Trae las fotos de las OT que quedaron en el Drive de AppSheet.
 
-Uso:  python scripts/importar_fotos.py <ruta al .xlsx> [--probar]
+Uso:  python scripts/importar_fotos.py <ruta al .xlsx> [--probar] [--carpeta <id>]
 
 En el Excel viene el nombre del archivo de cada foto ("Fotos_OT_Images/871f858f…jpg")
 pero no la imagen. Este script le pide al Apps Script que copie cada una desde la
@@ -9,6 +9,8 @@ carpeta de AppSheet a la carpeta de fotos de Ferro, y guarda el id que devuelve.
 Las de Fotos_OT van al reporte; las de Fotos_Taller son de uso interno.
 Se puede cortar y volver a correr: sigue por donde iba (no copia dos veces).
 Con --probar hace solo las primeras 5, para ver que funcione.
+Con --carpeta se le pasa el id de la carpeta de AppSheet (si hay varias con el
+mismo nombre en Drive, el script de Google no sabe cuál usar).
 """
 import posixpath
 import sys
@@ -66,7 +68,7 @@ def juntar(libro):
     return pendientes
 
 
-def importar(libro, probar=False):
+def importar(libro, probar=False, carpeta_id=None):
     todas = juntar(libro)
     existentes = {f.archivo for f in FotoOT.query.all()}
     ots = {o.id for o in OrdenTrabajo.query.all()}
@@ -85,9 +87,9 @@ def importar(libro, probar=False):
         tanda = pendientes[desde:desde + DE_A_VEZ]
         carpeta = tanda[0]["carpeta"]
         tanda = [f for f in tanda if f["carpeta"] == carpeta]  # una carpeta por pedido
+        donde = {"origen_id": carpeta_id} if carpeta_id else {"origen": carpeta}
         try:
-            respuesta = drive.llamar("copiar_fotos", origen=carpeta,
-                                     nombres="|".join(f["archivo"] for f in tanda))
+            respuesta = drive.llamar("copiar_fotos", nombres="|".join(f["archivo"] for f in tanda), **donde)
         except drive.ErrorDrive as e:
             db.session.commit()
             sys.exit(f"✗ {e}\n  Guardadas hasta acá: {guardadas}. Volvé a correr el script para seguir.")
@@ -115,6 +117,7 @@ if __name__ == "__main__":
     libro = openpyxl.load_workbook(sys.argv[1], data_only=True, read_only=True)
     app = create_app()
     with app.app_context():
-        guardadas, perdidas = importar(libro, probar="--probar" in sys.argv)
+        carpeta_id = sys.argv[sys.argv.index("--carpeta") + 1] if "--carpeta" in sys.argv else None
+        guardadas, perdidas = importar(libro, probar="--probar" in sys.argv, carpeta_id=carpeta_id)
         print(f"✓ {guardadas} fotos enganchadas a sus OT" + (f" · {perdidas} no estaban en Drive" if perdidas else ""))
         print(f"  Total en la base: {FotoOT.query.count()} fotos")

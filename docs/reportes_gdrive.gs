@@ -9,9 +9,11 @@
  * accion=foto: guarda una foto (JPEG en base64) en la carpeta de fotos (o en una subcarpeta,
  *   p. ej. "Repuestos", que se crea sola) y devuelve su id.
  * accion=borrar_foto: manda una foto a la papelera.
- * accion=copiar_fotos: trae las fotos viejas de AppSheet. Recibe el nombre de la carpeta
- *   de origen (p. ej. "Fotos_OT_Images") y los nombres de archivo separados por "|";
- *   copia a la carpeta de fotos de Ferro los que falten y devuelve el id de cada uno.
+ * accion=copiar_fotos: trae las fotos viejas de AppSheet. Recibe la carpeta de origen
+ *   (origen_id con el id, o origen con el nombre) y los nombres de archivo separados
+ *   por "|"; copia a la carpeta de fotos de Ferro los que falten y devuelve el id de cada uno.
+ * accion=ver_carpetas: lista las carpetas que se llaman como dice nombre, con su id, dónde
+ *   están y cuántos archivos tienen. Sirve cuando hay más de una con el mismo nombre.
  *
  * Instalación (una sola vez), en el MISMO proyecto de Apps Script donde está el backup diario:
  *  1. Archivo → "+" → Script → pegar este código y completar SECRETO.
@@ -43,6 +45,7 @@ function doPost(e) {
     if (accion === 'foto') return guardarFoto(p);
     if (accion === 'borrar_foto') return borrarFoto(p);
     if (accion === 'copiar_fotos') return copiarFotos(p);
+    if (accion === 'ver_carpetas') return verCarpetas(p);
     return json({ ok: false, error: 'acción desconocida: ' + accion });
   } catch (err) {
     return json({ ok: false, error: String(err.message || err) });
@@ -89,13 +92,41 @@ function borrarFoto(p) {
   return json({ ok: true });
 }
 
-function copiarFotos(p) {
-  if (!p.origen || !p.nombres) return json({ ok: false, error: 'faltan la carpeta de origen o los nombres' });
+function verCarpetas(p) {
+  if (!p.nombre) return json({ ok: false, error: 'falta el nombre' });
+  const carpetas = [];
+  const encontradas = DriveApp.getFoldersByName(p.nombre);
+  while (encontradas.hasNext() && carpetas.length < 20) {
+    const c = encontradas.next();
+    let archivos = 0;
+    const it = c.getFiles();
+    while (it.hasNext() && archivos < 5000) { it.next(); archivos++; }
+    const padres = c.getParents();
+    carpetas.push({
+      id: c.getId(), archivos: archivos, papelera: c.isTrashed(),
+      dentro_de: padres.hasNext() ? padres.next().getName() : 'Mi unidad',
+    });
+  }
+  return json({ ok: true, carpetas: carpetas });
+}
 
-  const encontradas = DriveApp.getFoldersByName(p.origen);
-  if (!encontradas.hasNext()) return json({ ok: false, error: 'no encontré la carpeta ' + p.origen });
-  const origen = encontradas.next();
-  if (encontradas.hasNext()) return json({ ok: false, error: 'hay más de una carpeta llamada ' + p.origen });
+function copiarFotos(p) {
+  if (!p.nombres || (!p.origen && !p.origen_id)) {
+    return json({ ok: false, error: 'faltan la carpeta de origen o los nombres' });
+  }
+
+  let origen;
+  if (p.origen_id) {
+    origen = DriveApp.getFolderById(p.origen_id);
+  } else {
+    const encontradas = DriveApp.getFoldersByName(p.origen);
+    if (!encontradas.hasNext()) return json({ ok: false, error: 'no encontré la carpeta ' + p.origen });
+    origen = encontradas.next();
+    if (encontradas.hasNext()) {
+      return json({ ok: false, error: 'hay más de una carpeta llamada ' + p.origen +
+                                      ': mandá origen_id (accion=ver_carpetas las lista)' });
+    }
+  }
 
   const destino = DriveApp.getFolderById(FOLDER_FOTOS_ID);
   const resultado = {};
