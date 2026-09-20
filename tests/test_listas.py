@@ -9,10 +9,17 @@ c = app.test_client()
 B = lambda r: r.get_data(as_text=True)
 def post(url, d=None, **kw): return B(c.post(url, data=d or {}, follow_redirects=True, **kw))
 
+# repuestos propios de esta prueba, para no depender de lo que haya en la base
 with app.app_context():
-    reps = Repuesto.query.filter_by(proveedor='RSF').filter(Repuesto.nro_parte.isnot(None)).all()
-    datos = [(r.id, r.nro_parte, r.marca, r.costo_lista) for r in reps]
-assert len(datos) >= 3, datos
+    datos = []
+    for i, (parte, marca, costo) in enumerate([('AP-1001', 'MAHLE', 10000.0), ('AP 1002', 'SKF', 25500.5),
+                                               ('AP-1003', 'SACHS', 1200.0)]):
+        r = Repuesto.query.filter_by(nro_parte=parte).first() or Repuesto(nro_parte=parte)
+        r.nombre, r.marca, r.proveedor, r.costo_lista = f'Repuesto de prueba {i + 1}', marca, 'RSF', costo
+        db.session.add(r)
+        db.session.flush()
+        datos.append((r.id, parte, marca, costo))
+    db.session.commit()
 
 # el proveedor manda un CSV con el precio de venta: el costo es el 57,11 %
 archivo = 'ARTICULO;MARCA;DESCRIPCION;PRECIOVTA\n' + '\n'.join(
@@ -39,7 +46,8 @@ with app.app_context():
         r = db.session.get(Repuesto, rid)
         esperado = round(viejo * 2 * 0.5711, 2)
         assert abs(r.costo_lista - esperado) < 0.02, (rid, r.costo_lista, esperado)
-        assert abs(r.precio_venta - round(r.precio_costo * 1.4, 2)) < 0.02, (rid, r.precio_venta)
+        from app.services.stock import markup_para
+        assert abs(r.precio_venta - round(r.precio_costo * markup_para(r), 2)) < 0.02, (rid, r.precio_venta)
     perfil = PerfilLista.query.filter_by(proveedor='RSF').one()
     assert (perfil.col_codigo, perfil.col_precio, round(perfil.factor, 4)) == ('ARTICULO', 'PRECIOVTA', 0.5711)
     assert perfil.actualizada is not None
@@ -49,6 +57,7 @@ b = post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(archivo.en
          content_type='multipart/form-data')
 assert re.search(r'<option value="ARTICULO" selected', b), 'no recordó el mapeo'
 assert 'quedan igual' in b and '0 cambian' in b.replace('\n', ' ')
+
 
 # envase: el precio del archivo es por bidón y el de 16 rinde 4
 with app.app_context():
@@ -67,12 +76,30 @@ assert '1 precios actualizados de Shell' in b
 with app.app_context():
     assert db.session.get(Repuesto, rid).costo_lista == round(64000 / 4 * 0.88, 2)
 
+# control: si el archivo viene con otra forma, no toca nada
+with app.app_context():
+    r0 = Repuesto.query.filter_by(proveedor='RSF').filter(Repuesto.costo_lista > 0).first()
+    rid0, costo0 = r0.id, r0.costo_lista
+recortado = 'ARTICULO;MARCA;PRECIOVTA\n' + f'{datos[0][1]};{datos[0][2]};1.000,00\n'
+post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(recortado.encode()), 'lista.csv')},
+     content_type='multipart/form-data')
+b = post('/stock/listas/revisar', {'col_codigo': 'ARTICULO', 'col_marca': 'MARCA', 'col_precio': 'PRECIOVTA',
+                                   'campo_codigo': 'nro_parte', 'factor': '0,5711', 'accion': 'aplicar'})
+assert 'no vino como se esperaba' in b, b[:800]
+assert '3 columnas' in b and 'siempre trae 4' in b
+assert 'Aplicar los' not in b, 'no tendría que dejar aplicar'
+with app.app_context():
+    assert db.session.get(Repuesto, rid0).costo_lista == costo0, 'tocó un precio con el archivo mal'
+post('/stock/listas/cancelar')
+
 # archivo sin fila de títulos (como el TXT de RSF): las columnas se llaman "Columna N"
 with app.app_context():
-    r = Repuesto.query.filter_by(proveedor='RSF').filter(Repuesto.nro_parte.isnot(None)).first()
+    r = Repuesto(nombre='Repuesto de prueba 4', nro_parte='AP-2001', marca='FRAM',
+                 proveedor='Gatti', costo_lista=500.0)
+    db.session.add(r); db.session.commit()
     rid, parte, marca = r.id, r.nro_parte, r.marca
 sin_titulos = f'"{marca}","{parte}","RUBRO","lo que sea",1234.50,0.00,"","R01",""\n"OTRA","ZZZ","X","y",99.00,0.00,"","R02",""\n'
-b = post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(sin_titulos.encode()), 'RSF-Lista.TXT')},
+b = post('/stock/listas', {'proveedor': 'Gatti', 'archivo': (io.BytesIO(sin_titulos.encode()), 'lista.TXT')},
          content_type='multipart/form-data')
 assert 'Columna 5' in b and 'RUBRO' in b, 'no tomó las columnas genéricas'
 b = post('/stock/listas/revisar', {'col_codigo': 'Columna 2', 'col_marca': 'Columna 1', 'col_precio': 'Columna 5',

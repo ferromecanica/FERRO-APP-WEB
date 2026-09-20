@@ -375,6 +375,13 @@ class PerfilLista(db.Model):
     factor = db.Column(db.Float, default=1.0)  # lo que hay que multiplicar para llegar al costo
     equivalencias = db.Column(db.String(120))  # envases que se cuentan distinto, ej. "16=4"
     actualizada = db.Column(db.DateTime)
+    # Forma del último archivo que se aplicó bien, para avisar si el próximo viene distinto
+    columnas = db.Column(db.Text)  # nombres de las columnas separados por |
+    filas = db.Column(db.Integer)
+
+    @property
+    def nombres_columnas(self):
+        return [c for c in (self.columnas or "").split("|") if c]
 
 
 class Repuesto(TimestampMixin, db.Model):

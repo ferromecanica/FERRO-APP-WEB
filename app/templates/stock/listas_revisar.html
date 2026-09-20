@@ -12,13 +12,27 @@
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Listas de precios · {{ subida.proveedor }}</div><h1>Revisar antes de aplicar</h1>
-    <div class="muted small" style="margin-top:4px">{{ subida.original }}</div></div>
+    <div class="muted small" style="margin-top:4px">{{ subida.original }}{% if total_filas %} · {{ total_filas }} filas{% endif %}
+      {%- if guardado and guardado.filas %} · la última vez trajo {{ guardado.filas }}{% endif %}</div></div>
   <div class="actions">
     <form method="post" action="{{ url_for('stock.lista_precios_cancelar') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn"><i class="fa-solid fa-xmark"></i> Cancelar</button></form>
   </div>
 </div>
+
+{% if problemas %}
+<div class="aviso aviso-alto" style="margin-bottom:14px">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+  <div><strong>El archivo no vino como se esperaba. No voy a tocar ningún precio.</strong>
+    <ul style="margin:6px 0 0">{% for p in problemas %}<li>{{ p }}</li>{% endfor %}</ul>
+    <div class="muted small" style="margin-top:6px">Si el cambio es correcto y la lista ahora es así, revisá las columnas
+      de abajo: al aplicarla, Ferro se guarda la forma nueva.</div></div>
+</div>
+{% endif %}
+{% for a in avisos %}
+<div class="aviso" style="margin-bottom:10px"><i class="fa-solid fa-circle-info"></i> <div>{{ a }}</div></div>
+{% endfor %}
 
 <form method="post" class="card" id="mapeo">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -76,11 +90,16 @@
     </table>
   </div>
   <div class="card-body" style="border-top:1px solid var(--border)">
+    {% if problemas %}
+    <p class="muted small" style="margin:0"><i class="fa-solid fa-lock"></i>
+      Para poder aplicar la lista, primero tiene que estar bien el archivo (mirá el cartel de arriba).</p>
+    {% else %}
     <button class="btn btn-primary" name="accion" value="aplicar"
             data-confirmar="¿Actualizar {{ cambios | length }} precios de {{ subida.proveedor }}?"
             data-confirmar-detalle="Se cambia el costo y se recalcula el precio de venta con el markup de cada uno."
             data-confirmar-boton="Actualizar precios">
       <i class="fa-solid fa-check"></i> Aplicar los {{ cambios | length }} cambios</button>
+    {% endif %}
   </div>
   {% else %}
   <div class="card-body">{{ vacio('fa-equals', ('Los ' ~ (sin_cambio | length) ~ ' repuestos de ' ~ subida.proveedor ~ ' ya están al precio de esta lista: no hay nada que actualizar.')

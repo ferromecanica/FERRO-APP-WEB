@@ -26,8 +26,12 @@
       <span class="muted small">o hacé clic para buscarlo · Excel, CSV o TXT</span>
       <span class="elegido muted small" hidden></span>
     </label>
-    <button class="btn btn-primary" style="margin-top:14px"><i class="fa-solid fa-magnifying-glass-chart"></i> Ver qué cambiaría</button>
+    <button class="btn btn-primary" id="enviar" style="margin-top:14px"><i class="fa-solid fa-magnifying-glass-chart"></i> Ver qué cambiaría</button>
     <p class="muted small" style="margin:10px 0 0">No se aplica nada hasta que veas la comparación y confirmes.</p>
+    <div id="progreso" hidden>
+      <div class="barra-progreso"><span></span></div>
+      <p class="muted small" id="progreso-texto" style="margin:8px 0 0">Subiendo…</p>
+    </div>
   </div>
 </form>
 
@@ -69,6 +73,36 @@
   });
   zona.addEventListener('drop', function (ev) {
     if (ev.dataTransfer.files.length) { campo.files = ev.dataTransfer.files; mostrar(); }
+  });
+
+  // Subida con barra de progreso: la lista de RSF pesa 18 MB y tarda un rato.
+  var form = document.getElementById('subir'), boton = document.getElementById('enviar'),
+      progreso = document.getElementById('progreso'), texto = document.getElementById('progreso-texto'),
+      barra = progreso.querySelector('span');
+  form.addEventListener('submit', function (ev) {
+    if (!campo.files.length || !window.FormData || !window.XMLHttpRequest) return;  // que siga el navegador
+    ev.preventDefault();
+    boton.disabled = true;
+    progreso.hidden = false;
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action || location.href);
+    xhr.upload.addEventListener('progress', function (e) {
+      if (!e.lengthComputable) return;
+      var porciento = Math.round(e.loaded / e.total * 100);
+      barra.style.width = porciento + '%';
+      texto.textContent = porciento < 100
+        ? 'Subiendo… ' + porciento + ' % de ' + Math.round(e.total / 1048576 * 10) / 10 + ' MB'
+        : 'Leyendo el archivo… esto puede tardar unos segundos.';
+    });
+    xhr.addEventListener('load', function () {
+      location.href = xhr.responseURL || '{{ url_for("stock.lista_precios_revisar") }}';
+    });
+    xhr.addEventListener('error', function () {
+      boton.disabled = false;
+      progreso.hidden = true;
+      alert('No se pudo subir el archivo. Probá de nuevo.');
+    });
+    xhr.send(new FormData(form));
   });
 </script>
 {% endblock %}

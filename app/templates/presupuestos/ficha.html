@@ -202,7 +202,8 @@
 </div>
 
 <script>
-  document.querySelectorAll('.segmented .seg').forEach(function (b) {
+  // ojo: el switch de precios también usa .segmented, pero no es una solapa
+  document.querySelectorAll('.add-box .segmented .seg').forEach(function (b) {
     b.addEventListener('click', function () {
       var caja = b.closest('.add-box');
       caja.querySelectorAll('.seg').forEach(function (t) { t.classList.toggle('active', t === b); });

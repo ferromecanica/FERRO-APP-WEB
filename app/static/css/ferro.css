@@ -503,6 +503,14 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .btn-peligro:hover { background: #991b1b; }
 
 /* ── Aviso de repuestos parecidos ───────────────────────── */
+.aviso { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 12px;
+  background: #fffaf3; border: 1px solid #f5b56b; font-size: .92rem; }
+.aviso > i { color: var(--accent); margin-top: 2px; }
+.aviso ul { padding-left: 18px; }
+.aviso-alto { background: var(--danger-soft); border-color: var(--danger); }
+.aviso-alto > i { color: var(--danger); }
+.barra-progreso { height: 8px; border-radius: 999px; background: #e5e7eb; overflow: hidden; margin-top: 12px; }
+.barra-progreso > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .15s linear; }
 .aviso-duplicados { background: #fffaf3; border: 1px solid #f5b56b; border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
 .aviso-titulo { padding: 12px 16px; font-weight: 700; color: var(--accent-ink); display: flex; gap: 10px; align-items: center; }
 .aviso-duplicados .list li { padding: 10px 16px; }

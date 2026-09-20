@@ -436,38 +436,45 @@ def lista_precios_revisar():
             "factor": numero_ar(request.form.get("factor")) or 1.0,
             "equivalencias": request.form.get("equivalencias", "").strip() or None,
         })
+    guardado = PerfilLista.query.filter_by(proveedor=subida["proveedor"]).first()
+    problemas, avisos = [], []
+    resultado = {"cambios": [], "sin_cambio": [], "no_encontrados": [], "sobrantes": 0, "filas": 0}
     if perfil.get("col_codigo") not in columnas or perfil.get("col_precio") not in columnas:
-        cambios = sin_cambio = no_encontrados = []
-        sobrantes = 0
         if request.method == "POST":
             flash("Decime al menos qué columna trae el código y cuál el precio.", "error")
     else:
-        cambios, sin_cambio, no_encontrados, sobrantes = listas.previsualizar(ruta, subida["original"], perfil)
-        if request.form.get("accion") == "aplicar":
-            cantidad = listas.aplicar(cambios)
-            _guardar_perfil(perfil)
+        resultado = listas.previsualizar(ruta, subida["original"], perfil)
+        problemas, avisos = listas.revisar(guardado, resultado, subida["proveedor"])
+        if request.form.get("accion") == "aplicar" and not problemas:
+            cantidad = listas.aplicar(resultado["cambios"])
+            _guardar_perfil(perfil, resultado)
             db.session.commit()
             session.pop("lista_precios", None)
             ruta.unlink(missing_ok=True)
             flash(f"Listo: {cantidad} precios actualizados de {perfil['proveedor']}.", "ok")
             return redirect(url_for(".lista"))
+        if request.form.get("accion") == "aplicar":
+            flash("No actualicé nada: el archivo no vino como se esperaba.", "error")
 
     return render_template("stock/listas_revisar.html", columnas=columnas, filas=primeras, perfil=perfil,
-                           subida=subida, cambios=cambios, sin_cambio=sin_cambio,
-                           no_encontrados=no_encontrados, sobrantes=sobrantes,
-                           campos_codigo=listas.CAMPOS_CODIGO,
+                           subida=subida, problemas=problemas, avisos=avisos, guardado=guardado,
+                           cambios=resultado["cambios"], sin_cambio=resultado["sin_cambio"],
+                           no_encontrados=resultado["no_encontrados"], sobrantes=resultado["sobrantes"],
+                           total_filas=resultado["filas"], campos_codigo=listas.CAMPOS_CODIGO,
                            ejemplos={c: next((str(f[c]) for f in primeras if str(f.get(c) or "").strip()), "")
                                      for c in columnas})
 
 
-def _guardar_perfil(perfil):
-    """Se acuerda del mapeo para la próxima lista de ese proveedor."""
+def _guardar_perfil(perfil, resultado):
+    """Se acuerda del mapeo y de la forma del archivo para la próxima lista del proveedor."""
     guardado = PerfilLista.query.filter_by(proveedor=perfil["proveedor"]).first()
     if guardado is None:
         guardado = PerfilLista(proveedor=perfil["proveedor"])
         db.session.add(guardado)
     for campo in ("col_codigo", "col_marca", "col_precio", "col_envase", "campo_codigo", "factor", "equivalencias"):
         setattr(guardado, campo, perfil.get(campo))
+    guardado.columnas = "|".join(resultado["columnas"])
+    guardado.filas = resultado["filas"]
     guardado.actualizada = datetime.now()
 
 

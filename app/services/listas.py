@@ -255,8 +255,9 @@ def previsualizar(ruta, nombre, perfil):
         if i_marca is not None:
             por_par.setdefault((codigo, _normalizar(r.marca_proveedor or r.marca)), []).append(r)
 
-    costos, sobrantes = {}, 0
+    costos, sobrantes, leidas, con_precio = {}, 0, 0, 0
     for fila in filas:
+        leidas += 1
         codigo = _normalizar(fila[i_codigo]) if i_codigo < len(fila) else ""
         if not codigo:
             continue
@@ -272,6 +273,7 @@ def previsualizar(ruta, nombre, perfil):
         costo = _costo(fila, i_precio, i_envase, factor, equivalentes)
         if costo is None:
             continue
+        con_precio += 1
         for r in nuestros:
             costos.setdefault(r.id, costo)
 
@@ -288,7 +290,49 @@ def previsualizar(ruta, nombre, perfil):
         (sin_cambio if abs(costo - viejo) < 0.01 else cambios).append(dato)
 
     cambios.sort(key=lambda d: abs(d["variacion"] if d["variacion"] is not None else 999), reverse=True)
-    return cambios, sin_cambio, no_encontrados, sobrantes
+    return {"cambios": cambios, "sin_cambio": sin_cambio, "no_encontrados": no_encontrados,
+            "sobrantes": sobrantes, "filas": leidas, "con_precio": con_precio,
+            "columnas": columnas}
+
+
+SALTO_SOSPECHOSO = 50  # % de variación a partir del cual conviene mirar el renglón
+
+
+def revisar(perfil_guardado, resultado, proveedor):
+    """(problemas, avisos) del archivo que se acaba de leer.
+
+    Los problemas frenan la actualización: la lista viene distinta de lo esperado y
+    es preferible no tocar nada. Los avisos solo llaman la atención.
+    """
+    problemas, avisos = [], []
+    columnas = resultado["columnas"]
+    if perfil_guardado is not None and perfil_guardado.nombres_columnas:
+        esperadas = perfil_guardado.nombres_columnas
+        if len(columnas) != len(esperadas):
+            problemas.append(f"El archivo trae {len(columnas)} columnas y la lista de {proveedor} "
+                             f"siempre trae {len(esperadas)}. Fijate que sea el archivo correcto.")
+        elif columnas != esperadas:
+            distintas = [f"«{a}» donde antes decía «{b}»" for a, b in zip(columnas, esperadas) if a != b]
+            problemas.append("Las columnas cambiaron de nombre: " + "; ".join(distintas[:3]) + ".")
+        if perfil_guardado.filas and resultado["filas"] < perfil_guardado.filas / 2:
+            problemas.append(f"El archivo trae {resultado['filas']:,} filas y la última vez traía "
+                             f"{perfil_guardado.filas:,}. ¿Se habrá cortado la descarga?".replace(",", "."))
+
+    if not resultado["con_precio"]:
+        problemas.append("Ninguna fila del archivo tiene un precio que se pueda leer en la columna elegida.")
+    encontrados = len(resultado["cambios"]) + len(resultado["sin_cambio"])
+    if not encontrados:
+        problemas.append(f"Ningún repuesto de {proveedor} aparece en el archivo. "
+                         "Revisá la columna del código y con cuál de nuestros códigos coincide.")
+
+    saltos = [d for d in resultado["cambios"] if d["variacion"] is not None and abs(d["variacion"]) > SALTO_SOSPECHOSO]
+    if saltos:
+        avisos.append(f"{len(saltos)} repuestos cambian más de {SALTO_SOSPECHOSO} %: están primeros en la lista "
+                      "de abajo, mirálos antes de aplicar.")
+    if resultado["no_encontrados"]:
+        avisos.append(f"{len(resultado['no_encontrados'])} repuestos de {proveedor} no están en el archivo: "
+                      "esos quedan con el precio que tienen hoy.")
+    return problemas, avisos
 
 
 def _venta_con(repuesto, costo):
