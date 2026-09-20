@@ -1,0 +1,8 @@
+{% macro filtros(vistas, vista, q) -%}
+<div class="filters" style="margin-bottom:14px">
+  {% for clave, texto in vistas.items() %}
+    <a class="chip {{ 'active' if vista == clave }}" href="{{ url_for('turnos.lista', vista=clave, q=q or None) }}">
+      {%- if clave == 'mes' %}<i class="fa-regular fa-calendar"></i> {% endif %}{{ texto }}</a>
+  {% endfor %}
+</div>
+{%- endmacro %}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/macros.html" import estado as badge, vacio %}
+{% from "turnos/_filtros.html" import filtros %}
 {% block title %}Turnos{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -14,11 +15,12 @@
   </div>
 </div>
 
-<div class="filters" style="margin-bottom:14px">
-  {% for clave, texto in vistas.items() %}
-    <a class="chip {{ 'active' if vista == clave }}" href="{{ url_for('turnos.lista', vista=clave, q=q or None) }}">{{ texto }}</a>
-  {% endfor %}
-</div>
+{{ filtros(vistas, vista, q) }}
+{% if elegido %}
+<div class="muted small" style="margin:-6px 0 14px"><i class="fa-regular fa-calendar"></i>
+  Turnos de {{ elegido | dia(true) }} ·
+  <a href="{{ url_for('turnos.lista', vista='mes', mes=elegido.strftime('%Y-%m')) }}">volver al almanaque</a></div>
+{% endif %}
 
 {% if dias %}
 {% for d in dias %}
@@ -41,7 +43,15 @@
           <div class="muted small">{{ t.motivo or 'Sin motivo anotado' }}
             {%- if t.observaciones %} · {{ t.observaciones | truncate(60) }}{% endif %}</div></td>
         <td class="izq" style="width:120px">{{ badge(t.estado) }}
-          {% if t.ot %}<div class="muted small"><a href="{{ url_for('ot.detalle', id=t.ot.id) }}">OT #{{ t.ot.id }}</a></div>{% endif %}</td>
+          {% if t.ot %}<div class="muted small"><a href="{{ url_for('ot.detalle', id=t.ot.id) }}">OT #{{ t.ot.id }}</a>
+            <form method="post" action="{{ url_for('turnos.desenganchar', id=t.id) }}" style="display:inline"
+                  data-confirmar="¿Soltar la OT #{{ t.ot.id }} de este turno?"
+                  data-confirmar-detalle="El turno vuelve a quedar confirmado. La OT no se toca."
+                  data-confirmar-boton="Soltar">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="volver" value="{{ url_for('turnos.lista', vista=vista, q=q or None) }}">
+              <button class="btn-icon" title="No era esta OT"><i class="fa-solid fa-link-slash"></i></button></form>
+          </div>{% endif %}</td>
         <td class="num" style="width:180px"><span class="acciones-fila">
           {% set wa = t.telefono_util | whatsapp %}
           {% if wa %}<a class="btn-icon" title="Escribirle por WhatsApp" target="_blank" rel="noopener"

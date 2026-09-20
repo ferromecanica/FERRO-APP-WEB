@@ -50,11 +50,19 @@ def dia(valor, con_mes=False):
     return f"{etiqueta} {valor:%d/%m}"
 
 
+def mes_largo(valor):
+    """'septiembre de 2026'."""
+    if not isinstance(valor, (date, datetime)):
+        return fecha(valor)
+    return f"{MESES[valor.month - 1]} de {valor.year}"
+
+
 def register_filters(app):
     app.jinja_env.filters["pesos"] = pesos
     app.jinja_env.filters["numero"] = numero
     app.jinja_env.filters["fecha"] = fecha
     app.jinja_env.filters["dia"] = dia
+    app.jinja_env.filters["mes_largo"] = mes_largo
     app.jinja_env.filters["whatsapp"] = whatsapp_numero
 
     @app.context_processor

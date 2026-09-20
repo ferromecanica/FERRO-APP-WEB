@@ -1,6 +1,6 @@
 import base64
 import secrets
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
@@ -25,6 +25,7 @@ from ..models import (
     Venta,
     VentaItem,
 )
+from ..filters import dia
 from ..services import drive, reporte
 from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
 from ..validaciones import MARCAS_COMUNES, normalizar_patente, numero_ar, patente_valida
@@ -125,10 +126,49 @@ def vehiculo_info():
     v = Vehiculo.query.filter_by(patente=patente).first() if patente else None
     if v is None:
         return jsonify(existe=False, patente=patente, valida=patente_valida(patente))
+    turno = _turno_pendiente(v)
     return jsonify(
         existe=True, patente=v.patente, descripcion=v.descripcion, km=v.kilometraje,
         cliente=v.cliente.etiqueta if v.cliente else None,
+        turno=({"id": turno.id, "texto": f"{dia(turno.fecha)}"
+                + (f" a las {turno.hora:%H:%M}" if turno.hora else "")
+                + (f" · {turno.motivo}" if turno.motivo else "")} if turno else None),
     )
+
+
+DIAS_CERCA = 7  # cuánto se busca para atrás y para adelante un turno del mismo auto
+
+
+def _turno_pendiente(vehiculo, cliente=None):
+    """El turno sin OT de ese auto (o de ese cliente) que está por estos días.
+
+    Sirve para enganchar la OT con el turno aunque la OT se abra desde Taller.
+    Solo devuelve algo si hay uno solo: con dos no adivinamos.
+    """
+    if vehiculo is None and cliente is None:
+        return None
+    hoy = date.today()
+    consulta = Turno.query.filter(
+        Turno.estado.in_(["Pendiente", "Confirmado"]),
+        Turno.fecha >= hoy - timedelta(days=DIAS_CERCA),
+        Turno.fecha <= hoy + timedelta(days=DIAS_CERCA),
+        ~Turno.ot.has(),
+    )
+    if vehiculo is not None and vehiculo.id:
+        candidatos = consulta.filter(Turno.vehiculo_id == vehiculo.id).all()
+        if candidatos:
+            return _el_unico(candidatos, hoy)
+    if cliente is not None and cliente.id:
+        return _el_unico(consulta.filter(Turno.cliente_id == cliente.id, Turno.vehiculo_id.is_(None)).all(), hoy)
+    return None
+
+
+def _el_unico(candidatos, hoy):
+    """Si hay uno solo, ese. Si hay varios, el de hoy (si es uno solo). Si no, ninguno: que decida él."""
+    if len(candidatos) == 1:
+        return candidatos[0]
+    de_hoy = [t for t in candidatos if t.fecha == hoy]
+    return de_hoy[0] if len(de_hoy) == 1 else None
 
 
 @bp.route("/nueva", methods=["GET", "POST"])
@@ -174,12 +214,19 @@ def form(id=None):
             _asignar_cliente(ot, cliente)
             if ot.km_entrada and ot.km_entrada > (ot.vehiculo.kilometraje or 0):
                 ot.vehiculo.kilometraje = ot.km_entrada
+            solo = turno is None and not id
+            if solo:  # abrió la OT sin pasar por Turnos: buscamos si había turno
+                turno = _turno_pendiente(ot.vehiculo, ot.cliente)
             if turno is not None and turno.ot is None:
                 turno.ot = ot
                 turno.estado = "Ingresado"
             db.session.commit()
             flash(f"OT #{ot.id} {'creada' if not id else 'guardada'}"
                   f"{' con el turno de ' + turno.quien if turno is not None else ''}.", "ok")
+            if solo and turno is not None:
+                flash(f"Tenía turno {dia(turno.fecha)}"
+                      f"{' a las ' + turno.hora.strftime('%H:%M') if turno.hora else ''}: lo marqué como ingresado. "
+                      "Si no era ese turno, desenganchalo desde la agenda.", "info")
             return _volver(ot)
 
     vehiculos = marcas = []

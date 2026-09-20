@@ -273,6 +273,35 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .dialogo-avisos { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 10px 22px 0; font-size: .84rem; color: var(--warn); }
 .dialogo-body { padding: 16px 22px 22px; }
 .atenuado > td { opacity: .55; }
+/* Almanaque de turnos */
+.almanaque { padding: 0 14px 14px; }
+.almanaque-encabezado, .almanaque-semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.almanaque-encabezado { margin-bottom: 6px; }
+.almanaque-encabezado > div { text-align: center; font-size: .75rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; padding: 6px 0; }
+.almanaque-semana { margin-bottom: 6px; }
+.almanaque-dia { position: relative; display: block; min-height: 96px; padding: 6px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--surface); color: inherit; text-decoration: none; overflow: hidden; }
+.almanaque-dia:hover { border-color: var(--accent); background: #fffaf3; }
+.almanaque-dia.otro-mes { background: #fafafa; color: var(--muted); }
+.almanaque-dia.es-hoy { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.almanaque-numero { font-weight: 700; font-size: .85rem; margin-bottom: 4px; }
+.es-hoy .almanaque-numero { color: var(--accent); }
+.turno-chip { font-size: .72rem; line-height: 1.3; padding: 2px 5px; margin-bottom: 3px; border-radius: 6px;
+  background: var(--accent-soft); color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.turno-chip.cancelado { background: #eef0f3; color: var(--muted); text-decoration: line-through; }
+.turno-chip.ingresado { background: var(--info-soft); color: var(--info); }
+.turno-mas { font-size: .7rem; color: var(--muted); padding-left: 5px; }
+.almanaque-cuenta { display: none; }
+@media (max-width: 760px) {
+  .almanaque { padding: 0 8px 10px; }
+  .almanaque-encabezado, .almanaque-semana { gap: 3px; }
+  .almanaque-dia { min-height: 46px; padding: 4px; text-align: center; }
+  .turno-chip, .turno-mas { display: none; }
+  .almanaque-cuenta { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 999px;
+    background: var(--accent); color: #fff; font-size: .7rem; font-weight: 700; }
+}
+
 .dropzone { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; cursor: pointer;
   border: 2px dashed var(--border); border-radius: 12px; background: var(--surface-2, #fafafa); text-align: center; color: var(--text); }
 .dropzone i { font-size: 1.6rem; color: var(--accent); }

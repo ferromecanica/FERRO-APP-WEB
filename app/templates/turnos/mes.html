@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Turnos · almanaque{% endblock %}
+{% block content %}
+{% from "turnos/_filtros.html" import filtros %}
+<div class="page-head">
+  <div><div class="eyebrow">Taller</div><h1>Turnos</h1>
+    <div class="muted small" style="margin-top:4px">{{ cantidad }} turno{{ 's' if cantidad != 1 }} en {{ mes | mes_largo }}</div></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('turnos.lista', vista='mes', mes=anterior.strftime('%Y-%m')) }}" title="Mes anterior"><i class="fa-solid fa-chevron-left"></i></a>
+    <a class="btn" href="{{ url_for('turnos.lista', vista='mes') }}">Hoy</a>
+    <a class="btn" href="{{ url_for('turnos.lista', vista='mes', mes=siguiente.strftime('%Y-%m')) }}" title="Mes siguiente"><i class="fa-solid fa-chevron-right"></i></a>
+    <a class="btn btn-primary" href="{{ url_for('turnos.form') }}"><i class="fa-solid fa-plus"></i> Nuevo turno</a>
+  </div>
+</div>
+
+{{ filtros(vistas, vista, q) }}
+
+<div class="card">
+  <div class="card-head seccion"><h2>{{ mes | mes_largo | capitalize }}</h2></div>
+  <div class="almanaque">
+    <div class="almanaque-encabezado">
+      {% for d in dias_semana %}<div>{{ d }}</div>{% endfor %}
+    </div>
+    {% for semana in semanas %}
+    <div class="almanaque-semana">
+      {% for celda in semana %}
+      <a class="almanaque-dia {{ 'otro-mes' if not celda.del_mes }} {{ 'es-hoy' if celda.fecha == hoy }}"
+         href="{{ url_for('turnos.lista', vista='dia', fecha=celda.fecha.isoformat()) }}">
+        <div class="almanaque-numero">{{ celda.fecha.day }}</div>
+        {% for t in celda.turnos[:3] %}
+          <div class="turno-chip {{ 'cancelado' if t.estado == 'Cancelado' }} {{ 'ingresado' if t.estado == 'Ingresado' }}">
+            <strong>{{ t.hora.strftime('%H:%M') if t.hora else '' }}</strong> {{ t.quien }}</div>
+        {% endfor %}
+        {% if celda.turnos | length > 3 %}
+          <div class="turno-mas">+{{ celda.turnos | length - 3 }} más</div>
+        {% endif %}
+        {% if celda.turnos %}<span class="almanaque-cuenta">{{ celda.turnos | length }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<p class="muted small" style="margin-top:10px"><i class="fa-solid fa-hand-pointer"></i>
+  Tocá un día para ver sus turnos en detalle.</p>
+{% endblock %}

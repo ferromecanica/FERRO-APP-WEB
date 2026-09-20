@@ -102,7 +102,9 @@
       if (n !== pedido) return;
       if (d.existe) {
         vInfo.innerHTML = '<i class="fa-solid fa-circle-check" style="color:var(--ok)"></i> ' + esc(d.descripcion || 'Vehículo cargado') +
-          (d.km ? ' · ' + d.km.toLocaleString('es-AR') + ' km' : '') + (d.cliente ? '' : ' · <em>sin dueño asignado</em>');
+          (d.km ? ' · ' + d.km.toLocaleString('es-AR') + ' km' : '') + (d.cliente ? '' : ' · <em>sin dueño asignado</em>') +
+          (d.turno ? '<div style="margin-top:4px"><i class="fa-regular fa-calendar-check" style="color:var(--accent)"></i> ' +
+            'Tiene turno ' + esc(d.turno.texto) + ': al abrir la OT queda ingresado.</div>' : '');
         if (d.cliente && !picker.enAlta() && (!cliente.value || picker.existe(cliente.value))) cliente.value = d.cliente;
         if (d.km) km.placeholder = d.km;
       } else {

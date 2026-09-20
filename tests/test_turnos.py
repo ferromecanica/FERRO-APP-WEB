@@ -77,3 +77,47 @@ assert 'Turno eliminado' in post(f'/turnos/{sid}/eliminar')
 with app.app_context():
     assert db.session.get(Turno, sid) is None
 print('TODO OK')
+
+# ── Si la OT se abre desde Taller sin pasar por el turno, se engancha sola ──
+with app.app_context():
+    otro = Cliente.query.filter(Cliente.vehiculos.any(), Cliente.id != cid).first()
+    ocid, ovid = otro.id, otro.vehiculos[0].id
+    opat, onom = otro.vehiculos[0].patente, otro.nombre
+    t = Turno(fecha=hoy, hora=None, cliente_id=ocid, vehiculo_id=ovid, motivo='Distribución', estado='Confirmado')
+    db.session.add(t); db.session.commit(); solo_id = t.id
+
+# el campo patente ya lo avisa mientras se tipea
+import json
+d = json.loads(B(c.get('/ot/vehiculo?patente=' + opat)))
+assert d['turno'] and 'hoy' in d['turno']['texto'] and 'Distribución' in d['turno']['texto'], d
+
+b = post('/ot/nueva', {'patente': opat, 'cliente': onom, 'fecha_ingreso': hoy.isoformat(), 'detalle': 'Distribución'})
+assert 'Tenía turno hoy' in b and 'lo marqué como ingresado' in b, b[:500]
+with app.app_context():
+    t = db.session.get(Turno, solo_id)
+    assert t.estado == 'Ingresado' and t.ot is not None
+    ot_solo = t.ot.id
+
+# y se puede soltar si no era ese
+b = post(f'/turnos/{solo_id}/desenganchar')
+assert f'ya no está enganchado a la OT #{ot_solo}' in b
+with app.app_context():
+    t = db.session.get(Turno, solo_id)
+    assert t.ot is None and t.estado == 'Confirmado'
+    assert db.session.get(OrdenTrabajo, ot_solo) is not None, 'la OT no se toca'
+
+# con dos turnos del mismo auto el mismo día no adivina
+with app.app_context():
+    for hora in ('08:00', '16:00'):
+        db.session.add(Turno(fecha=hoy, cliente_id=ocid, vehiculo_id=ovid, motivo='otro', estado='Confirmado'))
+    db.session.commit()
+b = post('/ot/nueva', {'patente': opat, 'cliente': onom, 'fecha_ingreso': hoy.isoformat(), 'detalle': 'Otra cosa'})
+assert 'Tenía turno' not in b, 'con varios turnos no tendría que elegir'
+
+# el almanaque
+b = B(c.get('/turnos/?vista=mes'))
+assert 'Septiembre de 2026' in b or 'de 2026' in b
+assert 'turno-chip' in b and onom in b
+b = B(c.get('/turnos/?vista=dia&fecha=' + hoy.isoformat()))
+assert 'volver al almanaque' in b and onom in b
+print('AGENDA Y ENGANCHE OK')

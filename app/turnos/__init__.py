@@ -1,4 +1,5 @@
 """Turnos: la agenda del taller. De un turno sale después la OT."""
+import calendar
 from datetime import date, datetime, time, timedelta
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
@@ -16,7 +17,9 @@ VISTAS = {
     "semana": "Esta semana",
     "pasados": "Pasados",
     "todos": "Todos",
+    "mes": "Almanaque",
 }
+DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 
 
 @bp.before_request
@@ -39,14 +42,36 @@ def _datos_comunes():
     }
 
 
+def _mes_pedido():
+    """El mes que se está mirando en el almanaque (YYYY-MM), o el actual."""
+    try:
+        return datetime.strptime(request.args["mes"], "%Y-%m").date().replace(day=1)
+    except (KeyError, ValueError):
+        return date.today().replace(day=1)
+
+
+def _sumar_meses(mes, cuantos):
+    total = mes.month - 1 + cuantos
+    return date(mes.year + total // 12, total % 12 + 1, 1)
+
+
 @bp.route("/")
 def lista():
     hoy = date.today()
     vista = request.args.get("vista", "proximos")
     q = request.args.get("q", "").strip()
+    if vista == "mes":
+        return _almanaque(hoy, q)
 
     consulta = Turno.query.outerjoin(Cliente).outerjoin(Vehiculo, Turno.vehiculo_id == Vehiculo.id)
-    if vista == "hoy":
+    elegido = None
+    if vista == "dia":
+        try:
+            elegido = datetime.strptime(request.args.get("fecha", ""), "%Y-%m-%d").date()
+        except ValueError:
+            elegido = hoy
+        consulta = consulta.filter(Turno.fecha == elegido)
+    elif vista == "hoy":
         consulta = consulta.filter(Turno.fecha == hoy)
     elif vista == "semana":
         consulta = consulta.filter(Turno.fecha >= hoy, Turno.fecha <= hoy + timedelta(days=7))
@@ -71,7 +96,24 @@ def lista():
             dias.append({"fecha": turno.fecha, "turnos": []})
         dias[-1]["turnos"].append(turno)
     return render_template("turnos/lista.html", dias=dias, vista=vista, vistas=VISTAS, q=q,
-                           cantidad=len(turnos), hoy=hoy)
+                           cantidad=len(turnos), hoy=hoy, elegido=elegido)
+
+
+def _almanaque(hoy, q):
+    """Vista de mes: las semanas del mes con los turnos de cada día."""
+    mes = _mes_pedido()
+    siguiente = _sumar_meses(mes, 1)
+    turnos = Turno.query.filter(Turno.fecha >= mes, Turno.fecha < siguiente).order_by(Turno.hora).all()
+    por_dia = {}
+    for turno in turnos:
+        por_dia.setdefault(turno.fecha, []).append(turno)
+    semanas = [[{"fecha": dia, "turnos": por_dia.get(dia, []), "del_mes": dia.month == mes.month}
+                for dia in semana]
+               for semana in calendar.Calendar(firstweekday=0).monthdatescalendar(mes.year, mes.month)]
+    return render_template("turnos/mes.html", semanas=semanas, mes=mes, hoy=hoy, q=q,
+                           vista="mes", vistas=VISTAS, dias_semana=DIAS_SEMANA,
+                           anterior=_sumar_meses(mes, -1), siguiente=siguiente,
+                           cantidad=len(turnos))
 
 
 def _hora(texto):
@@ -127,6 +169,19 @@ def estado(id):
         turno.estado = nuevo
         db.session.commit()
         flash(f"Turno {nuevo.lower()}.", "ok")
+    return redirect(request.form.get("volver") or url_for(".lista"))
+
+
+@bp.route("/<int:id>/desenganchar", methods=["POST"])
+def desenganchar(id):
+    """Suelta la OT que se había enganchado sola a este turno (por si era otra)."""
+    turno = db.get_or_404(Turno, id)
+    if turno.ot is not None:
+        numero = turno.ot.id
+        turno.ot = None
+        turno.estado = "Confirmado"
+        db.session.commit()
+        flash(f"El turno ya no está enganchado a la OT #{numero}.", "ok")
     return redirect(request.form.get("volver") or url_for(".lista"))
 
 
