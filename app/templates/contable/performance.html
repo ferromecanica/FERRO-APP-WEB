@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Performance{% endblock %}
+
+{% macro reloj(r, titulo, icono, valor, pie, nota=None, tono='') %}
+<div class="card">
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2>
+    {% if nota %}<span class="muted small">{{ nota }}</span>{% endif %}</div>
+  <div class="card-body">
+    <svg class="reloj" viewBox="0 0 140 86">
+      <path class="fondo" d="M14,70 A56,56 0 0,1 126,70"></path>
+      <path class="valor {{ tono }}" d="M14,70 A56,56 0 0,1 126,70" stroke-dasharray="{{ r.largo }} 999"></path>
+      {% if r.marca %}<line class="marca" x1="{{ r.marca.x1 }}" y1="{{ r.marca.y1 }}"
+        x2="{{ r.marca.x2 }}" y2="{{ r.marca.y2 }}"></line>{% endif %}
+    </svg>
+    <div class="reloj-valor">{{ valor }}</div>
+    <div class="reloj-pie {{ tono }}">{{ pie }}</div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro torta(t, titulo, icono, nota) %}
+<div class="card">
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2>
+    <span class="muted small">{{ nota }}</span></div>
+  <div class="card-body torta-caja">
+    <svg class="torta" viewBox="0 0 42 42">
+      <circle class="aro" cx="21" cy="21" r="15.915"></circle>
+      {% for p in t.pedazos %}
+      <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="{{ p.color }}" stroke-width="5.5"
+              stroke-dasharray="{{ p.largo }} {{ p.resto }}" stroke-dashoffset="{{ p.offset }}"></circle>
+      {% endfor %}
+    </svg>
+    <ul class="referencias">
+      {% for p in t.pedazos %}
+      <li><span class="punto" style="background:{{ p.color }}"></span>
+        <span class="referencia-nombre">{{ p.nombre }}</span>
+        <span class="referencia-valor">{{ p.valor | pesos }}<span class="muted"> · {{ p.porcentaje | numero(0) }} %</span></span></li>
+      {% endfor %}
+      <li class="total"><span class="punto"></span><span class="referencia-nombre">Total</span>
+        <span class="referencia-valor">{{ t.total | pesos }}</span></li>
+    </ul>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro ranking(filas, titulo, icono, nota) %}
+<div class="card">
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2>
+    <span class="muted small">{{ nota }}</span></div>
+  <div class="card-body">
+    <ul class="ranking">
+      {% for f in filas %}
+      <li><span class="ranking-nombre">{{ f.nombre }}</span>
+        <span class="ranking-barra"><span style="width:{{ f.porcentaje }}%"></span></span>
+        <span class="ranking-valor">{{ f.total | pesos }}<span class="muted"> · {{ f.porcentaje | numero(0) }} %</span></span></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Administración</div><h1>Performance</h1>
+    <div class="muted small" style="margin-top:4px">Cómo viene {{ t.hoy | mes_largo }}, al día {{ t.hoy.day }}.
+      Todo sale de lo que ya está cargado.</div></div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:16px">
+  {{ reloj(t.relojes.facturacion, 'Facturado en el mes', 'fa-chart-line', t.facturado | pesos,
+           (('%+d' % t.contra_promedio) ~ ' % contra el promedio de los otros meses al día ' ~ t.hoy.day)
+             if t.promedio else 'Sin meses anteriores para comparar',
+           'la rayita es el promedio: ' ~ (t.promedio | pesos), t.tono) }}
+
+  {{ reloj(t.relojes.margen, 'Margen bruto', 'fa-percent', (t.margen.porcentaje | numero(0)) ~ ' %',
+           (t.margen.ganancia | pesos) ~ ' sobre ' ~ (t.margen.total | pesos),
+           (t.margen.sin_costo ~ ' sin costo cargado') if t.margen.sin_costo else None) }}
+
+  {{ reloj(t.relojes.resultado, 'Resultado del mes', 'fa-scale-balanced', t.plata.resultado | pesos,
+           'entraron ' ~ (t.plata.ingresos | pesos) ~ ', salieron ' ~ (t.plata.egresos | pesos)
+             ~ ((', más el colchón de ' ~ (t.plata.colchon | pesos)) if t.plata.colchon else ''),
+           'sin sueldos ni capital') }}
+
+  {{ reloj(t.relojes.stock, 'Stock valorizado', 'fa-boxes-stacked', t.stock.costo | pesos,
+           (t.stock.venta | pesos) ~ ' a precio de venta',
+           t.stock.articulos ~ ' artículos con stock') }}
+</div>
+
+<div class="grid grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-head seccion"><h2><i class="fa-solid fa-chart-column"></i> Mes a mes, al mismo día</h2>
+      <span class="muted small">primeros {{ t.hoy.day }} días de cada mes</span></div>
+    <div class="card-body">
+      <div class="barras">
+        {% for f in t.comparativa %}
+        <div class="barra-fila {{ 'actual' if f.actual }}">
+          <span class="barra-mes">{{ f.mes | mes_largo | capitalize }}</span>
+          <span class="barra-pista"><span style="width:{{ f.alto }}%"></span></span>
+          <span class="barra-valor">{{ f.total | pesos }}<span class="muted"> · {{ f.ventas }}</span></span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="muted small" style="margin-top:12px">
+        A este ritmo, {{ t.hoy | mes_largo }} cierra en <strong>{{ t.proyeccion | pesos }}</strong>.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head seccion"><h2><i class="fa-solid fa-screwdriver-wrench"></i> El taller este mes</h2></div>
+    <div class="card-body">
+      <dl class="props totales">
+        <dt>OT abiertas ahora</dt><dd class="num">{{ t.taller.abiertas }}</dd>
+        <dt>Terminadas en el mes</dt><dd class="num">{{ t.taller.cerradas_mes }}</dd>
+        <dt>Demora promedio</dt><dd class="num">{{ t.taller.demora | numero(1) }} días</dd>
+        <dt>Cerradas sin cargo</dt><dd class="num">{{ t.taller.sin_cargo }}</dd>
+        <dt><strong>Finalizadas por cobrar</strong></dt>
+        <dd class="num"><strong style="color:{{ 'var(--danger)' if t.taller.por_cobrar else 'inherit' }}">
+          {{ t.taller.por_cobrar }}</strong></dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:16px">
+  {{ torta(t.egresos, 'En qué se va la plata', 'fa-arrow-up-from-bracket', 'últimos 3 meses, sin sueldos ni capital') }}
+  {{ torta(t.origen, 'De dónde sale la plata', 'fa-arrow-down-to-bracket', 'últimos 3 meses') }}
+</div>
+
+<div class="grid grid-2">
+  {{ ranking(t.clientes, 'Los que más nos compran', 'fa-user-group', 'últimos 6 meses') }}
+  {{ ranking(t.proveedores, 'A quién le compramos', 'fa-truck', 'últimos 6 meses') }}
+</div>
+{% endblock %}

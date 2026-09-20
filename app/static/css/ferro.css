@@ -707,6 +707,60 @@ table.cuadre td { border: 0; padding: 3px 0; font-size: .92em; }
 table.cuadre td.num { padding-left: 24px; font-variant-numeric: tabular-nums; }
 table.cuadre tr.total td { border-top: 1px solid var(--accent); padding-top: 6px; font-weight: 700; color: var(--accent-ink); }
 
+/* ── Performance: relojes, tortas y rankings ─────────────── */
+.grid-4 .card-head.seccion { flex-wrap: wrap; row-gap: 2px; }
+.grid-4 .card-head.seccion > .muted.small { flex: 1 0 100%; }
+.reloj { display: block; width: 100%; max-width: 190px; margin: 0 auto; }
+.reloj path { fill: none; stroke-width: 11; stroke-linecap: round; }
+.reloj .fondo { stroke: var(--surface-2); }
+.reloj .valor { stroke: var(--accent); transition: stroke-dasharray .3s ease; }
+.reloj .valor.tono-aviso { stroke: #f59e0b; }
+.reloj .valor.tono-malo { stroke: var(--danger); }
+.reloj-pie.tono-aviso { color: var(--warn); font-weight: 600; }
+.reloj-pie.tono-malo { color: var(--danger); font-weight: 600; }
+.reloj .marca { stroke: var(--accent-ink); stroke-width: 2.5; opacity: .8; }
+.reloj-valor { font-family: var(--font-display); font-size: 1.55rem; font-weight: 700; text-align: center;
+  margin-top: -16px; font-variant-numeric: tabular-nums; }
+.reloj-pie { text-align: center; color: var(--muted); font-size: .84rem; margin-top: 5px; line-height: 1.35; }
+
+.torta-caja { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.torta { width: 132px; height: 132px; flex: 0 0 132px; }
+.torta .aro { fill: transparent; stroke: var(--surface-2); stroke-width: 5.5; }
+.referencias { list-style: none; margin: 0; padding: 0; flex: 1 1 200px; min-width: 0; }
+.referencias li { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: .9rem; }
+.referencias .punto { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 10px; }
+.referencias .referencia-nombre { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.referencias .referencia-valor { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.referencias li.total { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 6px; font-weight: 700; }
+
+.barras { display: flex; flex-direction: column; gap: 9px; }
+.barra-fila { display: flex; align-items: center; gap: 10px; font-size: .9rem; }
+.barra-mes { flex: 0 0 118px; color: var(--muted); white-space: nowrap; }
+.barra-pista { flex: 1 1 auto; height: 14px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.barra-pista > span { display: block; height: 100%; background: #b9c3cc; border-radius: 999px; }
+.barra-fila.actual .barra-mes { color: var(--ink); font-weight: 700; }
+.barra-fila.actual .barra-pista > span { background: var(--accent); }
+.barra-valor { flex: 0 0 auto; font-variant-numeric: tabular-nums; text-align: right; min-width: 118px; }
+
+.ranking { list-style: none; margin: 0; padding: 0; }
+.ranking li { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: .9rem; }
+.ranking-nombre { flex: 0 0 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-barra { flex: 1 1 auto; height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.ranking-barra > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.ranking-valor { flex: 0 0 auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  /* En el celular entran de a dos: el número no se puede cortar */
+  .reloj-valor { font-size: 1.05rem; white-space: nowrap; margin-top: -10px; }
+  .reloj-pie { font-size: .78rem; }
+  .reloj { max-width: 130px; }
+  .torta-caja { gap: 12px; }
+  .barra-mes { flex-basis: 74px; }
+  .barra-valor { min-width: 0; }
+  .ranking li { flex-wrap: wrap; }
+  .ranking-nombre { flex-basis: 100%; }
+}
+
 /* ── Cotizador ─────────────────────────────────────────── */
 .resultado .precio-final { display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
   margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); border: 1px solid #f5b56b; }

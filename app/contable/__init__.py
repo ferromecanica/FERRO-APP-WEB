@@ -24,6 +24,7 @@ from ..models import (
 )
 from ..services import cierre as calculo
 from ..services import contable
+from ..services import performance
 from ..services import reporte
 from ..validaciones import formatear_cuit, numero_ar
 
@@ -172,6 +173,12 @@ def cobrado(id):
 
 
 # ─────────────────────────────────── Capital ────────────────────────────────
+
+
+@bp.route("/performance")
+def performance_():
+    """Los números del taller en relojes y tortas."""
+    return render_template("contable/performance.html", t=performance.tablero())
 
 
 @bp.route("/ventas/<int:id>/ingreso", methods=["POST"])
