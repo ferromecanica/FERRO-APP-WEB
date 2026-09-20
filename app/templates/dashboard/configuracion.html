@@ -14,10 +14,6 @@
     <div><label>CUIT</label><input name="cuit" value="{{ cfg.cuit or '' }}"></div>
     <div><label>Dirección</label><input name="direccion" value="{{ cfg.direccion or '' }}"></div>
     <div><label>Teléfono</label><input name="telefono" value="{{ cfg.telefono or '' }}"></div>
-    <div class="full"><label>Carpeta de Drive para las circulares contables</label>
-      <input name="carpeta_circulares" value="{{ cfg.carpeta_circulares or '' }}"
-             placeholder="Pegá el link de la carpeta de Drive">
-      <div class="muted small" style="margin-top:4px">Si queda vacío, las circulares van a la carpeta de reportes.</div></div>
   </div>
   <div class="card-body" style="border-top:1px solid var(--border)"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button></div>
 </form>
@@ -35,7 +31,7 @@
       <tbody>
       {% for s in socios %}
         <tr>
-          <td class="izq destacado">{{ s.nombre }}</td>
+          <td class="izq"><input name="nombre_{{ s.id }}" value="{{ s.nombre }}"></td>
           <td class="izq"><input name="rol_{{ s.id }}" value="{{ s.rol or '' }}" placeholder="Jefe de taller"></td>
           <td class="num"><input name="sueldo_{{ s.id }}" inputmode="decimal" value="{{ s.sueldo_base | numero if s.sueldo_base else '' }}" placeholder="$"></td>
           <td class="num"><input name="participacion_{{ s.id }}" inputmode="decimal" style="max-width:90px"
