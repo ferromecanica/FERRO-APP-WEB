@@ -2,11 +2,16 @@
 import re
 from wsgi import app
 from app.extensions import db
-from app.models import MovimientoStock, OrdenTrabajo, Repuesto
+from app.models import CondicionPago, MovimientoStock, OrdenTrabajo, Repuesto
 app.config['WTF_CSRF_ENABLED'] = False
 c = app.test_client()
 B = lambda r: r.get_data(as_text=True)
 def post(url, d=None): return B(c.post(url, data=d or {}, follow_redirects=True))
+# Las formas de pago ahora son filas de CondicionPago (traen la comisión de la tarjeta)
+def condicion(nombre):
+    with app.app_context():
+        return str(CondicionPago.query.filter_by(nombre=nombre).one().id)
+
 def limpio(html):
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html))
 
@@ -21,7 +26,7 @@ with app.app_context():
 # ── se usa en una OT y en una venta de mostrador ──
 post(f'/ot/{otid}/repuestos', {'repuesto': str(rid), 'cantidad': '2'})
 post('/ventas/mostrador/items', {'tipo': 'stock', 'repuesto': str(rid), 'cantidad': '1'})
-post('/ventas/mostrador/cobrar', {'metodo_pago': 'Efectivo'})
+post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Efectivo')})
 
 b = limpio(B(c.get(f'/stock/{rid}')))
 historia = b[b.find('Dónde se usó'):b.find('Movimientos de stock')]

@@ -2,11 +2,16 @@
 from datetime import date
 from wsgi import app
 from app.extensions import db
-from app.models import OrdenTrabajo, Venta
+from app.models import CondicionPago, OrdenTrabajo, Venta
 app.config['WTF_CSRF_ENABLED'] = False
 c = app.test_client()
 B = lambda r: r.get_data(as_text=True)
 def post(url, d=None): return B(c.post(url, data=d or {}, follow_redirects=True))
+# Las formas de pago ahora son filas de CondicionPago (traen la comisión de la tarjeta)
+def condicion(nombre):
+    with app.app_context():
+        return str(CondicionPago.query.filter_by(nombre=nombre).one().id)
+
 
 with app.app_context():
     ot = OrdenTrabajo.query.filter(OrdenTrabajo.estado != 'Finalizada').first()
@@ -48,7 +53,7 @@ with app.app_context():
     assert not ot.sin_cargo and ot.motivo_sin_cargo is None and ot.estado == 'En proceso'
 
 # y se puede cerrar cobrando, como siempre
-b = post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'total_cobrado': '120.000', 'metodo_pago': 'Efectivo',
+b = post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'total_cobrado': '120.000', 'condicion_id': condicion('Efectivo'),
                                 'clasificacion': 'Otro', 'fecha_fin': date.today().isoformat()})
 assert 'Venta registrada por $120.000' in b
 with app.app_context():

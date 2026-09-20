@@ -33,8 +33,11 @@
                  value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
           <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}). Cambialo por lo que realmente se cobró.</div></div>
         <div><label>Forma de pago *</label>
-          <select name="metodo_pago"><option value="">Elegí…</option>
-            {% for m in metodos %}<option {{ 'selected' if m == f.get('metodo_pago') }}>{{ m }}</option>{% endfor %}</select></div>
+          <select name="condicion_id"><option value="">Elegí…</option>
+            {% for c in condiciones %}<option value="{{ c.id }}" data-dias="{{ c.dias_habiles }}"
+              data-queda="{{ c.queda }}" data-recargo="{{ c.recargo_usado }}"
+              {{ 'selected' if c.id|string == f.get('condicion_id') }}>{{ c.nombre }}</option>{% endfor %}</select></div>
+        <div class="full aviso-tarjeta" data-cuenta-tarjeta hidden></div>
       </div>
     </div>
 
@@ -91,5 +94,6 @@
     r.addEventListener('change', function () { checklist.hidden = r.value !== 'Servicio' || !r.checked; });
   });
   actualizarCobro();
+  FerroCobro(form);
 })();
 </script>

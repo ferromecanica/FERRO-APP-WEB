@@ -2,12 +2,17 @@
 from datetime import date
 from wsgi import app
 from app.extensions import db
-from app.models import Cliente, MovimientoContable, OrdenTrabajo, Repuesto, Venta
+from app.models import Cliente, CondicionPago, MovimientoContable, OrdenTrabajo, Repuesto, Venta
 from app.services import contable
 app.config['WTF_CSRF_ENABLED'] = False
 c = app.test_client()
 B = lambda r: r.get_data(as_text=True)
 def post(url, d=None): return B(c.post(url, data=d or {}, follow_redirects=True))
+# Las formas de pago ahora son filas de CondicionPago (traen la comisión de la tarjeta)
+def condicion(nombre):
+    with app.app_context():
+        return str(CondicionPago.query.filter_by(nombre=nombre).one().id)
+
 
 MES = date.today().strftime('%Y-%m')
 
@@ -22,7 +27,7 @@ with app.app_context():
 
 # ── Cerrar una OT cobrando: nace el ingreso, atado a la venta ──
 post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'clasificacion': 'Otro', 'total_cobrado': '250.000',
-                            'metodo_pago': 'Efectivo', 'fecha_fin': date.today().isoformat(),
+                            'condicion_id': condicion('Efectivo'), 'fecha_fin': date.today().isoformat(),
                             'cliente_id': cid})
 with app.app_context():
     venta = Venta.query.filter_by(ot_id=otid).one()
@@ -51,7 +56,7 @@ with app.app_context():
 # ── Mostrador: cobrar deja el ingreso; anular lo saca ──
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Revisión pre-compra',
                                  'precio': '80.000', 'costo': '0'})
-post('/ventas/mostrador/cobrar', {'metodo_pago': 'Transferencia', 'cliente_id': cid,
+post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Transferencia'), 'cliente_id': cid,
                                   'fecha': date.today().isoformat()})
 with app.app_context():
     venta = Venta.query.filter_by(ot_id=None).order_by(Venta.id.desc()).first()

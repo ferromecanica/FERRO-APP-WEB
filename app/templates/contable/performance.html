@@ -106,7 +106,8 @@
   </div>
 
   <div class="card">
-    <div class="card-head seccion"><h2><i class="fa-solid fa-screwdriver-wrench"></i> El taller este mes</h2></div>
+    <div class="card-head seccion"><h2><i class="fa-solid fa-screwdriver-wrench"></i> El taller este mes</h2>
+      {% if t.en_camino.ventas %}<span class="muted small">{{ t.en_camino.ventas | length }} cobro{{ 's' if t.en_camino.ventas | length != 1 }} por acreditarse</span>{% endif %}</div>
     <div class="card-body">
       <dl class="props totales">
         <dt>OT abiertas ahora</dt><dd class="num">{{ t.taller.abiertas }}</dd>
@@ -120,6 +121,35 @@
     </div>
   </div>
 </div>
+
+{% if t.en_camino.ventas %}
+<div class="card" style="margin-bottom:16px">
+  <div class="card-head seccion"><h2><i class="fa-solid fa-hourglass-half"></i> Plata en camino</h2>
+    <span class="muted small">cobrado con tarjeta, todavía no está en el banco</span></div>
+  <div class="table-wrap"><table class="tabla-densa lista-movil">
+    <colgroup><col style="width:120px"><col style="width:110px"><col style="width:22%"><col>
+      <col style="width:120px"><col style="width:120px"></colgroup>
+    <thead><tr><th class="centro">Entra el</th><th class="centro">Venta</th><th class="izq">Cliente</th>
+      <th class="izq hide-sm">Cómo pagó</th><th class="num">Se cobró</th><th class="num">Entra</th></tr></thead>
+    <tbody>
+    {% for v in t.en_camino.ventas %}
+      <tr>
+        <td class="centro destacado" data-titulo="Entra el">{{ v.fecha_acreditacion | dia(True) }}</td>
+        <td class="centro"><a href="{{ url_for('ventas.detalle', id=v.id) }}">
+          {% if v.ot_id %}OT #{{ v.ot_id }}{% else %}Venta {{ v.id }}{% endif %}</a></td>
+        <td class="izq envuelve">{{ v.cliente.nombre if v.cliente else 'Mostrador' }}</td>
+        <td class="izq hide-sm muted small" data-titulo="Cómo pagó">{{ v.metodo_pago }}</td>
+        <td class="num muted" data-titulo="Se cobró">{{ (v.bruto_cobrado or v.total) | pesos }}</td>
+        <td class="num" data-titulo="Entra"><strong>{{ v.cobrado | pesos }}</strong></td>
+      </tr>
+    {% endfor %}
+      <tr class="total-row"><td colspan="4">Total por acreditarse</td>
+        <td class="num muted">{{ t.en_camino.bruto | pesos }}</td>
+        <td class="num"><strong>{{ t.en_camino.total | pesos }}</strong></td></tr>
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
 
 <div class="grid grid-2" style="margin-bottom:16px">
   {{ torta(t.egresos, 'En qué se va la plata', 'fa-arrow-up-from-bracket', 'últimos 3 meses, sin sueldos ni capital') }}

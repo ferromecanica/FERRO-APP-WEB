@@ -11,7 +11,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from flask_login import login_required
 
 from ..extensions import db
-from ..models import METODOS_PAGO, Cliente, Repuesto, Venta
+from ..models import Cliente, CondicionPago, Repuesto, Venta
 from ..services import contable
 from ..services.stock import anular_venta, buscar_repuesto, vender_en_mostrador
 from ..validaciones import numero_ar
@@ -53,7 +53,7 @@ def lista():
 @bp.route("/<int:id>")
 def detalle(id):
     venta = db.get_or_404(Venta, id)
-    return render_template("ventas/detalle.html", v=venta)
+    return render_template("ventas/detalle.html", v=venta, hoy=date.today())
 
 
 @bp.route("/<int:id>/anular", methods=["POST"])
@@ -77,7 +77,7 @@ def anular(id):
 def _mostrador():
     venta = session.get("mostrador")
     if not venta:
-        venta = {"items": [], "proximo_id": 1, "cliente_id": None, "metodo_pago": METODOS_PAGO[0]}
+        venta = {"items": [], "proximo_id": 1, "cliente_id": None, "condicion_id": None}
         session["mostrador"] = venta
     return venta
 
@@ -97,7 +97,8 @@ def _totales(venta):
 def mostrador():
     venta = _mostrador()
     return render_template(
-        "ventas/mostrador.html", venta=venta, t=_totales(venta), metodos=METODOS_PAGO,
+        "ventas/mostrador.html", venta=venta, t=_totales(venta),
+        condiciones=CondicionPago.query.filter_by(activa=True).order_by(CondicionPago.orden).all(),
         repuestos=Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all(),
         clientes=Cliente.query.order_by(db.func.lower(Cliente.nombre)).all(),
         hoy=date.today(),
@@ -180,7 +181,10 @@ def cobrar():
         flash("Cargá lo que estás vendiendo.", "error")
         return redirect(url_for(".mostrador"))
 
-    metodo = request.form.get("metodo_pago")
+    condicion = db.session.get(CondicionPago, request.form.get("condicion_id", type=int) or 0)
+    if condicion is None:
+        flash("Elegí la forma de pago.", "error")
+        return redirect(url_for(".mostrador"))
     try:
         fecha = datetime.strptime(request.form.get("fecha", ""), "%Y-%m-%d").date()
     except ValueError:
@@ -188,7 +192,8 @@ def cobrar():
     venta = Venta(
         fecha=fecha,
         cliente=db.session.get(Cliente, request.form.get("cliente_id", type=int) or 0),
-        metodo_pago=metodo if metodo in METODOS_PAGO else METODOS_PAGO[0],
+        metodo_pago=condicion.nombre,
+        condicion=condicion,
         tipo_comprobante="X",
     )
     db.session.add(venta)
@@ -199,6 +204,10 @@ def cobrar():
             item["cantidad"], precio_unitario=item["precio"], costo_unitario=item["costo"],
             descripcion=item["descripcion"],
         )
+    # Con tarjeta, lo que entra es el neto y cae unos días después
+    venta.bruto_cobrado = condicion.bruto(venta.total)
+    venta.neto_acreditado = condicion.neto(venta.bruto_cobrado)
+    venta.fecha_acreditacion = condicion.acredita(fecha)
     contable.registrar_venta(venta)
     db.session.commit()
     session.pop("mostrador", None)

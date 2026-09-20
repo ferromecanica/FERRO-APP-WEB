@@ -7,7 +7,7 @@ de obra) acá son propiedades, así nunca quedan desactualizados.
 Los IDs de OT (10000…), presupuestos (40000…) y repuestos se conservan
 como PK numérica para que la migración mantenga los números que ya conocen.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -842,6 +842,77 @@ class PresupuestoItem(db.Model):
 
 METODOS_PAGO = ["Efectivo", "Transferencia", "Débito", "Crédito", "Mercado Pago"]
 
+# Lo que cobra Getnet y cuándo deposita (getnet.net/ar/aranceles, plazo estándar).
+# nombre, días hábiles, arancel %, tasa de financiación %
+CONDICIONES_PAGO = [
+    ("Efectivo", 0, 0, 0),
+    ("Transferencia", 0, 0, 0),
+    ("Débito", 1, 1.00, 0),
+    ("Crédito 1 pago", 8, 2.00, 0),
+    ("Crédito 3 cuotas", 2, 2.00, 7.41),
+    ("Crédito 6 cuotas", 2, 2.00, 12.64),
+    ("Mercado Pago", 0, 0, 0),
+]
+
+
+class CondicionPago(db.Model):
+    """Cómo cobra el taller, con lo que descuenta la tarjeta y cuándo acredita.
+
+    Los porcentajes se editan en Configuración porque Getnet los cambia.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(40), nullable=False, unique=True)
+    dias_habiles = db.Column(db.Integer, default=0, nullable=False)  # hasta que la plata está en el banco
+    arancel = db.Column(db.Float, default=0, nullable=False)          # % sobre lo cobrado
+    tasa_financiera = db.Column(db.Float, default=0, nullable=False)  # % del plan de cuotas
+    iva = db.Column(db.Float, default=21, nullable=False)             # % sobre los costos de arriba
+    recargo = db.Column(db.Float)      # % que se le suma al cliente; si está vacío, el justo
+    activa = db.Column(db.Boolean, default=True, nullable=False)
+    orden = db.Column(db.Integer, default=0)
+
+    ventas = db.relationship("Venta", back_populates="condicion")
+
+    @property
+    def descuento(self):
+        """Qué porcentaje se queda la tarjeta, con IVA incluido."""
+        return (self.arancel + self.tasa_financiera) * (1 + self.iva / 100)
+
+    @property
+    def queda(self):
+        """Qué porcentaje del bruto termina en el banco."""
+        return 100 - self.descuento
+
+    @property
+    def recargo_justo(self):
+        """Cuánto hay que recargarle al cliente para cobrar lo facturado."""
+        return (100 / self.queda - 1) * 100 if self.queda else 0
+
+    @property
+    def recargo_usado(self):
+        return self.recargo if self.recargo is not None else self.recargo_justo
+
+    @property
+    def con_costo(self):
+        return self.descuento > 0
+
+    def bruto(self, facturado):
+        """Lo que hay que pasarle a la tarjeta para cobrar `facturado`."""
+        return round(facturado * (1 + self.recargo_usado / 100), 2)
+
+    def neto(self, bruto):
+        """Lo que deposita la tarjeta sobre ese bruto."""
+        return round(bruto * self.queda / 100, 2)
+
+    def acredita(self, desde):
+        """Sumar días hábiles (no mira feriados: es una estimación)."""
+        dia, faltan = desde, self.dias_habiles
+        while faltan > 0:
+            dia += timedelta(days=1)
+            if dia.weekday() < 5:
+                faltan -= 1
+        return dia
+
 
 class Venta(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -851,7 +922,12 @@ class Venta(TimestampMixin, db.Model):
     metodo_pago = db.Column(db.String(30))
     tipo_comprobante = db.Column(db.String(10), default="X")
     link_comprobante = db.Column(db.String(300))
+    condicion_id = db.Column(db.Integer, db.ForeignKey("condicion_pago.id"))
+    bruto_cobrado = db.Column(db.Float)       # lo que pagó el cliente, con el recargo
+    neto_acreditado = db.Column(db.Float)     # lo que deposita la tarjeta
+    fecha_acreditacion = db.Column(db.Date)   # cuándo cae en el banco
 
+    condicion = db.relationship("CondicionPago", back_populates="ventas")
     cliente = db.relationship("Cliente")
     ot = db.relationship("OrdenTrabajo", back_populates="ventas")
     items = db.relationship("VentaItem", back_populates="venta", cascade="all, delete-orphan")
@@ -867,6 +943,15 @@ class Venta(TimestampMixin, db.Model):
     @property
     def ganancia(self):
         return self.total - self.costo_total
+
+    @property
+    def cobrado(self):
+        """Lo que entra a la caja: el neto de la tarjeta, o el total si fue en mano."""
+        return self.neto_acreditado if self.neto_acreditado is not None else self.total
+
+    @property
+    def costo_tarjeta(self):
+        return (self.bruto_cobrado or self.total) - self.cobrado
 
     @property
     def detalle(self):

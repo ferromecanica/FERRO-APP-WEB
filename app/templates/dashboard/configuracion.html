@@ -2,7 +2,19 @@
 {% block title %}Configuración{% endblock %}
 {% block content %}
 <div class="page-head"><div><div class="eyebrow">Sistema</div><h1>Configuración</h1></div></div>
-<form class="card" method="post" style="max-width:760px">
+
+<div class="config-layout">
+  <nav class="config-nav">
+    <a href="#taller" data-panel="taller"><i class="fa-solid fa-screwdriver-wrench"></i> Taller</a>
+    <a href="#socios" data-panel="socios"><i class="fa-solid fa-user-tie"></i> Socios</a>
+    <a href="#tarjetas" data-panel="tarjetas"><i class="fa-solid fa-credit-card"></i> Comisiones de tarjeta</a>
+    <a href="#backup" data-panel="backup"><i class="fa-solid fa-cloud-arrow-up"></i> Copia de seguridad</a>
+    <a href="#pantalla" data-panel="pantalla"><i class="fa-solid fa-display"></i> Pantalla</a>
+  </nav>
+
+  <div class="config-paneles">
+  <section class="config-panel" id="taller" hidden>
+<form class="card" method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="card-head"><h2>Taller</h2></div>
   <div class="card-body form-grid">
@@ -17,8 +29,10 @@
   </div>
   <div class="card-body" style="border-top:1px solid var(--border)"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button></div>
 </form>
+  </section>
 
-<form class="card" id="socios" method="post" action="{{ url_for('dashboard.socios_guardar') }}" style="max-width:760px;margin-top:16px">
+  <section class="config-panel" id="socios" hidden>
+<form class="card" method="post" action="{{ url_for('dashboard.socios_guardar') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="card-head"><h2>Socios</h2></div>
   <div class="card-body">
@@ -51,8 +65,55 @@
   <div class="card-body" style="border-top:1px solid var(--border)">
     <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar socios</button></div>
 </form>
+  </section>
 
-<div class="card" style="max-width:760px;margin-top:16px">
+  <section class="config-panel" id="tarjetas" hidden>
+<form class="card" method="post" action="{{ url_for('dashboard.condiciones_guardar') }}"
+     >
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-head"><h2>Condiciones de pago</h2></div>
+  <div class="card-body">
+    <p class="muted small" style="margin:0 0 12px">Lo que descuenta la tarjeta y en cuántos días hábiles cae en el banco.
+      Los valores que vienen cargados son los de Getnet a plazo estándar; si cambian las tarifas, se corrigen acá.
+      El <strong>recargo</strong> es lo que se le suma al cliente: dejalo vacío y usa el justo, el que hace que te
+      quede exactamente lo facturado.</p>
+    <div class="table-wrap"><table class="tabla-densa lista-movil" style="min-width:660px">
+      <colgroup><col style="width:160px"><col style="width:74px"><col style="width:84px"><col style="width:90px">
+        <col style="width:90px"><col style="width:92px"><col style="width:58px"><col style="width:42px"></colgroup>
+      <thead><tr><th class="izq">Condición</th><th class="centro">Días háb.</th><th class="num">Arancel</th>
+        <th class="num">Financiación</th><th class="num">Recargo</th><th class="num">Te queda</th>
+        <th class="centro">Activa</th><th></th></tr></thead>
+      <tbody>
+      {% for c in condiciones %}
+        <tr>
+          <td class="izq"><input name="nombre_{{ c.id }}" value="{{ c.nombre }}"></td>
+          <td class="centro"><input name="dias_{{ c.id }}" inputmode="numeric" style="max-width:56px" value="{{ c.dias_habiles }}"></td>
+          <td class="num"><input name="arancel_{{ c.id }}" inputmode="decimal" style="max-width:66px"
+                 value="{{ c.arancel | numero(2) if c.arancel else '' }}" placeholder="0"> %</td>
+          <td class="num"><input name="tasa_{{ c.id }}" inputmode="decimal" style="max-width:66px"
+                 value="{{ c.tasa_financiera | numero(2) if c.tasa_financiera else '' }}" placeholder="0"> %</td>
+          <td class="num"><input name="recargo_{{ c.id }}" inputmode="decimal" style="max-width:66px"
+                 value="{{ c.recargo | numero(2) if c.recargo is not none else '' }}"
+                 placeholder="{{ c.recargo_justo | numero(2) }}"> %</td>
+          <td class="num muted" data-titulo="Te queda">{{ c.queda | numero(2) }} %
+            {% if c.con_costo %}<div class="muted small">−{{ c.descuento | numero(2) }} %</div>{% endif %}</td>
+          <td class="centro"><label class="check"><input type="checkbox" name="activa_{{ c.id }}" value="1" {{ 'checked' if c.activa }}></label></td>
+          <td class="num"><label class="check" title="Borrar"><input type="checkbox" name="borrar_{{ c.id }}" value="1"></label></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <div class="form-grid" style="margin-top:12px">
+      <div><label>Agregar una condición</label><input name="nombre_nueva" placeholder="Ej.: Crédito 12 cuotas"></div>
+    </div>
+  </div>
+  <div class="card-body" style="border-top:1px solid var(--border)">
+    <button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar condiciones</button></div>
+</form>
+  </section>
+
+  <section class="config-panel" id="backup" hidden>
+<div class="card">
   <div class="card-head"><h2>Copia de seguridad</h2></div>
   <div class="card-body">
     {% if drive_ok %}
@@ -77,8 +138,10 @@
     {% endif %}
   </div>
 </div>
+  </section>
 
-<div class="card" style="max-width:760px;margin-top:16px">
+  <section class="config-panel" id="pantalla" hidden>
+<div class="card">
   <div class="card-head"><h2>Tamaño de la pantalla</h2></div>
   <div class="card-body">
     <p class="muted small" style="margin:0 0 12px">Achica o agranda todo: letra, panel del costado y tablas.
@@ -102,6 +165,10 @@
     <p class="muted small" style="margin:10px 0 0" id="ejemplo-fuente">
       Ejemplo: Kit distribución SKF Renault K4M · 3 unidades · $ 154.099 · 27/08/2026.
       <span class="muted">Los títulos y el logo no cambian.</span></p>
+  </div>
+</div>
+  </section>
+
   </div>
 </div>
 
@@ -143,6 +210,26 @@
       });
     });
     try { marcarF(localStorage.getItem('ferro-fuente') || ''); } catch (e) { marcarF(''); }
+  })();
+</script>
+<script>
+  /* El panel de la izquierda: se ve uno por vez y queda en la dirección. */
+  (function () {
+    var botones = document.querySelectorAll('.config-nav a');
+    var paneles = document.querySelectorAll('.config-panel');
+    function mostrar(clave) {
+      var hay = document.getElementById(clave);
+      if (!hay) clave = paneles[0].id;
+      paneles.forEach(function (p) { p.hidden = p.id !== clave; });
+      botones.forEach(function (b) { b.classList.toggle('active', b.dataset.panel === clave); });
+      window.scrollTo(0, 0);  // el ancla dejaba la pantalla scrolleada al vacío
+    }
+    botones.forEach(function (b) {
+      b.addEventListener('click', function () { mostrar(b.dataset.panel); });
+    });
+    /* Los guardados vuelven con #socios o #tarjetas: abren su panel. */
+    mostrar((location.hash || '').replace('#', '') || 'taller');
+    window.addEventListener('hashchange', function () { mostrar(location.hash.replace('#', '')); });
   })();
 </script>
 {% endblock %}

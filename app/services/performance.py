@@ -202,6 +202,14 @@ def valor_del_stock():
             "caros": [{"repuesto": r, "plata": (r.stock_actual or 0) * (r.precio_costo or 0)} for r in caros]}
 
 
+def en_camino(hoy):
+    """Ventas con tarjeta que todavía no se acreditaron."""
+    ventas = Venta.query.filter(Venta.fecha_acreditacion > hoy).order_by(Venta.fecha_acreditacion).all()
+    return {"ventas": ventas,
+            "total": sum(v.cobrado for v in ventas),
+            "bruto": sum(v.bruto_cobrado or v.total for v in ventas)}
+
+
 # ───────────────────────────── Taller ───────────────────────────────
 
 
@@ -256,5 +264,6 @@ def tablero(hoy=None):
         "clientes": top_clientes(hoy),
         "proveedores": top_proveedores(hoy),
         "stock": stock,
+        "en_camino": en_camino(hoy),
         "taller": taller(hoy),
     }

@@ -106,7 +106,10 @@
           </select>
         </div>
         <div style="margin-top:10px"><label>Cómo paga</label>
-          <select name="metodo_pago">{% for m in metodos %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select></div>
+          <select name="condicion_id" required><option value="">Elegí…</option>
+            {% for c in condiciones %}<option value="{{ c.id }}" data-dias="{{ c.dias_habiles }}"
+              data-queda="{{ c.queda }}" data-recargo="{{ c.recargo_usado }}">{{ c.nombre }}</option>{% endfor %}</select></div>
+        <div class="aviso-tarjeta" style="margin-top:10px" data-cuenta-tarjeta data-total="{{ t.total }}" hidden></div>
         <div style="margin-top:10px"><label>Fecha</label>
           <input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:14px"
@@ -137,6 +140,11 @@
       var ed = b.closest('.fila-edicion'); ed.hidden = true;
       document.getElementById(ed.id.replace(/-edicion$/, '')).hidden = false;
     });
+  });
+</script>
+<script>
+  document.querySelectorAll('form').forEach(function (f) {
+    if (f.querySelector('[name=condicion_id]')) FerroCobro(f);
   });
 </script>
 {% endblock %}

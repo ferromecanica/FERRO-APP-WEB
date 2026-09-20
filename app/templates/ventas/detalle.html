@@ -44,6 +44,19 @@
           <dt>Costo</dt><dd class="num">{{ v.costo_total | pesos }}</dd>
           <dt><strong>Ganancia</strong></dt><dd class="num"><strong style="color:var(--ok)">{{ v.ganancia | pesos }}</strong></dd>
         </dl>
+        {% if v.costo_tarjeta %}
+        <dl class="props totales" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+          <dt>Se le cobró</dt><dd class="num">{{ v.bruto_cobrado | pesos }}</dd>
+          <dt>{{ v.metodo_pago }} se queda</dt><dd class="num" style="color:var(--danger)">−{{ v.costo_tarjeta | pesos }}</dd>
+          <dt><strong>Entra al banco</strong></dt><dd class="num"><strong>{{ v.cobrado | pesos }}</strong></dd>
+        </dl>
+        {% endif %}
+        {% if v.fecha_acreditacion and v.fecha_acreditacion > hoy %}
+        <div class="aviso-tarjeta" style="margin-top:12px"><i class="fa-solid fa-hourglass-half"></i>
+          Todavía no entró: se acredita el <strong>{{ v.fecha_acreditacion | dia(True) }}</strong>.</div>
+        {% elif v.fecha_acreditacion and v.costo_tarjeta %}
+        <div class="muted small" style="margin-top:12px">Acreditado el {{ v.fecha_acreditacion | fecha }}.</div>
+        {% endif %}
       </div>
     </div>
 

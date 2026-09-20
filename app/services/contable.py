@@ -27,13 +27,16 @@ def _concepto(venta):
     texto = venta.detalle or "Venta"
     if venta.ot_id and f"OT {venta.ot_id}" not in texto and f"OT:{venta.ot_id}" not in texto:
         texto = f"{texto}. OT:{venta.ot_id}"
+    if venta.costo_tarjeta:
+        # Queda anotado el bruto, así el número no parece un error
+        texto = f"{texto} ({venta.metodo_pago}: se cobraron ${venta.bruto_cobrado:,.0f})".replace(",", ".")
     return texto[:300]
 
 
 def registrar_venta(venta):
     """Crea o actualiza el ingreso de una venta. Las de $0 (sin cargo) no generan nada."""
     mov = ingreso_de(venta)
-    if not venta.total:
+    if not venta.cobrado:
         if mov is not None:
             db.session.delete(mov)
         return None
@@ -41,15 +44,16 @@ def registrar_venta(venta):
     if mov is None:
         mov = MovimientoContable(venta=venta)
         db.session.add(mov)
-    mov.fecha = venta.fecha
-    mov.mes_imputacion = MovimientoContable.mes_de(venta.fecha)
+    # La plata cuenta el día que cae en el banco, no el día de la venta
+    mov.fecha = venta.fecha_acreditacion or venta.fecha
+    mov.mes_imputacion = MovimientoContable.mes_de(mov.fecha)
     mov.tipo = "Ingreso"
     mov.clasificacion = CLASIFICACION
     mov.comprobante = venta.tipo_comprobante or "S/C"
     mov.quien = venta.cliente.nombre if venta.cliente else "Mostrador"
     mov.cuit = venta.cliente.cuit if venta.cliente else None
     mov.concepto = _concepto(venta)
-    mov.total = venta.total
+    mov.total = venta.cobrado  # con tarjeta, el neto que deposita
     mov.cobrado = True  # la venta se registra cuando se cobra
     return mov
 
@@ -72,6 +76,17 @@ def _nombra_ot(movimiento, ot_id):
                for n in re.findall(r"OT[:\s#]*(\d{4,6})", movimiento.concepto or "", re.I))
 
 
+def _ventas_que_acreditan(mes):
+    """Las ventas cuya plata cae en ese mes (con tarjeta, la acreditación manda)."""
+    desde, hasta = f"{mes}-01", f"{mes}-31"
+    porfecha = Venta.query.filter(db.or_(
+        db.and_(Venta.fecha_acreditacion.isnot(None),
+                Venta.fecha_acreditacion >= desde, Venta.fecha_acreditacion <= hasta),
+        db.and_(Venta.fecha_acreditacion.is_(None), Venta.fecha >= desde, Venta.fecha <= hasta),
+    )).order_by(Venta.fecha).all()
+    return porfecha
+
+
 def conciliar(mes):
     """Cruza las ventas del taller con los ingresos de la administración.
 
@@ -85,12 +100,10 @@ def conciliar(mes):
     pares que se corresponden pero por distinto importe.
     """
     ingresos = MovimientoContable.query.filter_by(mes_imputacion=mes, tipo="Ingreso").all()
-    desde, hasta = f"{mes}-01", f"{mes}-31"
-    ventas = Venta.query.filter(Venta.fecha >= desde, Venta.fecha <= hasta).order_by(Venta.fecha).all()
 
     atadas = {m.venta_id for m in ingresos if m.venta_id}
     libres = [m for m in ingresos if not m.venta_id]
-    pendientes = [v for v in ventas if v.total and v.id not in atadas]
+    pendientes = [v for v in _ventas_que_acreditan(mes) if v.cobrado and v.id not in atadas]
 
     sin_ot, distintos = [], []
     for v in pendientes:
@@ -99,12 +112,12 @@ def conciliar(mes):
             sin_ot.append(v)
             continue
         libres.remove(mov)
-        if abs(mov.total - v.total) >= 1:
-            distintos.append({"venta": v, "movimiento": mov, "diferencia": v.total - mov.total})
+        if abs(mov.total - v.cobrado) >= 1:
+            distintos.append({"venta": v, "movimiento": mov, "diferencia": v.cobrado - mov.total})
 
     faltan = []
     for v in sin_ot:
-        mov = next((m for m in libres if abs(m.total - v.total) < 1), None)
+        mov = next((m for m in libres if abs(m.total - v.cobrado) < 1), None)
         if mov is not None:
             libres.remove(mov)
         else:
@@ -124,24 +137,26 @@ def control_del_mes(mes):
     de AppSheet por separado y quedó como quedó.
 
     La cuenta cierra siempre así:
-        facturado − lo que falta cargar + lo que no sale de ventas
-        − lo que está cargado por otro importe = ingresos
+        facturado − costo de tarjeta − lo que falta cargar
+        − lo cargado por otro importe + lo que no sale de ventas = ingresos
     """
     cierre = CierreMensual.query.filter_by(mes=mes).first()
     if cierre is not None and cierre.cerrado:
         return None
 
-    desde, hasta = f"{mes}-01", f"{mes}-31"
-    facturado = sum(v.total for v in Venta.query.filter(Venta.fecha >= desde, Venta.fecha <= hasta).all())
+    ventas = _ventas_que_acreditan(mes)
+    facturado = sum(v.total for v in ventas)
+    tarjeta = sum(v.costo_tarjeta for v in ventas)
     ingresos = sum(m.total for m in MovimientoContable.query.filter_by(
         mes_imputacion=mes, tipo="Ingreso").all())
     faltantes, sin_venta, distintos = conciliar(mes)
     return {
         "facturado": facturado,
+        "tarjeta": tarjeta,
         "ingresos": ingresos,
         "diferencia": ingresos - facturado,
         "faltantes": faltantes,
-        "falta": sum(v.total for v in faltantes),
+        "falta": sum(v.cobrado for v in faltantes),
         "sin_venta": sin_venta,
         "otros": sum(m.total for m in sin_venta),
         "distintos": distintos,

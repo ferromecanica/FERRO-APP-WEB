@@ -3,11 +3,16 @@ import re
 from datetime import date
 from wsgi import app
 from app.extensions import db
-from app.models import Cliente, MovimientoStock, Repuesto, Venta
+from app.models import Cliente, CondicionPago, MovimientoStock, Repuesto, Venta
 app.config['WTF_CSRF_ENABLED'] = False
 c = app.test_client()
 B = lambda r: r.get_data(as_text=True)
 def post(url, d=None): return B(c.post(url, data=d or {}, follow_redirects=True))
+# Las formas de pago ahora son filas de CondicionPago (traen la comisión de la tarjeta)
+def condicion(nombre):
+    with app.app_context():
+        return str(CondicionPago.query.filter_by(nombre=nombre).one().id)
+
 
 with app.app_context():
     r = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).first()
@@ -39,12 +44,12 @@ assert f"{total:,.0f}".replace(',', '.') in b
 
 # no se cobra vacío
 post('/ventas/mostrador/limpiar')
-assert 'Cargá lo que estás vendiendo' in post('/ventas/mostrador/cobrar', {'metodo_pago': 'Efectivo'})
+assert 'Cargá lo que estás vendiendo' in post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Efectivo')})
 
 # cobrar: queda la venta y se descuenta el stock
 post('/ventas/mostrador/items', {'tipo': 'stock', 'repuesto': str(rid), 'cantidad': '2'})
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Mano de obra', 'precio': '9.000', 'costo': '0'})
-b = post('/ventas/mostrador/cobrar', {'metodo_pago': 'Transferencia', 'cliente_id': cid,
+b = post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Transferencia'), 'cliente_id': cid,
                                       'fecha': date.today().isoformat()})
 assert 'registrada' in b and cnombre in b and 'Transferencia' in b
 with app.app_context():

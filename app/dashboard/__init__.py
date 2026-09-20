@@ -4,7 +4,8 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_login import login_required
 
 from ..extensions import db
-from ..models import ESTADOS_OT_ABIERTA, ConfigTaller, OrdenTrabajo, Repuesto, Socio, Turno, Venta
+from ..models import (ESTADOS_OT_ABIERTA, CondicionPago, ConfigTaller, OrdenTrabajo, Repuesto,
+                      Socio, Turno, Venta)
 from ..services import drive
 from ..validaciones import numero_ar
 
@@ -61,6 +62,7 @@ def configuracion():
 
     return render_template("dashboard/configuracion.html", cfg=cfg,
                            socios=Socio.query.order_by(Socio.orden, Socio.nombre).all(),
+                           condiciones=CondicionPago.query.order_by(CondicionPago.orden, CondicionPago.id).all(),
                            ultimo_backup=ultimo_envio(current_app.instance_path),
                            drive_ok=drive.configurado())
 
@@ -94,6 +96,38 @@ def socios_guardar():
     db.session.commit()
     flash("Socios guardados.", "ok")
     return redirect(url_for(".configuracion") + "#socios")
+
+
+@bp.route("/configuracion/condiciones", methods=["POST"])
+@login_required
+def condiciones_guardar():
+    """Lo que descuenta cada forma de pago y en cuántos días hábiles acredita."""
+    nueva = request.form.get("nombre_nueva", "").strip()
+    if nueva:
+        if CondicionPago.query.filter(db.func.lower(CondicionPago.nombre) == nueva.lower()).first():
+            flash("Ya hay una condición con ese nombre.", "error")
+        else:
+            ultimo = db.session.query(db.func.max(CondicionPago.orden)).scalar() or 0
+            db.session.add(CondicionPago(nombre=nueva, orden=ultimo + 1))
+    for c in CondicionPago.query.all():
+        if request.form.get(f"borrar_{c.id}"):
+            if c.ventas:
+                flash(f"«{c.nombre}» ya se usó en una venta: se puede desactivar, no borrar.", "error")
+            else:
+                db.session.delete(c)
+            continue
+        nombre = request.form.get(f"nombre_{c.id}", "").strip()
+        if nombre:
+            c.nombre = nombre
+        c.dias_habiles = request.form.get(f"dias_{c.id}", type=int) or 0
+        c.arancel = numero_ar(request.form.get(f"arancel_{c.id}")) or 0
+        c.tasa_financiera = numero_ar(request.form.get(f"tasa_{c.id}")) or 0
+        recargo = numero_ar(request.form.get(f"recargo_{c.id}"))
+        c.recargo = recargo  # vacío = usar el recargo justo
+        c.activa = bool(request.form.get(f"activa_{c.id}"))
+    db.session.commit()
+    flash("Condiciones de pago guardadas.", "ok")
+    return redirect(url_for(".configuracion") + "#tarjetas")
 
 
 @bp.route("/configuracion/backup", methods=["POST"])
