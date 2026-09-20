@@ -390,6 +390,14 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .dialogo-avisos { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 10px 22px 0; font-size: .84rem; color: var(--warn); }
 .dialogo-body { padding: 16px 22px 22px; }
 .atenuado > td { opacity: .55; }
+/* Renglones de una cuenta: etiqueta a la izquierda, importe a la derecha */
+.linea-cuenta { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 7px 0;
+  border-bottom: 1px dashed var(--border); }
+.linea-cuenta:last-child { border-bottom: 0; }
+.linea-cuenta .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.linea-cuenta.fuerte { border-top: 2px solid var(--accent); border-bottom: 0; margin-top: 8px; padding-top: 10px;
+  font-weight: 700; font-size: 1.05rem; }
+.linea-cuenta.fuerte .num { color: var(--accent-ink); }
 .banda-mes > td { background: #f4f5f7; font-weight: 700; border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border); padding-top: 9px; padding-bottom: 9px; }
 

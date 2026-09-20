@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Cierre de {{ mes | mes_imputacion }}{% endblock %}
+{% macro plata(etiqueta, valor, nota='', color='') -%}
+  <div class="linea-cuenta"><span>{{ etiqueta }}{% if nota %}<div class="muted small">{{ nota }}</div>{% endif %}</span>
+    <span class="num"{% if color %} style="color:{{ color }}"{% endif %}>{{ valor | pesos }}</span></div>
+{%- endmacro %}
+{% block content %}
+{% set cerrado = c and c.cerrado %}
+<div class="page-head">
+  <div><div class="eyebrow">Administración · cierre</div>
+    <h1>{{ mes | mes_imputacion | capitalize }}</h1>
+    <div class="muted small" style="margin-top:4px">
+      {% if cerrado %}Cerrado el {{ c.fecha_cierre | fecha }} · modo {{ c.modo | lower }}
+      {% else %}Todavía abierto: los números se actualizan solos con cada movimiento{% endif %}</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('contable.cierres') }}"><i class="fa-solid fa-arrow-left"></i> Todos los meses</a></div>
+</div>
+
+<form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="grid grid-3-1">
+  <div class="stack">
+    <div class="card">
+      <div class="card-head seccion"><h2><i class="fa-solid fa-scale-balanced"></i> La cuenta del mes</h2></div>
+      <div class="card-body">
+        {{ plata('Ingresos cobrados', p.ingresos, 'lo facturado y no cobrado no cuenta' if p.sin_cobrar else '') }}
+        {% if p.sin_cobrar %}{{ plata('(sin cobrar)', p.sin_cobrar, '', 'var(--muted)') }}{% endif %}
+        {{ plata('Egresos', -p.egresos, 'sin sueldos ni inversión de capital') }}
+        {{ plata('Colchón que entra', p.colchon_entrante, 'lo guardado del mes anterior') }}
+        <div class="linea-cuenta fuerte"><span>Resultado operativo</span>
+          <span class="num">{{ p.resultado | pesos }}</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head seccion"><h2><i class="fa-solid fa-users"></i> Reparto</h2>
+        <span class="muted small">{{ 'sueldos por orden de cobro' if not cerrado }}</span></div>
+      <div class="table-wrap"><table class="tabla-densa lista-movil">
+        <thead><tr><th class="izq">Socio</th><th class="num">Sueldo</th><th class="num">Repago de capital</th>
+          <th class="num">Ganancia</th><th class="num">Total</th></tr></thead>
+        <tbody>
+        {% for fila in (c.socios if cerrado else p.reparto) %}
+          {% set s = fila.socio %}
+          <tr>
+            <td class="izq destacado">{{ s.nombre }}
+              <div class="muted small">base {{ s.sueldo_base | pesos }}{% if s.capital_usd %} · puso {{ s.capital_usd | numero(0) }} dólares{% endif %}</div></td>
+            {% if cerrado %}
+              <td class="num" data-titulo="Sueldo">{{ fila.sueldo | pesos }}</td>
+              <td class="num" data-titulo="Repago">{{ fila.repago | pesos }}</td>
+              <td class="num" data-titulo="Ganancia">{{ fila.ganancia | pesos }}</td>
+              <td class="num" data-titulo="Total"><strong>{{ fila.total | pesos }}</strong></td>
+            {% else %}
+              <td class="num"><input name="sueldo_{{ s.id }}" inputmode="decimal" class="manual" style="max-width:120px"
+                     value="{{ fila.sueldo | numero }}"></td>
+              <td class="num"><input name="repago_{{ s.id }}" inputmode="decimal" class="manual" style="max-width:120px"
+                     value="{{ fila.repago | numero }}"></td>
+              <td class="num"><input name="ganancia_{{ s.id }}" inputmode="decimal" class="manual" style="max-width:120px"
+                     value="{{ fila.ganancia | numero }}"></td>
+              <td class="num"><strong>{{ (fila.sueldo + fila.repago + fila.ganancia) | pesos }}</strong></td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% if not cerrado %}
+      <div class="card-body" style="border-top:1px solid var(--border)">
+        <p class="muted small" style="margin:0">Los importes de arriba son la propuesta automática. Si los cambiás,
+          elegí <strong>Manual</strong> en el panel de la derecha antes de guardar.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card resultado">
+      <div class="card-head seccion"><h2><i class="fa-solid fa-chart-pie"></i> Qué queda</h2></div>
+      <div class="card-body">
+        {{ plata('Sueldos', (c.sueldos if cerrado else p.sueldos)) }}
+        {{ plata('Remanente', (p.remanente if not cerrado else (c.resultado - c.sueldos))) }}
+        <dl class="props totales" style="margin-top:12px">
+          <dt>Repago de capital {% if not cerrado %}<span class="muted small">({{ (p.porcentajes.repago * 100) | int }} %)</span>{% endif %}</dt>
+          <dd class="num">{{ (c.repago if cerrado else p.repago) | pesos }}</dd>
+          <dt>Ganancia de socios {% if not cerrado %}<span class="muted small">({{ (p.porcentajes.ganancia * 100) | int }} %)</span>{% endif %}</dt>
+          <dd class="num">{{ (c.ganancia if cerrado else p.ganancia) | pesos }}</dd>
+        </dl>
+        <div class="precio-final" style="margin-top:12px"><span>Colchón</span>
+          {% if cerrado %}<strong>{{ c.colchon | pesos }}</strong>
+          {% else %}<input name="colchon" inputmode="decimal" class="manual" style="max-width:140px;text-align:right"
+                  value="{{ p.colchon | numero }}">{% endif %}</div>
+        <p class="muted small" style="margin:10px 0 0">Va como ingreso a {{ siguiente | mes_imputacion }}.</p>
+        {% if p.deuda_usd %}
+        <p class="muted small" style="margin:10px 0 0"><i class="fa-solid fa-circle-info"></i>
+          Hay deuda de capital ({{ p.deuda_usd | numero(0) }} dólares), por eso el remanente se parte
+          40 / 30 / 30. Sin deuda sería 0 / 50 / 50.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if not cerrado %}
+    <div class="card card-body stack-form">
+      <div><label>Modo</label>
+        <select name="modo" id="modo">
+          <option value="Automático">Automático (lo calcula Ferro)</option>
+          <option value="Manual" {{ 'selected' if c and c.modo == 'Manual' }}>Manual (los números que puse yo)</option>
+        </select></div>
+      <div><label>Fecha de cierre</label><input type="date" name="fecha_cierre" value="{{ (c.fecha_cierre if c else hoy).isoformat() }}"></div>
+      <div><label>Cotización del dólar</label><input name="cotizacion" inputmode="decimal"
+             value="{{ c.cotizacion | numero if c and c.cotizacion else '' }}" placeholder="Ej.: 1.535"></div>
+      <div><label>Notas</label><textarea name="notas" rows="2">{{ c.notas if c else '' }}</textarea></div>
+      <button class="btn" name="accion" value="guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar borrador</button>
+      <button class="btn btn-primary" name="accion" value="cerrar"
+              data-confirmar="¿Cerrar {{ mes | mes_imputacion }}?"
+              data-confirmar-detalle="Se registran las liquidaciones de sueldo, la devolución de capital y el colchón para el mes que viene."
+              data-confirmar-boton="Cerrar el mes">
+        <i class="fa-solid fa-lock"></i> Cerrar el mes</button>
+    </div>
+    {% else %}
+    <div class="card card-body">
+      {% if c.notas %}<p class="muted small" style="margin:0 0 10px">{{ c.notas }}</p>{% endif %}
+      <p class="muted small" style="margin:0 0 10px"><i class="fa-solid fa-circle-check" style="color:var(--ok)"></i>
+        Quedaron registradas {{ c.movimientos | length }} anotaciones: sueldos, repago y el colchón.</p>
+      <form method="post" data-confirmar="¿Reabrir {{ mes | mes_imputacion }}?"
+            data-confirmar-detalle="Se borran los sueldos, el repago y el colchón que generó este cierre."
+            data-confirmar-boton="Reabrir" data-confirmar-tono="peligro">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm" name="accion" value="reabrir"><i class="fa-solid fa-lock-open"></i> Reabrir el mes</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</form>
+
+{% if not cerrado %}
+<script>
+  // Si tocás un número a mano, el modo pasa a Manual solo
+  var modo = document.getElementById('modo');
+  document.querySelectorAll('.manual').forEach(function (c) {
+    c.addEventListener('input', function () { modo.value = 'Manual'; });
+  });
+</script>
+{% endif %}
+{% endblock %}

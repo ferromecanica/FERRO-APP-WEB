@@ -535,14 +535,16 @@ class MovimientoContable(db.Model):
     cobrado = db.Column(db.Boolean, default=True, nullable=False)  # los ingresos suman al cierre si están cobrados
     venta_id = db.Column(db.Integer, db.ForeignKey("venta.id"))
     ingreso_id = db.Column(db.Integer, db.ForeignKey("ingreso_stock.id"))
+    cierre_id = db.Column(db.Integer, db.ForeignKey("cierre_mensual.id"))  # lo generó un cierre
 
     venta = db.relationship("Venta")
     ingreso = db.relationship("IngresoStock")
+    cierre = db.relationship("CierreMensual", back_populates="movimientos")
 
     @property
     def automatico(self):
-        """Salió de una venta o de una compra de repuestos: no se edita a mano."""
-        return bool(self.venta_id or self.ingreso_id)
+        """Lo generó Ferro (una venta, una compra o un cierre): no se edita a mano."""
+        return bool(self.venta_id or self.ingreso_id or self.cierre_id)
 
     @property
     def signo(self):
@@ -563,8 +565,10 @@ class AporteCapital(db.Model):
     pesos = db.Column(db.Float, default=0, nullable=False)
     cotizacion = db.Column(db.Float)  # cuánto valía el dólar ese día
     notas = db.Column(db.String(300))
+    cierre_id = db.Column(db.Integer, db.ForeignKey("cierre_mensual.id"))  # devolución hecha en un cierre
 
     socio = db.relationship("Socio", back_populates="aportes")
+    cierre = db.relationship("CierreMensual", back_populates="devoluciones")
 
     @property
     def usd(self):
@@ -584,16 +588,62 @@ class AporteCapital(db.Model):
 
 
 class CierreMensual(db.Model):
-    """El cierre de un mes: qué entró, qué salió y cómo se reparte."""
+    """El cierre de un mes: qué entró, qué salió y cómo se reparte.
+
+    Al cerrar se guardan los números tal como quedaron (después los movimientos
+    pueden cambiar, pero el cierre es el cierre) y se generan las liquidaciones
+    de sueldo, la devolución de capital y el colchón del mes siguiente.
+    """
 
     id = db.Column(db.Integer, primary_key=True)
     mes = db.Column(db.String(7), unique=True, nullable=False)  # "2026-08"
     fecha_cierre = db.Column(db.Date)
     cotizacion = db.Column(db.Float)
     estado = db.Column(db.String(20), default="Abierto")  # Abierto | Cerrado
-    modo = db.Column(db.String(10), default="Manual")  # Manual | Automático
-    colchon = db.Column(db.Float, default=0)  # lo que se guarda para el mes que viene
+    modo = db.Column(db.String(12), default="Automático")  # Automático | Manual
     notas = db.Column(db.Text)
+
+    # Cómo quedó (se completa al cerrar)
+    ingresos = db.Column(db.Float, default=0)
+    egresos = db.Column(db.Float, default=0)
+    colchon_entrante = db.Column(db.Float, default=0)
+    repago = db.Column(db.Float, default=0)
+    ganancia = db.Column(db.Float, default=0)
+    colchon = db.Column(db.Float, default=0)  # lo que se guarda para el mes que viene
+
+    socios = db.relationship("CierreSocio", back_populates="cierre", cascade="all, delete-orphan")
+    movimientos = db.relationship("MovimientoContable", back_populates="cierre")
+    devoluciones = db.relationship("AporteCapital", back_populates="cierre")
+
+    @property
+    def resultado(self):
+        return (self.ingresos or 0) - (self.egresos or 0) + (self.colchon_entrante or 0)
+
+    @property
+    def sueldos(self):
+        return sum(s.sueldo or 0 for s in self.socios)
+
+    @property
+    def cerrado(self):
+        return self.estado == "Cerrado"
+
+
+class CierreSocio(db.Model):
+    """Lo que le tocó a cada socio en un cierre."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    cierre_id = db.Column(db.Integer, db.ForeignKey("cierre_mensual.id"), nullable=False)
+    socio_id = db.Column(db.Integer, db.ForeignKey("socio.id"), nullable=False)
+    sueldo = db.Column(db.Float, default=0)
+    repago = db.Column(db.Float, default=0)
+    ganancia = db.Column(db.Float, default=0)
+
+    cierre = db.relationship("CierreMensual", back_populates="socios")
+    socio = db.relationship("Socio")
+
+    @property
+    def total(self):
+        return (self.sueldo or 0) + (self.repago or 0) + (self.ganancia or 0)
 
 
 class MovimientoStock(db.Model):

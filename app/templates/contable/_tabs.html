@@ -1,7 +1,0 @@
-<div class="filters" style="margin-bottom:14px">
-  <a class="chip {{ 'active' if request.endpoint in ('contable.movimientos', 'contable.form') }}"
-     href="{{ url_for('contable.movimientos') }}"><i class="fa-solid fa-right-left"></i> Movimientos</a>
-  <a class="chip {{ 'active' if request.endpoint == 'contable.capital' }}"
-     href="{{ url_for('contable.capital') }}"><i class="fa-solid fa-piggy-bank"></i> Capital</a>
-  <a class="chip" href="{{ url_for('dashboard.configuracion') }}#socios"><i class="fa-solid fa-user-tie"></i> Socios</a>
-</div>

@@ -11,6 +11,8 @@ from flask_login import login_required
 from ..extensions import db
 from ..models import (
     CLASIFICACIONES,
+    CierreMensual,
+    CierreSocio,
     COMPROBANTES,
     TIPOS_CAPITAL,
     TIPOS_MOVIMIENTO_CONTABLE,
@@ -18,6 +20,7 @@ from ..models import (
     MovimientoContable,
     Socio,
 )
+from ..services import cierre as calculo
 from ..validaciones import formatear_cuit, numero_ar
 
 bp = Blueprint("contable", __name__)
@@ -195,3 +198,89 @@ def capital_eliminar(id):
     db.session.commit()
     flash("Aporte eliminado.", "ok")
     return redirect(url_for(".capital"))
+
+
+# ───────────────────────────────── Cierre mensual ───────────────────────────
+
+
+@bp.route("/cierres")
+def cierres():
+    """Todos los meses: los cerrados, con sus números, y el que está en curso."""
+    cerrados = {c.mes: c for c in CierreMensual.query.order_by(CierreMensual.mes.desc()).all()}
+    meses = sorted(set(_meses_cargados()) | set(cerrados), reverse=True)
+    filas = []
+    for mes in meses:
+        c = cerrados.get(mes)
+        filas.append({"mes": mes, "cierre": c, "numeros": calculo.numeros_del_mes(mes) if c is None else None})
+    return render_template("contable/cierres.html", filas=filas)
+
+
+@bp.route("/cierres/<mes>", methods=["GET", "POST"])
+def cierre(mes):
+    guardado = CierreMensual.query.filter_by(mes=mes).first()
+    socios = Socio.query.order_by(Socio.orden, Socio.nombre).all()
+    if not socios:
+        flash("Cargá los socios en Configuración antes de cerrar un mes.", "error")
+        return redirect(url_for("dashboard.configuracion") + "#socios")
+
+    if request.method == "POST":
+        accion = request.form.get("accion")
+        if accion == "reabrir" and guardado is not None:
+            calculo.limpiar_generado(guardado)
+            db.session.delete(guardado)
+            db.session.commit()
+            flash(f"{mes_lindo(mes)} quedó abierto de nuevo: se borraron los sueldos y el colchón que había generado.", "ok")
+            return redirect(url_for(".cierre", mes=mes))
+
+        propuesta = calculo.calcular(mes, socios)
+        c = guardado or CierreMensual(mes=mes)
+        c.modo = "Manual" if request.form.get("modo") == "Manual" else "Automático"
+        c.cotizacion = numero_ar(request.form.get("cotizacion"))
+        c.fecha_cierre = _fecha("fecha_cierre", date.today())
+        c.notas = request.form.get("notas", "").strip() or None
+        c.ingresos, c.egresos = propuesta["ingresos"], propuesta["egresos"]
+        c.colchon_entrante = propuesta["colchon_entrante"]
+        if guardado is None:
+            db.session.add(c)
+        else:
+            calculo.limpiar_generado(c)
+            for fila in list(c.socios):
+                db.session.delete(fila)
+            c.socios = []
+        db.session.flush()
+
+        repago = ganancia = 0
+        for fila in propuesta["reparto"]:
+            s = fila["socio"]
+            if c.modo == "Manual":
+                sueldo = numero_ar(request.form.get(f"sueldo_{s.id}")) or 0
+                suyo_repago = numero_ar(request.form.get(f"repago_{s.id}")) or 0
+                suya_ganancia = numero_ar(request.form.get(f"ganancia_{s.id}")) or 0
+            else:
+                sueldo, suyo_repago, suya_ganancia = fila["sueldo"], fila["repago"], fila["ganancia"]
+            repago += suyo_repago
+            ganancia += suya_ganancia
+            db.session.add(CierreSocio(cierre=c, socio=s, sueldo=sueldo, repago=suyo_repago, ganancia=suya_ganancia))
+        c.repago, c.ganancia = repago, ganancia
+        db.session.flush()
+
+        disponible = max(c.resultado, 0)
+        remanente = max(disponible - c.sueldos, 0)
+        colchon = numero_ar(request.form.get("colchon")) if c.modo == "Manual" else propuesta["colchon"]
+        c.colchon = colchon if colchon is not None else max(remanente - repago - ganancia, 0)
+
+        if accion == "cerrar":
+            c.estado = "Cerrado"
+            calculo.generar_movimientos(c, calculo.mes_siguiente(mes))
+            db.session.commit()
+            flash(f"{mes_lindo(mes)} cerrado. Quedaron las liquidaciones de sueldo y el colchón "
+                  f"de {(c.colchon or 0):,.0f} para el mes que viene.".replace(",", "."), "ok")
+        else:
+            c.estado = "Abierto"
+            db.session.commit()
+            flash("Borrador guardado.", "ok")
+        return redirect(url_for(".cierre", mes=mes))
+
+    propuesta = calculo.calcular(mes, socios)
+    return render_template("contable/cierre.html", mes=mes, c=guardado, p=propuesta, socios=socios,
+                           hoy=date.today(), siguiente=calculo.mes_siguiente(mes))

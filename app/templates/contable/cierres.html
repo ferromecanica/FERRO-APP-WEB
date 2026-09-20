@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import estado as badge, vacio %}
+{% block title %}Cierre mensual{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Administración</div><h1>Cierre mensual</h1>
+    <div class="muted small" style="margin-top:4px">Qué entró, qué salió y cómo se reparte, mes por mes.</div></div>
+</div>
+
+<div class="card">
+  {% if filas %}
+  <div class="table-wrap"><table class="tabla-densa lista-movil">
+    <colgroup><col style="width:180px"><col style="width:110px"><col style="width:130px"><col style="width:130px">
+      <col style="width:130px"><col style="width:130px"><col style="width:130px"></colgroup>
+    <thead><tr><th class="izq">Mes</th><th class="centro">Estado</th><th class="num">Ingresos</th>
+      <th class="num">Egresos</th><th class="num">Resultado</th><th class="num hide-sm">Sueldos</th>
+      <th class="num hide-sm">Colchón</th></tr></thead>
+    <tbody>
+    {% for f in filas %}
+      {% set c = f.cierre %}
+      <tr class="clickable" onclick="location='{{ url_for('contable.cierre', mes=f.mes) }}'">
+        <td class="izq destacado">{{ f.mes | mes_imputacion | capitalize }}</td>
+        <td class="centro">{{ badge('Finalizada' if c and c.cerrado else 'Pendiente') if c else badge('Borrador') }}</td>
+        {% if c %}
+          <td class="num" data-titulo="Ingresos">{{ c.ingresos | pesos }}</td>
+          <td class="num" data-titulo="Egresos">{{ c.egresos | pesos }}</td>
+          <td class="num" data-titulo="Resultado"><strong>{{ c.resultado | pesos }}</strong></td>
+          <td class="num hide-sm" data-titulo="Sueldos">{{ c.sueldos | pesos }}</td>
+          <td class="num hide-sm" data-titulo="Colchón">{{ c.colchon | pesos }}</td>
+        {% else %}
+          <td class="num muted" data-titulo="Ingresos">{{ f.numeros.ingresos | pesos }}</td>
+          <td class="num muted" data-titulo="Egresos">{{ f.numeros.egresos | pesos }}</td>
+          <td class="num muted" data-titulo="Resultado">{{ (f.numeros.ingresos - f.numeros.egresos + f.numeros.colchon_entrante) | pesos }}</td>
+          <td class="num hide-sm muted">—</td><td class="num hide-sm muted">—</td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-calendar-check', 'Todavía no hay meses con movimientos.') }}{% endif %}
+</div>
+{% endblock %}
