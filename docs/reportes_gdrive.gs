@@ -2,8 +2,9 @@
  * Conexión de Ferro con Google Drive: reportes PDF y fotos de las OT.
  *
  * accion=reporte (o sin acción): Ferro manda el HTML del reporte, del presupuesto o de la
- *   circular contable. Va a la carpeta de reportes salvo que se mande carpeta=presupuestos
- *   o carpeta_id con el id de otra carpeta cualquiera; este script reemplaza
+ *   circular contable. Va a la carpeta que diga carpeta (presupuestos | circulares) o, si
+ *   Ferro manda carpeta_id, a esa carpeta de Drive. Si no dice nada, a la de reportes.
+ *   Este script reemplaza
  *   __LOGO__, __FIRMA__ y __FOTO:archivo__ por las imágenes de Drive, lo convierte a PDF,
  *   lo guarda en la carpeta de reportes (reemplazando uno anterior con el mismo nombre)
  *   y devuelve el link.
@@ -35,6 +36,7 @@
 const SECRETO = 'PEGAR_ACA_EL_BACKUP_SECRET';
 const FOLDER_REPORTES_ID = '1o1ZkDqFamPa13Vmgzq5Um2FFYla84GIq';
 const FOLDER_PRESUPUESTOS_ID = '1lBvBQ6mPestQoBhgmEPnE25x-JgWUAtb';
+const FOLDER_CIRCULARES_ID = '1zZTFHxFu898i_EHbxE7cJjhreTLuc8Zp';
 const FOLDER_LOGO_ID = '1hKdsArmHtOGlBSA_ZQ_LCeRv4UKKfyC3';
 const NOMBRE_LOGO = 'SOBRIO FONDO BLANCO.jpeg';
 const NOMBRE_FIRMA = 'FIRMA.jpg';
@@ -68,8 +70,9 @@ function generarReporte(p) {
     return imagenBase64(FOLDER_FOTOS_ID, archivo) || '';
   });
 
+  const CARPETAS = { presupuestos: FOLDER_PRESUPUESTOS_ID, circulares: FOLDER_CIRCULARES_ID };
   const carpeta = DriveApp.getFolderById(
-    p.carpeta_id ? p.carpeta_id : (p.carpeta === 'presupuestos' ? FOLDER_PRESUPUESTOS_ID : FOLDER_REPORTES_ID));
+    p.carpeta_id || CARPETAS[p.carpeta] || FOLDER_REPORTES_ID);
   const anteriores = carpeta.getFilesByName(p.nombre);
   while (anteriores.hasNext()) anteriores.next().setTrashed(true);
 
