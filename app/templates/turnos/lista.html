@@ -1,24 +1,85 @@
 {% extends "base.html" %}
-{% from "partials/macros.html" import estado, vacio %}
+{% from "partials/macros.html" import estado as badge, vacio %}
 {% block title %}Turnos{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><div class="eyebrow">Taller</div><h1>Turnos</h1></div>
-  <div class="actions"><button class="btn btn-primary" disabled title="Próximamente"><i class="fa-solid fa-plus"></i> Nuevo turno</button></div>
+  <div><div class="eyebrow">Taller</div><h1>Turnos</h1>
+    <div class="muted small" style="margin-top:4px">{{ cantidad }} turno{{ 's' if cantidad != 1 }} en esta vista</div></div>
+  <div class="actions">
+    <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+      <input type="search" name="q" value="{{ q }}" placeholder="Nombre, patente, teléfono o motivo…"
+             hx-get="{{ url_for('turnos.lista', vista=vista) }}" hx-trigger="input changed delay:250ms, search"
+             hx-target="body" hx-push-url="true"></div>
+    <a class="btn btn-primary" href="{{ url_for('turnos.form') }}"><i class="fa-solid fa-plus"></i> Nuevo turno</a>
+  </div>
 </div>
-<div class="card">
-  {% if turnos %}
-  <div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Cliente</th><th>Vehículo</th><th class="hide-sm">Motivo</th><th>Estado</th></tr></thead>
+
+<div class="filters" style="margin-bottom:14px">
+  {% for clave, texto in vistas.items() %}
+    <a class="chip {{ 'active' if vista == clave }}" href="{{ url_for('turnos.lista', vista=clave, q=q or None) }}">{{ texto }}</a>
+  {% endfor %}
+</div>
+
+{% if dias %}
+{% for d in dias %}
+<div class="card" style="margin-bottom:14px">
+  <div class="card-head seccion">
+    <h2>{% if d.fecha == hoy %}<i class="fa-solid fa-star" style="color:var(--accent)"></i> {% endif %}{{ d.fecha | dia(true) | capitalize }}</h2>
+    <span class="muted small">{{ d.turnos | length }} turno{{ 's' if d.turnos | length != 1 }}</span>
+  </div>
+  <div class="table-wrap"><table class="tabla-densa">
     <tbody>
-    {% for t in turnos %}
-      <tr><td><strong>{{ t.fecha | fecha('%a %d/%m') }}</strong>{% if t.hora %}<div class="muted small">{{ t.hora.strftime('%H:%M') }}</div>{% endif %}</td>
-        <td>{{ t.cliente.nombre if t.cliente else (t.contacto or '—') }}<div class="muted small">{{ t.telefono or '' }}</div></td>
-        <td>{% if t.vehiculo %}<span class="plate">{{ t.vehiculo.patente }}</span>{% else %}—{% endif %}</td>
-        <td class="hide-sm">{{ t.motivo or '' }}</td><td>{{ estado(t.estado) }}</td></tr>
+    {% for t in d.turnos %}
+      <tr id="turno-{{ t.id }}" class="{{ 'atenuado' if t.estado in ('Cancelado', 'Ingresado') }}">
+        <td class="izq" style="width:72px;white-space:nowrap">
+          <strong style="font-size:1.05rem">{{ t.hora.strftime('%H:%M') if t.hora else '—' }}</strong>
+          {% if t.duracion %}<div class="muted small">{{ t.duracion }}</div>{% endif %}</td>
+        <td class="izq">
+          <strong>{{ t.quien }}</strong>
+          {% if t.vehiculo %} <span class="plate">{{ t.vehiculo.patente }}</span>
+            <span class="muted small">{{ t.vehiculo.descripcion }}</span>{% endif %}
+          <div class="muted small">{{ t.motivo or 'Sin motivo anotado' }}
+            {%- if t.observaciones %} · {{ t.observaciones | truncate(60) }}{% endif %}</div></td>
+        <td class="izq" style="width:120px">{{ badge(t.estado) }}
+          {% if t.ot %}<div class="muted small"><a href="{{ url_for('ot.detalle', id=t.ot.id) }}">OT #{{ t.ot.id }}</a></div>{% endif %}</td>
+        <td class="num" style="width:180px"><span class="acciones-fila">
+          {% set wa = t.telefono_util | whatsapp %}
+          {% if wa %}<a class="btn-icon" title="Escribirle por WhatsApp" target="_blank" rel="noopener"
+             href="https://wa.me/{{ wa }}?text={{ ('Hola ' ~ t.quien.split()[0] ~ ', te escribimos de Taller Ferro por el turno del ' ~ (t.fecha | fecha('%d/%m')) ~ (' a las ' ~ t.hora.strftime('%H:%M') if t.hora else '') ~ '.') | urlencode }}">
+             <i class="fa-brands fa-whatsapp" style="color:#25d366"></i></a>{% endif %}
+          {% if t.estado == 'Pendiente' %}
+          <form method="post" action="{{ url_for('turnos.estado', id=t.id) }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="volver" value="{{ url_for('turnos.lista', vista=vista, q=q or None) }}">
+            <button class="btn-icon" name="estado" value="Confirmado" title="Confirmar"><i class="fa-solid fa-check"></i></button></form>
+          {% endif %}
+          {% if not t.ot and t.estado != 'Cancelado' %}
+          <a class="btn btn-sm" href="{{ url_for('ot.form', turno_id=t.id) }}" title="El auto llegó: abrir la OT">
+            <i class="fa-solid fa-car-side"></i> Ingresó</a>
+          {% endif %}
+          <a class="btn-icon" href="{{ url_for('turnos.form', id=t.id) }}" title="Editar"><i class="fa-solid fa-pen"></i></a>
+          {% if t.estado != 'Cancelado' %}
+          <form method="post" action="{{ url_for('turnos.estado', id=t.id) }}" style="display:inline"
+                data-confirmar="¿Cancelar el turno de {{ t.quien }}?" data-confirmar-boton="Cancelar turno" data-confirmar-tono="peligro">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="volver" value="{{ url_for('turnos.lista', vista=vista, q=q or None) }}">
+            <button class="btn-icon" name="estado" value="Cancelado" title="Cancelar"><i class="fa-solid fa-ban"></i></button></form>
+          {% else %}
+          <form method="post" action="{{ url_for('turnos.eliminar', id=t.id) }}" style="display:inline"
+                data-confirmar="¿Eliminar el turno de {{ t.quien }}?" data-confirmar-detalle="No se puede deshacer."
+                data-confirmar-boton="Eliminar" data-confirmar-tono="peligro">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="vista" value="{{ vista }}">
+            <button class="btn-icon" title="Eliminar"><i class="fa-solid fa-trash"></i></button></form>
+          {% endif %}
+        </span></td>
+      </tr>
     {% endfor %}
     </tbody>
   </table></div>
-  {% else %}{{ vacio('fa-calendar', 'No hay turnos próximos.') }}{% endif %}
 </div>
+{% endfor %}
+{% else %}
+<div class="card">{{ vacio('fa-calendar-day', 'No hay turnos' ~ (' que coincidan' if q else ' en esta vista') ~ '.') }}</div>
+{% endif %}
 {% endblock %}

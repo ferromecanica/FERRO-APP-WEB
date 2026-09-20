@@ -272,6 +272,7 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .dialogo-resumen strong { color: var(--text); }
 .dialogo-avisos { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 10px 22px 0; font-size: .84rem; color: var(--warn); }
 .dialogo-body { padding: 16px 22px 22px; }
+.atenuado > td { opacity: .55; }
 .dropzone { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; cursor: pointer;
   border: 2px dashed var(--border); border-radius: 12px; background: var(--surface-2, #fafafa); text-align: center; color: var(--text); }
 .dropzone i { font-size: 1.6rem; color: var(--accent); }

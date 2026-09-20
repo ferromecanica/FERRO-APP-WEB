@@ -121,6 +121,9 @@ class Vehiculo(TimestampMixin, db.Model):
 # ─────────────────────────────────── Turnos ─────────────────────────────────
 
 
+ESTADOS_TURNO = ["Pendiente", "Confirmado", "Ingresado", "Cancelado"]
+
+
 class Turno(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.Date, nullable=False, index=True)
@@ -133,10 +136,28 @@ class Turno(TimestampMixin, db.Model):
     estado = db.Column(db.String(20), default="Pendiente")  # Pendiente | Confirmado | Cancelado | Ingresado
     observaciones = db.Column(db.Text)
     duracion_valor = db.Column(db.Float)
-    duracion_unidad = db.Column(db.String(10))  # Horas | Dias
+    duracion_unidad = db.Column(db.String(10))  # Horas | Días
 
     cliente = db.relationship("Cliente")
     vehiculo = db.relationship("Vehiculo")
+    ot = db.relationship("OrdenTrabajo", back_populates="turno", uselist=False)  # la OT que salió del turno
+
+    @property
+    def quien(self):
+        """Nombre a mostrar: el cliente si está cargado, si no el contacto suelto."""
+        return self.cliente.nombre if self.cliente else (self.contacto or "Sin nombre")
+
+    @property
+    def telefono_util(self):
+        return self.telefono or (self.cliente.telefono if self.cliente else None)
+
+    @property
+    def duracion(self):
+        if not self.duracion_valor:
+            return None
+        valor = int(self.duracion_valor) if self.duracion_valor == int(self.duracion_valor) else self.duracion_valor
+        unidad = (self.duracion_unidad or "Horas").lower()
+        return f"{valor} {unidad[:-1] if valor == 1 else unidad}"
 
 
 # ───────────────────────────── Órdenes de trabajo ───────────────────────────
@@ -180,7 +201,7 @@ class OrdenTrabajo(TimestampMixin, db.Model):
 
     cliente = db.relationship("Cliente", back_populates="ordenes")
     vehiculo = db.relationship("Vehiculo", back_populates="ordenes")
-    turno = db.relationship("Turno")
+    turno = db.relationship("Turno", back_populates="ot")
     tareas = db.relationship("TareaOT", back_populates="ot", cascade="all, delete-orphan")
     horas = db.relationship("RegistroHoras", back_populates="ot", cascade="all, delete-orphan")
     consumos = db.relationship("ConsumoOT", back_populates="ot", cascade="all, delete-orphan")

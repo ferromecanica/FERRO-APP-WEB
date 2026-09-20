@@ -8,7 +8,7 @@
     <h1>Hola, {{ current_user.nombre.split()[0] }}</h1>
   </div>
   <div class="actions">
-    <a class="btn" href="{{ url_for('turnos.lista') }}"><i class="fa-regular fa-calendar-plus"></i> Turno</a>
+    <a class="btn" href="{{ url_for('turnos.form') }}"><i class="fa-regular fa-calendar-plus"></i> Turno</a>
     <a class="btn btn-primary" href="{{ url_for('ot.form') }}"><i class="fa-solid fa-plus"></i> Nueva OT</a>
   </div>
 </div>
@@ -65,10 +65,10 @@
         {% for t in turnos %}
         <li>
           <div>
-            <strong>{{ t.fecha | fecha('%d/%m') }}{% if t.hora %} · {{ t.hora.strftime('%H:%M') }}{% endif %}</strong>
-            <div class="muted small">{{ t.motivo or '' }}</div>
+            <strong>{{ t.fecha | dia }}{% if t.hora %} · {{ t.hora.strftime('%H:%M') }}</strong>{% else %}</strong>{% endif %}
+            <div class="muted small">{{ t.quien }}{% if t.motivo %} · {{ t.motivo | truncate(40) }}{% endif %}</div>
           </div>
-          {% if t.vehiculo %}<span class="plate">{{ t.vehiculo.patente }}</span>{% else %}<span class="small">{{ t.contacto or '' }}</span>{% endif %}
+          {% if t.vehiculo %}<span class="plate">{{ t.vehiculo.patente }}</span>{% endif %}
         </li>
         {% endfor %}
       </ul>

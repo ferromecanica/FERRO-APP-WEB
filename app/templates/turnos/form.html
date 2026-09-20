@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Turno' if t.id else 'Nuevo turno' }}{% endblock %}
+{% block content %}
+{% set f = request.form %}
+<div class="page-head">
+  <div><div class="eyebrow">Turnos</div><h1>{{ 'Editar turno' if t.id else 'Nuevo turno' }}</h1></div>
+</div>
+<form class="card" method="post" style="max-width:760px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-body form-grid">
+    <div><label>Fecha *</label><input type="date" name="fecha" required value="{{ f.get('fecha', (t.fecha or hoy).isoformat()) }}"></div>
+    <div><label>Hora</label><input type="time" name="hora" value="{{ f.get('hora', t.hora.strftime('%H:%M') if t.hora else '09:00') }}"></div>
+
+    <div><label>Cliente</label>
+      <select name="cliente_id" id="cliente">
+        <option value="">— No es cliente todavía —</option>
+        {% for c in clientes %}<option value="{{ c.id }}" {{ 'selected' if c.id == (f.get('cliente_id', t.cliente_id) | int) }}>{{ c.nombre }}</option>{% endfor %}
+      </select></div>
+    <div><label>Vehículo</label><select name="vehiculo_id" id="vehiculo" data-valor="{{ t.vehiculo_id or '' }}"></select></div>
+
+    <div id="suelto" class="full sub-alta" hidden>
+      <div class="sub-alta-titulo"><span><i class="fa-solid fa-user-plus"></i> Todavía no es cliente</span></div>
+      <div><label>Nombre *</label><input name="contacto" id="contacto" value="{{ f.get('contacto', t.contacto or '') }}"
+           placeholder="Cómo se llama"></div>
+      <div class="muted small" style="margin-top:6px">Cuando llegue el auto se carga como cliente al abrir la OT.</div>
+    </div>
+    <div><label>Teléfono</label>
+      <input name="telefono" id="telefono" value="{{ f.get('telefono', t.telefono or '') }}" inputmode="tel" placeholder="341…">
+      <div class="muted small" id="ayuda-telefono" style="margin-top:4px"></div></div>
+
+    <div class="full"><label>Motivo</label>
+      <input name="motivo" value="{{ f.get('motivo', t.motivo or '') }}" placeholder="Ej.: Service 10.000 km, ruido en tren delantero…"></div>
+
+    <div><label>Cuánto va a estar</label>
+      <div class="input-group">
+        <input name="duracion_valor" inputmode="decimal" style="flex:0 0 90px"
+               value="{{ f.get('duracion_valor', (t.duracion_valor | numero(1) | replace(',0','')) if t.duracion_valor else '') }}" placeholder="2">
+        <select name="duracion_unidad">
+          {% for u in ['Horas', 'Días'] %}<option value="{{ u }}" {{ 'selected' if t.duracion_unidad == u }}>{{ u }}</option>{% endfor %}
+        </select>
+      </div></div>
+    <div><label>Estado</label>
+      <select name="estado">
+        {% for e in estados %}<option value="{{ e }}" {{ 'selected' if (t.estado or 'Confirmado') == e }}>{{ e }}</option>{% endfor %}
+      </select></div>
+
+    <div class="full"><label>Observaciones</label>
+      <textarea name="observaciones" rows="2" placeholder="Lo que convenga recordar">{{ f.get('observaciones', t.observaciones or '') }}</textarea></div>
+  </div>
+  <div class="card-body actions" style="border-top:1px solid var(--border)">
+    <button class="btn btn-primary"><i class="fa-solid fa-check"></i> {{ 'Guardar' if t.id else 'Agendar turno' }}</button>
+    <a class="btn" href="{{ url_for('turnos.lista') }}">Cancelar</a>
+  </div>
+</form>
+<script>
+  var vehiculosPorCliente = {{ vehiculos_por_cliente | tojson }};
+  var selCliente = document.getElementById('cliente'), selVehiculo = document.getElementById('vehiculo'),
+      suelto = document.getElementById('suelto'), contacto = document.getElementById('contacto'),
+      ayudaTelefono = document.getElementById('ayuda-telefono');
+  function refrescar(elegido) {
+    var lista = vehiculosPorCliente[selCliente.value] || [];
+    var vacio = !selCliente.value ? 'Todavía no sabemos el auto' : (lista.length ? 'Sin vehículo' : 'El cliente no tiene vehículos');
+    selVehiculo.innerHTML = '<option value="">' + vacio + '</option>';
+    lista.forEach(function (v) {
+      var op = document.createElement('option'); op.value = v.id; op.textContent = v.texto;
+      selVehiculo.appendChild(op);
+    });
+    selVehiculo.value = elegido || '';
+    selVehiculo.disabled = !selCliente.value;
+    suelto.hidden = !!selCliente.value;
+    contacto.required = !selCliente.value;
+    ayudaTelefono.textContent = selCliente.value ? 'Solo si es distinto al del cliente.' : '';
+  }
+  selCliente.addEventListener('change', function () { refrescar(''); });
+  refrescar(selVehiculo.dataset.valor);
+</script>
+{% endblock %}

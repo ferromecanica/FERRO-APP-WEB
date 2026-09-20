@@ -8,6 +8,14 @@
 </div>
 <form class="card" method="post" style="max-width:760px" autocomplete="off">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if turno %}
+  <input type="hidden" name="turno_id" value="{{ turno.id }}">
+  <div class="card-body" style="padding-bottom:0"><div class="aviso">
+    <i class="fa-solid fa-calendar-check"></i>
+    <div>Viene del turno de <strong>{{ turno.quien }}</strong> del {{ turno.fecha | dia }}{% if turno.hora %} a las {{ turno.hora.strftime('%H:%M') }}{% endif %}.
+      {% if turno.observaciones %}<div class="muted small">{{ turno.observaciones }}</div>{% endif %}</div>
+  </div></div>
+  {% endif %}
   <div class="card-body form-grid">
     {% if ot.id %}
       <div class="full"><label>Vehículo</label>

@@ -20,6 +20,7 @@ from ..models import (
     RegistroHoras,
     Repuesto,
     TareaOT,
+    Turno,
     Vehiculo,
     Venta,
     VentaItem,
@@ -141,6 +142,12 @@ def form(id=None):
     if not id and request.args.get("vehiculo_id", type=int):
         vehiculo = db.session.get(Vehiculo, request.args.get("vehiculo_id", type=int))
 
+    # Cuando el auto llega con turno, la OT arranca con lo que ya sabíamos
+    turno = db.session.get(Turno, request.values.get("turno_id", type=int) or 0) if not id else None
+    if turno is not None and request.method == "GET":
+        vehiculo = vehiculo or turno.vehiculo
+        ot.detalle = turno.motivo
+
     if request.method == "POST":
         errores = []
         if not id:
@@ -167,8 +174,12 @@ def form(id=None):
             _asignar_cliente(ot, cliente)
             if ot.km_entrada and ot.km_entrada > (ot.vehiculo.kilometraje or 0):
                 ot.vehiculo.kilometraje = ot.km_entrada
+            if turno is not None and turno.ot is None:
+                turno.ot = ot
+                turno.estado = "Ingresado"
             db.session.commit()
-            flash(f"OT #{ot.id} {'creada' if not id else 'guardada'}.", "ok")
+            flash(f"OT #{ot.id} {'creada' if not id else 'guardada'}"
+                  f"{' con el turno de ' + turno.quien if turno is not None else ''}.", "ok")
             return _volver(ot)
 
     vehiculos = marcas = []
@@ -177,6 +188,7 @@ def form(id=None):
         cargadas = {m for (m,) in db.session.query(Vehiculo.marca).distinct() if m}
         marcas = sorted(set(MARCAS_COMUNES) | cargadas, key=str.lower)
     return render_template("ot/form.html", ot=ot, vehiculo=vehiculo, vehiculos=vehiculos, clientes=_clientes(),
+                           turno=turno,
                            marcas=marcas, proximo=OrdenTrabajo.proximo_numero())
 
 
