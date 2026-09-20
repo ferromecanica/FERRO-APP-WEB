@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ ('#' ~ r.id) if r.id else 'Nuevo repuesto' }}{% endblock %}
-{% macro encabezado(icono, titulo) -%}
-  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2></div>
+{% macro encabezado(icono, titulo, extra='') -%}
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2>
+    {% if extra %}<span class="muted small">{{ extra }}</span>{% endif %}</div>
 {%- endmacro %}
 {% block content %}
 {% set f = request.form %}
@@ -144,17 +145,52 @@
   {% with fotos=r.fotos, vacio_texto='Sin fotos del repuesto.', volver='', editar_ep='stock.foto_editar', eliminar_ep='stock.foto_eliminar' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
 </div>
 
+<div class="card" id="usos" style="margin-top:16px">
+  {{ encabezado('fa-clock-rotate-left', 'Dónde se usó', (usos | length) ~ ' veces · ' ~ (total_usado | numero(2) | replace(',00', '')) ~ ' unidades') }}
+  {% if usos %}
+  <div class="table-wrap" style="max-height:420px;overflow:auto"><table class="tabla-densa">
+    <thead><tr><th class="izq">Fecha</th><th class="izq">Dónde</th><th class="izq">Vehículo / cliente</th>
+      <th class="num">Cant.</th><th class="num hide-sm">Precio</th><th class="num">Subtotal</th></tr></thead>
+    <tbody>
+    {% for u in usos %}
+      <tr>
+        <td class="izq" style="white-space:nowrap">{{ u.fecha | fecha }}</td>
+        <td class="izq">
+          {%- if u.ot %}<a href="{{ url_for('ot.detalle', id=u.ot.id) }}">OT #{{ u.ot.id }}</a>
+            <div class="muted small">{{ u.ot.detalle | truncate(44) if u.ot.detalle }}</div>
+          {%- elif u.venta %}<a href="{{ url_for('ventas.detalle', id=u.venta.id) }}">Venta {{ u.venta.id }}</a>
+            <div class="muted small">mostrador</div>
+          {%- else %}—{% endif %}</td>
+        <td class="izq">
+          {%- if u.ot and u.ot.vehiculo %}<span class="plate">{{ u.ot.vehiculo.patente }}</span>
+            <div class="muted small">{{ u.ot.cliente.nombre if u.ot.cliente }}</div>
+          {%- elif u.venta %}<div class="muted small">{{ u.venta.cliente.nombre if u.venta.cliente else 'Mostrador' }}</div>
+          {%- endif %}</td>
+        <td class="num">{{ u.cantidad | numero(2) | replace(',00', '') }}</td>
+        <td class="num hide-sm muted">{{ u.precio | pesos }}</td>
+        <td class="num"><strong>{{ (u.cantidad * (u.precio or 0)) | pesos }}</strong></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="empty" style="padding:22px">Todavía no se usó en ninguna OT ni venta.</div>{% endif %}
+</div>
+
 <div class="grid grid-3-1" style="margin-top:16px">
   <div class="card">
-    {{ encabezado('fa-right-left', 'Movimientos') }}
+    {{ encabezado('fa-right-left', 'Movimientos de stock') }}
     {% if movimientos %}
     <div class="table-wrap"><table class="tabla-densa">
-      <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>OT</th><th class="num">Cantidad</th></tr></thead>
+      <thead><tr><th class="izq">Fecha</th><th class="izq">Tipo</th><th class="izq">Detalle</th>
+        <th class="num">Cambio</th><th class="num hide-sm">Quedó en</th><th class="izq hide-sm">Quién</th></tr></thead>
       <tbody>{% for m in movimientos %}
-        <tr><td>{{ m.fecha | fecha('%d/%m/%Y %H:%M') }}</td><td><span class="badge">{{ m.tipo }}</span></td>
-          <td style="white-space:normal">{{ m.detalle }}</td>
-          <td>{% if m.ot_id %}<a href="{{ url_for('ot.detalle', id=m.ot_id) }}">#{{ m.ot_id }}</a>{% endif %}</td>
-          <td class="num" style="color:{{ 'var(--ok)' if m.cantidad > 0 else 'var(--danger)' }}">{{ '+' if m.cantidad > 0 }}{{ m.cantidad | numero(2) | replace(',00', '') }}</td></tr>
+        <tr><td class="izq" style="white-space:nowrap">{{ m.fecha | fecha('%d/%m/%Y %H:%M') }}</td>
+          <td class="izq"><span class="badge">{{ m.tipo }}</span></td>
+          <td class="izq" style="white-space:normal">{{ m.detalle }}
+            {% if m.ot_id %}<a href="{{ url_for('ot.detalle', id=m.ot_id) }}">OT #{{ m.ot_id }}</a>{% endif %}</td>
+          <td class="num" style="color:{{ 'var(--ok)' if m.cantidad > 0 else 'var(--danger)' }}">{{ '+' if m.cantidad > 0 }}{{ m.cantidad | numero(2) | replace(',00', '') }}</td>
+          <td class="num hide-sm">{% if m.stock_resultante is not none %}{{ m.stock_resultante | numero(2) | replace(',00', '') }}{% else %}—{% endif %}</td>
+          <td class="izq hide-sm muted small">{{ m.usuario.nombre if m.usuario else '—' }}</td></tr>
       {% endfor %}</tbody>
     </table></div>
     {% else %}<div class="empty" style="padding:22px">Sin movimientos.</div>{% endif %}

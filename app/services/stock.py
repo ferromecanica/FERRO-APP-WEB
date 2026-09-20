@@ -116,6 +116,7 @@ def registrar_movimiento(repuesto, cantidad, tipo, detalle=None, ot_id=None, ven
         venta_id=venta_id,
         ingreso_id=ingreso_id,
         usuario_id=_usuario_id(),
+        stock_resultante=repuesto.stock_actual,  # para poder auditar de cuánto a cuánto quedó
     )
     db.session.add(mov)
     return mov

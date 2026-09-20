@@ -273,7 +273,7 @@ class ConsumoOT(db.Model):
     fecha = db.Column(db.Date, default=date.today, nullable=False)
 
     ot = db.relationship("OrdenTrabajo", back_populates="consumos")
-    repuesto = db.relationship("Repuesto")
+    repuesto = db.relationship("Repuesto", back_populates="consumos")
 
     @property
     def subtotal(self):
@@ -439,8 +439,25 @@ class Repuesto(TimestampMixin, db.Model):
     categoria = db.relationship("Categoria")
     subcategoria = db.relationship("Subcategoria")
     movimientos = db.relationship("MovimientoStock", back_populates="repuesto", order_by="MovimientoStock.fecha.desc()")
+    consumos = db.relationship("ConsumoOT", back_populates="repuesto")      # dónde se usó, en OTs
+    ventas = db.relationship("VentaItem", back_populates="repuesto")        # y en ventas de mostrador
     fotos = db.relationship("FotoRepuesto", back_populates="repuesto", order_by="FotoRepuesto.id",
                             cascade="all, delete-orphan")
+
+    @property
+    def usos(self):
+        """Dónde se usó el repuesto: consumos de OT y renglones de ventas, del más nuevo al más viejo."""
+        salidas = [
+            {"fecha": c.fecha, "ot": c.ot, "venta": None, "cantidad": c.cantidad,
+             "precio": c.precio_unitario, "costo": c.precio_costo, "descripcion": c.descripcion}
+            for c in self.consumos
+        ]
+        salidas += [
+            {"fecha": i.venta.fecha, "ot": i.venta.ot, "venta": i.venta, "cantidad": i.cantidad,
+             "precio": i.precio_unitario, "costo": i.costo_unitario, "descripcion": i.descripcion}
+            for i in self.ventas if i.venta is not None and i.venta.ot_id is None
+        ]
+        return sorted(salidas, key=lambda s: s["fecha"] or date.min, reverse=True)
 
     @property
     def ubicacion(self):
@@ -469,8 +486,16 @@ class MovimientoStock(db.Model):
     ingreso_id = db.Column(db.Integer, db.ForeignKey("ingreso_stock.id"))
     detalle = db.Column(db.String(300))
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"))
+    stock_resultante = db.Column(db.Float)  # cómo quedó el stock después del movimiento
 
     repuesto = db.relationship("Repuesto", back_populates="movimientos")
+    usuario = db.relationship("Usuario")
+
+    @property
+    def stock_anterior(self):
+        if self.stock_resultante is None:
+            return None
+        return self.stock_resultante - (self.cantidad or 0)
 
 
 class IngresoStock(TimestampMixin, db.Model):
@@ -647,7 +672,7 @@ class VentaItem(db.Model):
     costo_unitario = db.Column(db.Float, default=0)
 
     venta = db.relationship("Venta", back_populates="items")
-    repuesto = db.relationship("Repuesto")
+    repuesto = db.relationship("Repuesto", back_populates="ventas")
 
     @property
     def subtotal(self):

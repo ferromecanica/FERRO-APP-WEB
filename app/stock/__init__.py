@@ -198,8 +198,10 @@ def ficha(id=None):
     markup, origen = regla_markup(repuesto) if repuesto.proveedor or repuesto.markup else (1.0, "sin regla de markup")
     movimientos = (MovimientoStock.query.filter_by(repuesto_id=repuesto.id).order_by(MovimientoStock.fecha.desc())
                    .limit(50).all() if repuesto.id else [])
+    usos = repuesto.usos if repuesto.id else []
     return render_template(
-        "stock/ficha.html", r=repuesto, movimientos=movimientos, markup_actual=markup, origen_markup=origen,
+        "stock/ficha.html", r=repuesto, movimientos=movimientos, usos=usos,
+        total_usado=sum(u["cantidad"] or 0 for u in usos), markup_actual=markup, origen_markup=origen,
         arbol=_arbol_categorias(),
         proveedores=_proveedores(), marcas=_distintos(Repuesto.marca),
         estanterias=_distintos(Repuesto.estanteria), estantes=_distintos(Repuesto.estante),
@@ -226,7 +228,7 @@ def ajuste(id):
         flash("El stock ya era ese: no hubo cambios.", "info")
     else:
         diferencia = nuevo - repuesto.stock_actual
-        registrar_movimiento(repuesto, diferencia, "Ajuste", detalle=f"Ajuste: {motivo}")
+        registrar_movimiento(repuesto, diferencia, "Ajuste", detalle=motivo)
         db.session.commit()
         flash(f"Stock ajustado a {nuevo:g} ({'+' if diferencia > 0 else ''}{diferencia:g}).", "ok")
     return redirect(url_for(".ficha", id=id) + "#stock")
@@ -573,10 +575,27 @@ def recalcular():
 # ─────────────────────────────── Movimientos e ingresos ─────────────────────
 
 
+TIPOS_MOVIMIENTO = {
+    "Ajuste": "Ajustes de inventario",
+    "": "Todo el libro",
+}
+
+
 @bp.route("/movimientos")
 def movimientos():
-    movs = MovimientoStock.query.order_by(MovimientoStock.fecha.desc()).limit(300).all()
-    return render_template("stock/movimientos.html", movimientos=movs)
+    """Por defecto, los ajustes a mano: lo demás (ingresos, consumos, ventas) se ve en su pantalla."""
+    tipo = request.args.get("tipo", "Ajuste")
+    q = request.args.get("q", "").strip()
+    consulta = MovimientoStock.query.join(Repuesto)
+    if tipo in ("Ajuste",):
+        consulta = consulta.filter(MovimientoStock.tipo == tipo)
+    if q:
+        like = f"%{q}%"
+        consulta = consulta.filter(db.or_(Repuesto.nombre.ilike(like), Repuesto.nro_parte.ilike(like),
+                                          MovimientoStock.detalle.ilike(like)))
+    movs = consulta.order_by(MovimientoStock.fecha.desc()).limit(300).all()
+    return render_template("stock/movimientos.html", movimientos=movs, tipo=tipo, q=q,
+                           tipos=TIPOS_MOVIMIENTO)
 
 
 @bp.route("/ingresos")
