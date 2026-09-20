@@ -15,18 +15,18 @@
 </div>
 <div class="card">
   {% if ingresos %}
-  <div class="table-wrap"><table>
+  <div class="table-wrap"><table class="lista-movil">
     <thead><tr><th>Fecha</th><th>Proveedor</th><th class="hide-sm">Nº factura</th><th class="hide-sm">Notas</th>
       <th class="num">Ítems</th><th class="num">Total</th><th>Estado</th></tr></thead>
     <tbody>
     {% for i in ingresos %}
       <tr class="clickable" onclick="location='{{ url_for('stock.ingreso', id=i.id) }}'">
-        <td style="white-space:nowrap">{{ i.fecha | fecha }}</td>
-        <td><strong>{{ i.proveedor }}</strong></td>
-        <td class="hide-sm mono">{{ i.nro_factura or '—' }}</td>
-        <td class="hide-sm">{{ i.notas or '' }}</td>
-        <td class="num">{{ i.items | length }}</td>
-        <td class="num">{{ i.total | pesos }}</td>
+        <td style="white-space:nowrap" data-titulo="Fecha">{{ i.fecha | fecha }}</td>
+        <td class="destacado"><strong>{{ i.proveedor }}</strong></td>
+        <td class="hide-sm mono" data-titulo="Factura">{{ i.nro_factura or '—' }}</td>
+        <td class="hide-sm" data-titulo="Notas">{{ i.notas or '' }}</td>
+        <td class="num" data-titulo="Ítems">{{ i.items | length }}</td>
+        <td class="num" data-titulo="Total">{{ i.total | pesos }}</td>
         <td>{{ badge(i.estado) }}</td>
       </tr>
     {% endfor %}

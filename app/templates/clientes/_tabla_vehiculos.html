@@ -1,6 +1,6 @@
 {% from "partials/macros.html" import vacio %}
 {% if vehiculos %}
-<div class="table-wrap"><table class="tabla-densa">
+<div class="table-wrap"><table class="tabla-densa lista-movil">
   <colgroup><col style="width:120px"><col style="width:34%"><col style="width:30%">
     <col style="width:64px"><col style="width:96px"><col style="width:54px"></colgroup>
   <thead><tr><th class="centro">Patente</th><th class="izq">Vehículo</th><th class="izq">Dueño</th>
@@ -9,11 +9,11 @@
   {% for v in vehiculos %}
     <tr class="clickable" onclick="location='{{ url_for('clientes.vehiculo_detalle', id=v.id) }}'">
       <td class="centro"><span class="plate">{{ v.patente }}</span></td>
-      <td class="izq envuelve">{{ v.descripcion or '—' }}{% if v.color %}<div class="muted small">{{ v.color }}</div>{% endif %}</td>
-      <td class="izq envuelve">{{ v.cliente.nombre if v.cliente else '' }}{% if not v.cliente %}<span class="muted">Sin dueño</span>{% endif %}</td>
-      <td class="centro fecha-chica hide-sm">{{ v.anio or '—' }}</td>
-      <td class="num hide-sm">{{ v.kilometraje | numero }}</td>
-      <td class="centro hide-sm">{{ v.ordenes | length }}</td>
+      <td class="izq envuelve destacado">{{ v.descripcion or '—' }}{% if v.color %}<div class="muted small">{{ v.color }}</div>{% endif %}</td>
+      <td class="izq envuelve" data-titulo="Dueño">{{ v.cliente.nombre if v.cliente else '' }}{% if not v.cliente %}<span class="muted">Sin dueño</span>{% endif %}</td>
+      <td class="centro fecha-chica hide-sm" data-titulo="Año">{{ v.anio or '—' }}</td>
+      <td class="num hide-sm" data-titulo="Km">{{ v.kilometraje | numero }}</td>
+      <td class="centro hide-sm" data-titulo="OT">{{ v.ordenes | length }}</td>
     </tr>
   {% endfor %}
   </tbody>

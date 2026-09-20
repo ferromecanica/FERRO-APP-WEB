@@ -1,6 +1,6 @@
 {% from "partials/macros.html" import estado as badge, vacio %}
 {% if ordenes %}
-<div class="table-wrap"><table class="tabla-densa tabla-ot">
+<div class="table-wrap"><table class="tabla-densa tabla-ot lista-movil">
   <colgroup>
     <col style="width:56px"><col style="width:96px"><col style="width:112px">
     <col style="width:20%"><col style="width:28%">
@@ -17,18 +17,18 @@
   <tbody>
   {% for ot in ordenes %}
     <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
-      <td class="centro"><strong>{{ ot.id }}</strong></td>
+      <td class="centro" data-movil="OT"><strong>{{ ot.id }}</strong></td>
       <td class="centro">{{ badge(ot.estado) }}{% if ot.por_cobrar %} {{ badge('Por cobrar') }}{% endif %}</td>
       <td class="centro"><span class="plate">{{ ot.vehiculo.patente }}</span>
         <div class="muted small">{{ ((ot.vehiculo.marca or '') ~ ' ' ~ (ot.vehiculo.modelo or '')).strip() | truncate(18) }}</div></td>
-      <td class="izq envuelve hide-sm">{% if ot.cliente %}{{ ot.cliente.nombre }}{% else %}<span class="muted">Sin cliente</span>{% endif %}</td>
+      <td class="izq envuelve hide-sm destacado">{% if ot.cliente %}{{ ot.cliente.nombre }}{% else %}<span class="muted">Sin cliente</span>{% endif %}</td>
       <td class="izq envuelve hide-sm"><div class="recorte-2">{{ ot.detalle or '' }}</div></td>
-      <td class="centro fecha-chica hide-sm">{{ ot.fecha_ingreso | fecha }}</td>
-      <td class="centro fecha-chica hide-sm">{{ ot.fecha_fin | fecha }}</td>
-      <td class="num hide-sm">{{ (ot.horas_insumidas * valor_hora + ot.total_repuestos) | pesos }}</td>
-      <td class="num"><strong>{{ ot.total_cobrado | pesos }}</strong></td>
-      <td class="num hide-sm">{{ ot.costo_repuestos | pesos }}</td>
-      <td class="centro hide-sm">{{ ot.horas_insumidas | numero(1) }}</td>
+      <td class="centro fecha-chica hide-sm" data-titulo="Ingreso">{{ ot.fecha_ingreso | fecha }}</td>
+      <td class="centro fecha-chica hide-sm solo-escritorio" data-titulo="Fin">{{ ot.fecha_fin | fecha }}</td>
+      <td class="num hide-sm solo-escritorio" data-titulo="Calculado">{{ (ot.horas_insumidas * valor_hora + ot.total_repuestos) | pesos }}</td>
+      <td class="num" data-titulo="Cobrado"><strong>{{ ot.total_cobrado | pesos }}</strong></td>
+      <td class="num hide-sm solo-escritorio" data-titulo="Costo mat.">{{ ot.costo_repuestos | pesos }}</td>
+      <td class="centro hide-sm solo-escritorio" data-titulo="Horas">{{ ot.horas_insumidas | numero(1) }}</td>
     </tr>
   {% endfor %}
   </tbody>

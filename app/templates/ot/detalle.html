@@ -114,17 +114,17 @@
     <div class="card" id="repuestos">
       {{ encabezado('fa-box-open', 'Repuestos e insumos', (ot.consumos | length) ~ ' ítems') }}
       {% if ot.consumos %}
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="lista-movil">
         <thead><tr><th>Artículo</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th><th class="num hide-sm">Costo</th>{% if editable %}<th></th>{% endif %}</tr></thead>
         <tbody>
         {% for c in ot.consumos %}
           {% set es_varios = c.repuesto_id == 99 %}
           <tr id="consumo-{{ c.id }}">
-            <td>{{ c.descripcion }}{% if not es_varios %}<div class="muted small">#{{ c.repuesto_id }} · stock</div>{% endif %}</td>
-            <td class="num">{{ c.cantidad | numero(2) | replace(',00', '') }}</td>
-            <td class="num">{{ c.precio_unitario | pesos }}</td>
-            <td class="num">{{ c.subtotal | pesos }}</td>
-            <td class="num hide-sm muted">{{ c.subtotal_costo | pesos }}</td>
+            <td class="destacado">{{ c.descripcion }}{% if not es_varios %}<div class="muted small">#{{ c.repuesto_id }} · stock</div>{% endif %}</td>
+            <td class="num" data-titulo="Cantidad">{{ c.cantidad | numero(2) | replace(',00', '') }}</td>
+            <td class="num" data-titulo="Precio">{{ c.precio_unitario | pesos }}</td>
+            <td class="num" data-titulo="Subtotal">{{ c.subtotal | pesos }}</td>
+            <td class="num hide-sm muted solo-escritorio" data-titulo="Costo">{{ c.subtotal_costo | pesos }}</td>
             {% if editable %}<td class="num">{{ acciones('consumo-' ~ c.id, url_for('ot.consumo_eliminar', cid=c.id), '¿Quitar ' ~ (c.descripcion | replace("'", "")) ~ '? Si es del stock, vuelve al stock.') }}</td>{% endif %}
           </tr>
           {% if editable %}
@@ -178,15 +178,15 @@
     <div class="card" id="horas">
       {{ encabezado('fa-screwdriver-wrench', 'Mano de obra', (ot.horas_insumidas | numero(1)) ~ ' h') }}
       {% if ot.horas %}
-      <div class="table-wrap"><table class="tabla-horas">
+      <div class="table-wrap"><table class="tabla-horas lista-movil">
         <thead><tr><th>Mecánico</th><th>Qué se hizo</th><th>Fecha</th><th class="num">Horas</th>{% if editable %}<th></th>{% endif %}</tr></thead>
         <tbody>
         {% for h in ot.horas %}
           <tr id="horas-{{ h.id }}">
-            <td><strong>{{ h.mecanico }}</strong></td>
+            <td class="destacado"><strong>{{ h.mecanico }}</strong></td>
             <td class="que-se-hizo">{{ h.detalle or '—' }}</td>
-            <td style="white-space:nowrap">{{ h.fecha | fecha }}</td>
-            <td class="num"><span class="badge">{{ h.horas | numero(1) }} h</span></td>
+            <td style="white-space:nowrap" data-titulo="Fecha">{{ h.fecha | fecha }}</td>
+            <td class="num" data-titulo="Horas"><span class="badge">{{ h.horas | numero(1) }} h</span></td>
             {% if editable %}<td class="num">{{ acciones('horas-' ~ h.id, url_for('ot.horas_eliminar', hid=h.id), '¿Quitar este registro de horas?') }}</td>{% endif %}
           </tr>
           {% if editable %}

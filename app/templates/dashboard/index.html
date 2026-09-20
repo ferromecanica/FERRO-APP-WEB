@@ -40,16 +40,16 @@
   <div class="card">
     <div class="card-head"><h2>Órdenes de trabajo abiertas</h2><a class="small" href="{{ url_for('ot.lista') }}">Ver todas</a></div>
     {% if ots_abiertas %}
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="lista-movil">
       <thead><tr><th>OT</th><th>Vehículo</th><th class="hide-sm">Cliente</th><th>Estado</th><th class="num hide-sm">Ingreso</th></tr></thead>
       <tbody>
       {% for ot in ots_abiertas %}
         <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
           <td><strong>#{{ ot.id }}</strong><div class="muted small">{{ ot.detalle or '' }}</div></td>
           <td><span class="plate">{{ ot.vehiculo.patente }}</span><div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
-          <td class="hide-sm">{{ ot.cliente.nombre if ot.cliente else "—" }}</td>
+          <td class="hide-sm" data-titulo="Cliente">{{ ot.cliente.nombre if ot.cliente else "—" }}</td>
           <td>{{ estado(ot.estado) }}</td>
-          <td class="num hide-sm">{{ ot.fecha_ingreso | fecha }}</td>
+          <td class="num hide-sm" data-titulo="Ingreso">{{ ot.fecha_ingreso | fecha }}</td>
         </tr>
       {% endfor %}
       </tbody>

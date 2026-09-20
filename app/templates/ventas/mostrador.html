@@ -24,17 +24,17 @@
     <div class="card" id="items">
       {{ encabezado('fa-cart-shopping', 'Lo que se lleva', (venta["items"] | length) ~ ' ítems') }}
       {% if venta["items"] %}
-      <div class="table-wrap"><table class="tabla-densa">
+      <div class="table-wrap"><table class="tabla-densa lista-movil">
         <thead><tr><th class="izq">Descripción</th><th class="num">Cant.</th><th class="num">Precio</th>
           <th class="num">Subtotal</th><th class="num hide-sm">Costo</th><th></th></tr></thead>
         <tbody>
         {% for i in venta["items"] %}
           <tr id="venta-{{ i.id }}">
             <td class="izq">{{ i.descripcion }}{% if i.repuesto_id %}<div class="muted small">#{{ i.repuesto_id }} · del stock</div>{% endif %}</td>
-            <td class="num">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
-            <td class="num">{{ i.precio | pesos }}</td>
-            <td class="num"><strong>{{ (i.cantidad * i.precio) | pesos }}</strong></td>
-            <td class="num hide-sm muted">{{ (i.cantidad * i.costo) | pesos }}</td>
+            <td class="num" data-titulo="Cantidad">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+            <td class="num" data-titulo="Precio">{{ i.precio | pesos }}</td>
+            <td class="num" data-titulo="Subtotal"><strong>{{ (i.cantidad * i.precio) | pesos }}</strong></td>
+            <td class="num hide-sm muted solo-escritorio" data-titulo="Costo">{{ (i.cantidad * i.costo) | pesos }}</td>
             <td class="num"><span class="acciones-fila">
               <button type="button" class="btn-icon btn-editar" data-editar="venta-{{ i.id }}" title="Editar"><i class="fa-solid fa-pen"></i></button>
               <form method="post" action="{{ url_for('ventas.item_eliminar', iid=i.id) }}" style="display:inline">

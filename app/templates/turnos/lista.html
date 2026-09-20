@@ -29,11 +29,11 @@
     <h2>{% if d.fecha == hoy %}<i class="fa-solid fa-star" style="color:var(--accent)"></i> {% endif %}{{ d.fecha | dia(true) | capitalize }}</h2>
     <span class="muted small">{{ d.turnos | length }} turno{{ 's' if d.turnos | length != 1 }}</span>
   </div>
-  <div class="table-wrap"><table class="tabla-densa">
+  <div class="table-wrap"><table class="tabla-densa lista-movil">
     <tbody>
     {% for t in d.turnos %}
       <tr id="turno-{{ t.id }}" class="{{ 'atenuado' if t.estado in ('Cancelado', 'Ingresado') }}">
-        <td class="izq" style="width:72px;white-space:nowrap">
+        <td class="izq hora-turno" style="width:72px;white-space:nowrap">
           <strong style="font-size:1.05rem">{{ t.hora.strftime('%H:%M') if t.hora else '—' }}</strong>
           {% if t.duracion %}<div class="muted small">{{ t.duracion }}</div>{% endif %}</td>
         <td class="izq">
@@ -52,7 +52,7 @@
               <input type="hidden" name="volver" value="{{ url_for('turnos.lista', vista=vista, q=q or None) }}">
               <button class="btn-icon" title="No era esta OT"><i class="fa-solid fa-link-slash"></i></button></form>
           </div>{% endif %}</td>
-        <td class="num" style="width:180px"><span class="acciones-fila">
+        <td class="num acciones-turno" style="width:180px"><span class="acciones-fila">
           {% set wa = t.telefono_util | whatsapp %}
           {% if wa %}<a class="btn-icon" title="Escribirle por WhatsApp" target="_blank" rel="noopener"
              href="https://wa.me/{{ wa }}?text={{ ('Hola ' ~ t.quien.split()[0] ~ ', te escribimos de Taller Ferro por el turno del ' ~ (t.fecha | fecha('%d/%m')) ~ (' a las ' ~ t.hora.strftime('%H:%M') if t.hora else '') ~ '.') | urlencode }}">

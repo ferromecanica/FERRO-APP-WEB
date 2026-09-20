@@ -16,7 +16,7 @@
   <div class="card">
     <div class="card-head seccion"><h2><i class="fa-solid fa-receipt"></i> Detalle</h2>
       <span class="muted small">{{ v.items | length }} ítems</span></div>
-    <div class="table-wrap"><table class="tabla-densa">
+    <div class="table-wrap"><table class="tabla-densa lista-movil">
       <thead><tr><th class="izq">Descripción</th><th class="num">Cant.</th><th class="num">Precio</th>
         <th class="num">Subtotal</th><th class="num hide-sm">Costo</th></tr></thead>
       <tbody>
@@ -24,10 +24,10 @@
         <tr><td class="izq">{{ i.descripcion or (i.repuesto.nombre if i.repuesto else '') }}
             {% if i.repuesto_id %}<div class="muted small">
               <a href="{{ url_for('stock.ficha', id=i.repuesto_id) }}">#{{ i.repuesto_id }}</a> · salió del stock</div>{% endif %}</td>
-          <td class="num">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
-          <td class="num">{{ i.precio_unitario | pesos }}</td>
-          <td class="num"><strong>{{ i.subtotal | pesos }}</strong></td>
-          <td class="num hide-sm muted">{{ i.subtotal_costo | pesos }}</td></tr>
+          <td class="num" data-titulo="Cantidad">{{ i.cantidad | numero(2) | replace(',00', '') }}</td>
+          <td class="num" data-titulo="Precio">{{ i.precio_unitario | pesos }}</td>
+          <td class="num" data-titulo="Subtotal"><strong>{{ i.subtotal | pesos }}</strong></td>
+          <td class="num hide-sm muted solo-escritorio" data-titulo="Costo">{{ i.subtotal_costo | pesos }}</td></tr>
       {% endfor %}
         <tr class="total-row"><td colspan="3">Total</td><td class="num">{{ v.total | pesos }}</td>
           <td class="num hide-sm">{{ v.costo_total | pesos }}</td></tr>

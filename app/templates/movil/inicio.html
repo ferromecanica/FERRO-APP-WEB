@@ -14,7 +14,10 @@
 {% endfor %}
 
 {% if recientes %}
-<h2 class="movil-titulo">Terminadas esta semana</h2>
+<h2 class="movil-titulo">{{ 'Terminadas de esa patente' if q else 'Terminadas esta semana' }}</h2>
 {% for ot in recientes %}{% include "movil/_tarjeta_ot.html" %}{% endfor %}
 {% endif %}
+
+<a class="movil-ver-todo" href="{{ url_for('ot.lista') }}">
+  <i class="fa-solid fa-list"></i> Ver todas las órdenes de trabajo</a>
 {% endblock %}

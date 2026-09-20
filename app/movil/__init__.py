@@ -23,9 +23,10 @@ def inicio():
     if q:
         consulta = consulta.filter(Vehiculo.patente.contains(q))
     abiertas = consulta.filter(OrdenTrabajo.estado.in_(ESTADOS_OT_ABIERTA)).order_by(OrdenTrabajo.id.desc()).all()
-    recientes = (consulta.filter(OrdenTrabajo.estado == "Finalizada",
-                                 OrdenTrabajo.fecha_fin >= date.today() - timedelta(days=7))
-                 .order_by(OrdenTrabajo.fecha_fin.desc(), OrdenTrabajo.id.desc()).limit(10).all())
+    terminadas = consulta.filter(OrdenTrabajo.estado == "Finalizada")
+    if not q:  # sin buscar, solo las de la última semana; buscando, todas las de esa patente
+        terminadas = terminadas.filter(OrdenTrabajo.fecha_fin >= date.today() - timedelta(days=7))
+    recientes = terminadas.order_by(OrdenTrabajo.fecha_fin.desc(), OrdenTrabajo.id.desc()).limit(30).all()
     return render_template("movil/inicio.html", abiertas=abiertas, recientes=recientes, q=q)
 
 

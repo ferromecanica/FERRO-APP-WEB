@@ -118,6 +118,9 @@ h2 { font-size: 1.1rem; font-weight: 700; }
 .card-head { display: flex; align-items: center; justify-content: space-between; padding: var(--pad-card-head); border-bottom: 1px solid var(--border); gap: 12px; }
 .card-body { padding: var(--pad-card); }
 .grid { display: grid; gap: 16px; }
+/* Sin esto, una tabla ancha estira su columna y empuja toda la página al costado */
+.grid > *, .stack > * { min-width: 0; }
+.table-wrap { max-width: 100%; }
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-3-1 { grid-template-columns: 2fr 1fr; }
@@ -232,7 +235,64 @@ textarea { min-height: 90px; resize: vertical; }
   .grid-2, .form-grid { grid-template-columns: 1fr; }
   .search input { min-width: 0; }
   .hide-sm { display: none; }
+  /* En el celular no se achica: los dedos necesitan lo suyo */
+  :root, html[data-densidad="compacto"], html[data-densidad="normal"], html[data-densidad="amplio"] {
+    --escala: 1;
+    --pad-card: 16px;
+    --pad-card-head: 13px 16px;
+    --pad-celda: 11px 14px;
+    --pad-celda-densa: 7px 10px;
+    --pad-celda-densa-th: 8px 10px;
+  }
 }
+
+/* ── En el celular las tablas largas se dan vuelta: cada fila es una tarjeta ──
+   Se marca la tabla con .lista-movil y cada celda con data-titulo. */
+@media (max-width: 820px) {
+  .lista-movil { min-width: 0 !important; font-size: .92rem; }
+  .lista-movil colgroup, .lista-movil thead { display: none; }
+  .lista-movil, .lista-movil tbody, .lista-movil tr, .lista-movil td { display: block; width: auto !important; }
+  .lista-movil tr {
+    border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  .lista-movil tr:active { background: var(--accent-soft); }
+  .lista-movil td {
+    border: 0 !important; padding: 2px 0 !important; text-align: left !important;
+    white-space: normal !important; max-width: none !important;
+  }
+  .lista-movil td.hide-sm { display: block; }
+  .lista-movil td.solo-escritorio { display: none; }
+  .lista-movil td:empty { display: none; }
+  .lista-movil [hidden] { display: none !important; }  /* las filas de edición siguen ocultas */
+  /* Stock: en el celular alcanza con nombre, marca, ubicación, stock y precio */
+  .tabla-config.lista-movil td {
+    display: none;
+    /* el ancho lo fija el configurador de columnas; en tarjeta no corresponde */
+    width: auto !important; min-width: 0 !important; max-width: none !important;
+  }
+  .tabla-config.lista-movil td[data-col="material"],
+  .tabla-config.lista-movil td[data-col="marca"],
+  .tabla-config.lista-movil td[data-col="ubicacion"],
+  .tabla-config.lista-movil td[data-col="stock"],
+  .tabla-config.lista-movil td[data-col="venta"] { display: block !important; }
+  .tabla-config.lista-movil td:empty { display: none !important; }
+  .tabla-scroll { max-height: none; }
+  .lista-movil td[data-titulo]::before {
+    content: attr(data-titulo); display: inline-block; min-width: 92px;
+    color: var(--muted); font-size: .8em; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .lista-movil td.destacado { font-size: 1.05rem; font-weight: 700; margin-bottom: 2px; }
+  .lista-movil .recorte-2 { -webkit-line-clamp: 3; display: inline; }
+  .lista-movil .fecha-chica { font-size: 1em; color: inherit; }
+  .lista-movil tr.banda-mes { background: var(--surface-2); padding: 6px 12px; font-weight: 700; }
+  /* Agenda de turnos: la hora arriba y los botones abajo, con lugar para el dedo */
+  .lista-movil .hora-turno { font-size: 1.1rem; }
+  .lista-movil .acciones-turno { margin-top: 8px; padding-top: 8px !important; border-top: 1px solid var(--border) !important; }
+  .lista-movil .acciones-fila { display: flex; gap: 10px; flex-wrap: wrap; }
+  .lista-movil .acciones-fila .btn-icon { width: 40px; height: 40px; font-size: 1.05rem; }
+}
+
 input::placeholder, textarea::placeholder { color: #a8adb7; font-weight: 400; letter-spacing: normal; }
 .veh-linea { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .veh-linea + .veh-linea { margin-top: 5px; }
@@ -418,6 +478,9 @@ tr.fila-edicion td { padding: 12px 14px; }
 
 /* ── Vista celular ─────────────────────────────────────── */
 body.movil { background: var(--bg); font-size: 16px; }
+.movil-ver-todo { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 18px 0 8px;
+  padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+  color: var(--accent-ink); font-weight: 600; }
 .movil-top { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center;
   padding: 8px 10px; padding-top: max(8px, env(safe-area-inset-top)); background: var(--surface); border-bottom: 1px solid var(--border); }
 .movil-marca { display: flex; justify-content: center; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; color: var(--text); }

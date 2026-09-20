@@ -24,7 +24,7 @@
 
 <div class="card">
   {% if movimientos %}
-  <div class="table-wrap"><table class="tabla-densa">
+  <div class="table-wrap"><table class="tabla-densa lista-movil">
     <thead><tr><th class="izq">Fecha</th><th class="izq">Repuesto</th>
       {% if tipo != 'Ajuste' %}<th class="izq">Tipo</th>{% endif %}
       <th class="izq">Motivo / detalle</th><th class="num">Cambio</th><th class="num hide-sm">Quedó en</th>
@@ -34,19 +34,19 @@
       <tr>
         <td class="izq" style="white-space:nowrap">{{ m.fecha | fecha('%d/%m/%Y') }}
           <div class="muted small">{{ m.fecha | fecha('%H:%M') }}</div></td>
-        <td class="izq"><a href="{{ url_for('stock.ficha', id=m.repuesto_id) }}">{{ m.repuesto.nombre | truncate(50) }}</a>
+        <td class="izq destacado"><a href="{{ url_for('stock.ficha', id=m.repuesto_id) }}">{{ m.repuesto.nombre | truncate(50) }}</a>
           {% if m.repuesto.nro_parte %}<div class="muted small">{{ m.repuesto.nro_parte }}</div>{% endif %}</td>
         {% if tipo != 'Ajuste' %}<td class="izq"><span class="badge">{{ m.tipo }}</span></td>{% endif %}
         <td class="izq" style="white-space:normal">{{ m.detalle }}
           {% if m.ot_id %}<div class="muted small"><a href="{{ url_for('ot.detalle', id=m.ot_id) }}">OT #{{ m.ot_id }}</a></div>
           {% elif m.venta_id %}<div class="muted small"><a href="{{ url_for('ventas.detalle', id=m.venta_id) }}">Venta {{ m.venta_id }}</a></div>
           {% elif m.ingreso_id %}<div class="muted small"><a href="{{ url_for('stock.ingreso', id=m.ingreso_id) }}">Ingreso {{ m.ingreso_id }}</a></div>{% endif %}</td>
-        <td class="num" style="white-space:nowrap;color:{{ 'var(--ok)' if m.cantidad > 0 else 'var(--danger)' }}">
+        <td class="num" data-titulo="Cambio" style="white-space:nowrap;color:{{ 'var(--ok)' if m.cantidad > 0 else 'var(--danger)' }}">
           <strong>{{ '+' if m.cantidad > 0 }}{{ m.cantidad | numero(2) | replace(',00', '') }}</strong></td>
-        <td class="num hide-sm">{% if m.stock_resultante is not none %}
+        <td class="num hide-sm" data-titulo="Quedó en">{% if m.stock_resultante is not none %}
             {{ m.stock_anterior | numero(2) | replace(',00', '') }} → <strong>{{ m.stock_resultante | numero(2) | replace(',00', '') }}</strong>
           {% else %}—{% endif %}</td>
-        <td class="izq hide-sm muted small">{{ m.usuario.nombre if m.usuario else '—' }}</td>
+        <td class="izq hide-sm muted small" data-titulo="Quién">{{ m.usuario.nombre if m.usuario else '—' }}</td>
       </tr>
     {% endfor %}
     </tbody>

@@ -58,7 +58,7 @@
     <div class="card" id="items">
       {{ encabezado('fa-boxes-stacked', 'Repuestos', (ing.items | length) ~ ' ítems') }}
       {% if ing.items %}
-      <div class="table-wrap"><table class="tabla-densa">
+      <div class="table-wrap"><table class="tabla-densa lista-movil">
         <thead><tr><th class="izq">Repuesto</th><th class="num">Cant.</th><th class="num">Costo unit.</th><th class="num">Subtotal</th>
           <th class="hide-sm">Efecto en el precio</th>{% if ing.editable %}<th></th>{% endif %}</tr></thead>
         <tbody>

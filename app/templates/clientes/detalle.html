@@ -18,15 +18,15 @@
       <div class="card-head"><h2>Vehículos</h2>
         <a class="btn btn-sm" href="{{ url_for('clientes.vehiculo_form', cliente_id=cliente.id) }}"><i class="fa-solid fa-plus"></i> Vehículo</a></div>
       {% if cliente.vehiculos %}
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="lista-movil">
         <thead><tr><th>Patente</th><th>Vehículo</th><th class="num hide-sm">Año</th><th class="num">Km</th></tr></thead>
         <tbody>
         {% for v in cliente.vehiculos %}
           <tr class="clickable" onclick="location='{{ url_for('clientes.vehiculo_detalle', id=v.id) }}'">
             <td><span class="plate">{{ v.patente }}</span></td>
-            <td>{{ v.descripcion or '—' }}<div class="muted small">{{ v.color or '' }}</div></td>
-            <td class="num hide-sm">{{ v.anio or '—' }}</td>
-            <td class="num">{{ v.kilometraje | numero }}</td>
+            <td class="destacado">{{ v.descripcion or '—' }}<div class="muted small">{{ v.color or '' }}</div></td>
+            <td class="num hide-sm" data-titulo="Año">{{ v.anio or '—' }}</td>
+            <td class="num" data-titulo="Km">{{ v.kilometraje | numero }}</td>
           </tr>
         {% endfor %}
         </tbody>
@@ -37,14 +37,14 @@
     <div class="card">
       <div class="card-head"><h2>Historial de órdenes</h2></div>
       {% if cliente.ordenes %}
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="lista-movil">
         <thead><tr><th>OT</th><th>Fecha</th><th>Patente</th><th class="hide-sm">Trabajo</th><th>Estado</th></tr></thead>
         <tbody>
         {% for ot in cliente.ordenes %}
           <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
-            <td><strong>#{{ ot.id }}</strong></td><td>{{ ot.fecha_ingreso | fecha }}</td>
+            <td><strong>#{{ ot.id }}</strong></td><td data-titulo="Fecha">{{ ot.fecha_ingreso | fecha }}</td>
             <td><span class="plate">{{ ot.vehiculo.patente }}</span></td>
-            <td class="hide-sm">{{ ot.detalle or '' }}</td><td>{{ estado(ot.estado) }}</td>
+            <td class="hide-sm destacado">{{ ot.detalle or '' }}</td><td>{{ estado(ot.estado) }}</td>
           </tr>
         {% endfor %}
         </tbody>

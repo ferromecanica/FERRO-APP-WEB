@@ -17,14 +17,14 @@
     <div class="card">
       <div class="card-head"><h2>Historial de trabajos</h2><span class="muted small">{{ vehiculo.ordenes | length }} OT</span></div>
       {% if vehiculo.ordenes %}
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="lista-movil">
         <thead><tr><th>OT</th><th>Fecha</th><th class="num">Km</th><th>Trabajo</th><th>Estado</th></tr></thead>
         <tbody>
         {% for ot in vehiculo.ordenes %}
           <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
-            <td><strong>#{{ ot.id }}</strong></td><td>{{ ot.fecha_ingreso | fecha }}</td>
-            <td class="num">{{ ot.km_entrada | numero }}</td>
-            <td>{{ ot.detalle or '' }}{% if ot.cliente and ot.cliente_id != vehiculo.cliente_id %}<div class="muted small">Dueño anterior: {{ ot.cliente.nombre }}</div>{% endif %}</td>
+            <td><strong>#{{ ot.id }}</strong></td><td data-titulo="Fecha">{{ ot.fecha_ingreso | fecha }}</td>
+            <td class="num" data-titulo="Km">{{ ot.km_entrada | numero }}</td>
+            <td class="destacado">{{ ot.detalle or '' }}{% if ot.cliente and ot.cliente_id != vehiculo.cliente_id %}<div class="muted small">Dueño anterior: {{ ot.cliente.nombre }}</div>{% endif %}</td>
             <td>{{ estado(ot.estado) }}</td>
           </tr>
         {% endfor %}
