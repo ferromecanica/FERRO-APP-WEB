@@ -36,8 +36,13 @@
 
 <form method="post" class="card" id="mapeo">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <div class="card-head seccion"><h2><i class="fa-solid fa-table-columns"></i> Qué columna es cuál</h2>
-    <span class="muted small">se guarda para la próxima</span></div>
+  {% set mapeado = (cambios or sin_cambio) and not problemas %}
+  <details class="plegable" {{ '' if mapeado else 'open' }}>
+  <summary class="card-head seccion"><h2><i class="fa-solid fa-table-columns"></i> Qué columna es cuál</h2>
+    <span class="muted small">{% if mapeado %}código: {{ perfil.col_codigo }} · precio: {{ perfil.col_precio }}
+      {%- if perfil.col_envase %} ÷ {{ perfil.col_envase }}{% endif %}
+      {%- if perfil.factor and perfil.factor != 1 %} × {{ perfil.factor | numero(4) }}{% endif %} · tocá para cambiar
+      {% else %}se guarda para la próxima{% endif %}</span></summary>
   <div class="card-body">
     <div class="form-grid">
       {{ columna('col_codigo', 'Columna del código', 'El código con el que se identifica el artículo.', true) }}
@@ -64,6 +69,7 @@
     <thead><tr>{% for c in columnas %}<th class="izq">{{ c }}</th>{% endfor %}</tr></thead>
     <tbody>{% for f in filas %}<tr>{% for c in columnas %}<td class="izq">{{ f[c] if f[c] is not none }}</td>{% endfor %}</tr>{% endfor %}</tbody>
   </table></div>
+  </details>
 
   {% if cambios or sin_cambio or no_encontrados %}
   <div class="card-head seccion" style="border-top:1px solid var(--border)">

@@ -21,6 +21,22 @@ with app.app_context():
         datos.append((r.id, parte, marca, costo))
     db.session.commit()
 
+# RSF ya viene configurado de fábrica: columnas con nombre y elegidas sin tocar nada
+como_rsf = ''.join(f'"{m}","{c}","RUBRO","descripción",{costo * 2:.2f},0.00,"","R01","{c}"\n'
+                   for _, c, m, costo in datos)
+b = post('/stock/listas', {'proveedor': 'RSF', 'archivo': (io.BytesIO(('">>>>>","FECHA","EQUIVALENCIAS","18/09/2026",0.00,0.00,"","R0",""\n' + como_rsf).encode()), 'RSF-Lista.TXT')},
+         content_type='multipart/form-data')
+assert 'Artículo' in b and 'Código RSF' in b, 'no usó los nombres de columna de RSF'
+assert f'{len(datos)} cambian' in b, 'no vino mapeado de fábrica'
+assert 'tocá para cambiar' in b, 'no plegó el mapeo'
+assert 'FECHA' not in b, 'mostró la fila de fecha como si fuera un artículo'
+post('/stock/listas/cancelar')
+
+# el perfil de fábrica de FGC sale de la lista en PDF
+from app.services import listas as srv
+assert srv.conocido('FGC Lubes')['col_envase'] == 'Envase'
+assert srv.equivalencias('16=4, 20=20') == {16.0: 4.0, 20.0: 20.0}
+
 # el proveedor manda un CSV con el precio de venta: el costo es el 57,11 %
 archivo = 'ARTICULO;MARCA;DESCRIPCION;PRECIOVTA\n' + '\n'.join(
     f'{parte};{marca};lo que sea;{costo * 2:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')

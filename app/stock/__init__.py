@@ -365,14 +365,17 @@ def _archivo_en_curso():
     return (ruta, datos) if ruta.exists() else (None, None)
 
 
+CAMPOS_PERFIL = ("col_codigo", "col_marca", "col_precio", "col_envase", "campo_codigo", "factor", "equivalencias")
+
+
 def _perfil_guardado(proveedor):
-    perfil = PerfilLista.query.filter_by(proveedor=proveedor).first()
-    if perfil is None:
-        return {"proveedor": proveedor, "campo_codigo": "nro_parte", "factor": 1.0}
-    return {"proveedor": proveedor, "col_codigo": perfil.col_codigo, "col_marca": perfil.col_marca,
-            "col_precio": perfil.col_precio, "col_envase": perfil.col_envase,
-            "campo_codigo": perfil.campo_codigo, "factor": perfil.factor,
-            "equivalencias": perfil.equivalencias}
+    """Lo que ya sabemos de las listas de ese proveedor: lo guardado o el perfil de fábrica."""
+    perfil = {"proveedor": proveedor, "campo_codigo": "nro_parte", "factor": 1.0}
+    perfil.update({c: v for c, v in (listas.conocido(proveedor) or {}).items() if c in CAMPOS_PERFIL})
+    guardado = PerfilLista.query.filter_by(proveedor=proveedor).first()
+    if guardado is not None:
+        perfil.update({c: getattr(guardado, c) for c in CAMPOS_PERFIL})
+    return perfil
 
 
 @bp.route("/listas", methods=["GET", "POST"])
@@ -392,7 +395,7 @@ def lista_precios():
         ruta = _carpeta_listas() / nombre
         archivo.save(ruta)  # puede pesar bastante: va derecho al disco
         try:
-            listas.muestra(ruta, archivo.filename)
+            listas.muestra(ruta, archivo.filename, proveedor)
         except listas.ErrorLista as e:
             ruta.unlink(missing_ok=True)
             flash(str(e), "error")
@@ -412,6 +415,16 @@ def lista_precios():
     return render_template("stock/listas.html", resumen=[r for r in resumen if r["repuestos"]])
 
 
+def _ajustar_al_archivo(perfil, columnas, proveedor):
+    """Si las columnas guardadas no están en este archivo, probamos con las que ya conocemos."""
+    if perfil.get("col_codigo") in columnas and perfil.get("col_precio") in columnas:
+        return perfil
+    base = listas.conocido(proveedor) or {}
+    if base.get("col_codigo") in columnas and base.get("col_precio") in columnas:
+        perfil.update({c: v for c, v in base.items() if c in CAMPOS_PERFIL})
+    return perfil
+
+
 @bp.route("/listas/revisar", methods=["GET", "POST"])
 def lista_precios_revisar():
     """Paso 2: decir qué columna es cuál y ver qué cambiaría antes de aplicar."""
@@ -419,13 +432,17 @@ def lista_precios_revisar():
     if ruta is None:
         flash("Subí de nuevo el archivo: el anterior ya no está.", "error")
         return redirect(url_for(".lista_precios"))
+    perfil = _perfil_guardado(subida["proveedor"])
     try:
-        columnas, primeras = listas.muestra(ruta, subida["original"])
+        columnas, primeras = listas.muestra(ruta, subida["original"], subida["proveedor"], perfil)
     except listas.ErrorLista as e:
         flash(str(e), "error")
         return redirect(url_for(".lista_precios"))
 
-    perfil = _perfil_guardado(subida["proveedor"])
+    antes = perfil.get("col_precio")
+    perfil = _ajustar_al_archivo(perfil, columnas, subida["proveedor"])
+    if perfil.get("col_precio") != antes:  # ahora sí sabemos cuál es el precio: la muestra mejora
+        columnas, primeras = listas.muestra(ruta, subida["original"], subida["proveedor"], perfil)
     if request.method == "POST":
         perfil.update({
             "col_codigo": request.form.get("col_codigo") or None,
@@ -471,7 +488,7 @@ def _guardar_perfil(perfil, resultado):
     if guardado is None:
         guardado = PerfilLista(proveedor=perfil["proveedor"])
         db.session.add(guardado)
-    for campo in ("col_codigo", "col_marca", "col_precio", "col_envase", "campo_codigo", "factor", "equivalencias"):
+    for campo in CAMPOS_PERFIL:
         setattr(guardado, campo, perfil.get(campo))
     guardado.columnas = "|".join(resultado["columnas"])
     guardado.filas = resultado["filas"]

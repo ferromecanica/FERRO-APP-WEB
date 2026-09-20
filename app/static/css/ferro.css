@@ -503,6 +503,11 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .btn-peligro:hover { background: #991b1b; }
 
 /* ── Aviso de repuestos parecidos ───────────────────────── */
+.plegable > summary { cursor: pointer; list-style: none; }
+.plegable > summary::-webkit-details-marker { display: none; }
+.plegable > summary::after { content: "\f078"; font: 900 .75rem "Font Awesome 6 Free"; color: var(--muted); margin-left: 8px; }
+.plegable[open] > summary::after { content: "\f077"; }
+.plegable > summary:hover { background: #fafafa; }
 .aviso { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: 12px;
   background: #fffaf3; border: 1px solid #f5b56b; font-size: .92rem; }
 .aviso > i { color: var(--accent); margin-top: 2px; }

@@ -27,6 +27,28 @@ CAMPOS_CODIGO = {
 EXTENSIONES = (".xlsx", ".xlsm", ".csv", ".txt", ".pdf")
 MAX_FILAS = 300000
 
+# Proveedores cuyo archivo ya conocemos: siempre viene igual, así que le ponemos
+# nombre a cada columna y dejamos elegidas las que usamos. Para el resto, la
+# primera vez se eligen a mano y quedan guardadas (PerfilLista).
+CONOCIDOS = {
+    "RSF": {
+        "titulos": ["Marca", "Artículo", "Rubro", "Descripción", "Precio", "Descuento",
+                    "Código de barras", "Código RSF", "Artículo (repetido)"],
+        "col_codigo": "Artículo", "col_marca": "Marca", "col_precio": "Precio",
+        "campo_codigo": "nro_parte", "factor": 0.5711,
+    },
+    "FGC Lubes": {
+        "titulos": ["SKU", "Producto", "Envase", "Precio neto", "Precio por litro", "Precio final"],
+        "col_codigo": "SKU", "col_precio": "Precio final", "col_envase": "Envase",
+        "campo_codigo": "nro_parte", "factor": 0.88, "equivalencias": "16=4",
+    },
+}
+
+
+def conocido(proveedor):
+    """El perfil de fábrica del proveedor, si lo tenemos."""
+    return CONOCIDOS.get((proveedor or "").strip())
+
 
 class ErrorLista(Exception):
     pass
@@ -46,25 +68,43 @@ def _numero(valor):
 # ──────────────────────────── Lectura del archivo ───────────────────────────
 
 
-def abrir(ruta, nombre=None):
+def abrir(ruta, nombre=None, proveedor=None):
     """(columnas, filas). Las filas son listas y vienen de a una: el archivo puede ser enorme."""
-    nombre = (nombre or str(ruta)).lower()
-    if nombre.endswith((".xlsx", ".xlsm")):
-        return _abrir_excel(ruta)
-    if nombre.endswith(".pdf"):
-        return _abrir_pdf(ruta)
-    if nombre.endswith((".csv", ".txt")):
-        return _abrir_csv(ruta)
-    raise ErrorLista("El archivo tiene que ser Excel (.xlsx), CSV, TXT o PDF.")
+    minuscula = (nombre or str(ruta)).lower()
+    if minuscula.endswith((".xlsx", ".xlsm")):
+        columnas, filas = _abrir_excel(ruta)
+    elif minuscula.endswith(".pdf"):
+        columnas, filas = _abrir_pdf(ruta)
+    elif minuscula.endswith((".csv", ".txt")):
+        columnas, filas = _abrir_csv(ruta)
+    else:
+        raise ErrorLista("El archivo tiene que ser Excel (.xlsx), CSV, TXT o PDF.")
+    return _ponerles_nombre(columnas, proveedor), filas
 
 
-def muestra(ruta, nombre=None, cantidad=5):
-    """(columnas, primeras filas como dict) para mostrar en pantalla."""
-    columnas, filas = abrir(ruta, nombre)
-    primeras = []
+def _ponerles_nombre(columnas, proveedor):
+    """Si el archivo no trae títulos y es de un proveedor conocido, usamos los nuestros."""
+    perfil = conocido(proveedor)
+    if perfil and len(perfil["titulos"]) == len(columnas) and all(c.startswith("Columna ") for c in columnas):
+        return list(perfil["titulos"])
+    return columnas
+
+
+def muestra(ruta, nombre=None, proveedor=None, perfil=None, cantidad=5):
+    """(columnas, primeras filas como dict) para mostrar en pantalla.
+
+    Si ya sabemos cuál es la columna del precio, saltea las filas que no lo tienen:
+    el archivo de RSF arranca con una fila de fecha que no es un artículo.
+    """
+    columnas, filas = abrir(ruta, nombre, proveedor)
+    i_precio = _indice(columnas, (perfil or {}).get("col_precio"))
+    primeras, miradas = [], 0
     for fila in filas:
-        primeras.append(dict(zip(columnas, fila)))
-        if len(primeras) >= cantidad:
+        miradas += 1
+        sirve = i_precio is None or (i_precio < len(fila) and _numero(fila[i_precio]))  # sin precio no es un artículo
+        if sirve:
+            primeras.append(dict(zip(columnas, fila)))
+        if len(primeras) >= cantidad or miradas > 200:
             break
     if not primeras:
         raise ErrorLista("No encontré filas con datos en el archivo.")
@@ -232,7 +272,7 @@ def previsualizar(ruta, nombre, perfil):
     - no_encontrados: repuestos del proveedor que no están en el archivo
     - sobrantes: filas del archivo que no corresponden a ningún repuesto nuestro
     """
-    columnas, filas = abrir(ruta, nombre)
+    columnas, filas = abrir(ruta, nombre, perfil.get("proveedor"))
     i_codigo = _indice(columnas, perfil.get("col_codigo"))
     i_precio = _indice(columnas, perfil.get("col_precio"))
     if i_codigo is None or i_precio is None:
