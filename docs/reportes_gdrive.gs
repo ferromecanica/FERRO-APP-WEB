@@ -14,8 +14,8 @@
  *   copia a la carpeta de fotos de Ferro los que falten y devuelve el id de cada uno.
  *
  * Instalación (una sola vez), en el MISMO proyecto de Apps Script donde está el backup diario:
- *  1. Archivo → "+" → Script → nombre "Reportes" → pegar este código. (Usa la constante
- *     SECRETO que ya está en el otro archivo del proyecto.)
+ *  1. Archivo → "+" → Script → pegar este código y completar SECRETO.
+ *     Ojo: que ningún otro archivo del proyecto declare las mismas constantes.
  *  2. Implementar → Nueva implementación → tipo "Aplicación web":
  *       Ejecutar como: Yo    ·    Quién tiene acceso: Cualquier usuario
  *  3. Autorizar y copiar la URL de la aplicación web (termina en /exec).
@@ -23,6 +23,10 @@
  * Para actualizar este código sin cambiar la URL:
  *  Implementar → Administrar implementaciones → lápiz → Versión: "Nueva versión" → Implementar.
  */
+// El mismo valor que BACKUP_SECRET en el .env del servidor.
+// Si en el proyecto hay OTRO archivo que ya declara SECRETO, borrá esta línea:
+// no se puede declarar dos veces (es lo que rompió el script el 19/09).
+const SECRETO = 'PEGAR_ACA_EL_BACKUP_SECRET';
 const FOLDER_REPORTES_ID = '1o1ZkDqFamPa13Vmgzq5Um2FFYla84GIq';
 const FOLDER_PRESUPUESTOS_ID = '1lBvBQ6mPestQoBhgmEPnE25x-JgWUAtb';
 const FOLDER_LOGO_ID = '1hKdsArmHtOGlBSA_ZQ_LCeRv4UKKfyC3';
