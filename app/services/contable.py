@@ -145,7 +145,7 @@ def control_del_mes(mes):
         return None
 
     ventas = _ventas_que_acreditan(mes)
-    facturado = sum(v.total for v in ventas)
+    facturado = sum(v.cobrado for v in ventas)
     tarjeta = sum(v.costo_tarjeta for v in ventas)
     ingresos = sum(m.total for m in MovimientoContable.query.filter_by(
         mes_imputacion=mes, tipo="Ingreso").all())

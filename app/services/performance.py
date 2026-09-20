@@ -77,7 +77,7 @@ def facturacion_al_dia(hoy):
         hasta = f"{primero:%Y-%m}-{min(hoy.day, 31):02d}"
         ventas = Venta.query.filter(Venta.fecha >= primero.isoformat(), Venta.fecha <= hasta).all()
         filas.append({"mes": primero, "clave": _mes_de(primero),
-                      "total": sum(v.total for v in ventas), "ventas": len(ventas),
+                      "total": sum(v.cobrado for v in ventas), "ventas": len(ventas),
                       "actual": _mes_de(primero) == _mes_de(hoy)})
     return filas
 
@@ -97,7 +97,7 @@ def margen_del_mes(hoy):
     """Lo facturado menos lo que costaron los repuestos y la compra."""
     desde, hasta = hoy.replace(day=1), hoy
     ventas = Venta.query.filter(Venta.fecha >= desde.isoformat(), Venta.fecha <= hasta.isoformat()).all()
-    total = sum(v.total for v in ventas)
+    total = sum(v.cobrado for v in ventas)
     costo = sum(v.costo_total for v in ventas)
     sin_costo = sum(1 for v in ventas for i in v.items if not i.costo_unitario)
     return {"total": total, "costo": costo, "ganancia": total - costo,
@@ -157,11 +157,11 @@ def de_donde_sale(hoy, meses=3):
     desde = _ultimos_meses(hoy, meses)[0]
     for v in Venta.query.filter(Venta.fecha >= desde.isoformat()).all():
         if v.ot is None:
-            junta["Mostrador"] += v.total
+            junta["Mostrador"] += v.cobrado
         elif v.ot.clasificacion_cierre == "Servicio":
-            junta["Servicio"] += v.total
+            junta["Servicio"] += v.cobrado
         else:
-            junta["Otros trabajos"] += v.total
+            junta["Otros trabajos"] += v.cobrado
     return _torta([(k, v) for k, v in sorted(junta.items(), key=lambda x: -x[1]) if v])
 
 
@@ -170,7 +170,7 @@ def top_clientes(hoy, meses=6, cuantos=5):
     junta = {}
     for v in Venta.query.filter(Venta.fecha >= desde.isoformat()).all():
         nombre = v.cliente.nombre if v.cliente else "Mostrador"
-        junta[nombre] = junta.get(nombre, 0) + v.total
+        junta[nombre] = junta.get(nombre, 0) + v.cobrado
     ordenados = sorted(junta.items(), key=lambda x: -x[1])
     total = sum(v for _, v in ordenados) or 1
     return [{"nombre": n, "total": t, "porcentaje": t / total * 100} for n, t in ordenados[:cuantos]]

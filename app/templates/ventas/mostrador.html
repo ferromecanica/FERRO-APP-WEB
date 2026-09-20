@@ -108,8 +108,13 @@
         <div style="margin-top:10px"><label>Cómo paga</label>
           <select name="condicion_id" required><option value="">Elegí…</option>
             {% for c in condiciones %}<option value="{{ c.id }}" data-dias="{{ c.dias_habiles }}"
-              data-queda="{{ c.queda }}" data-recargo="{{ c.recargo_usado }}">{{ c.nombre }}</option>{% endfor %}</select></div>
-        <div class="aviso-tarjeta" style="margin-top:10px" data-cuenta-tarjeta data-total="{{ t.total }}" hidden></div>
+              data-queda="{{ c.queda }}" data-nombre="{{ c.nombre }}">{{ c.nombre }}</option>{% endfor %}</select>
+          <div class="muted small" style="margin-top:4px" data-nota-condicion></div></div>
+        <div class="percibir" style="margin-top:10px" data-percibir data-total="{{ t.total }}" hidden>
+          <div><span class="percibir-titulo">A percibir</span>
+            <div class="percibir-nota" data-percibir-nota></div></div>
+          <strong data-percibir-monto>$ 0</strong>
+        </div>
         <div style="margin-top:10px"><label>Fecha</label>
           <input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
         <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:14px"

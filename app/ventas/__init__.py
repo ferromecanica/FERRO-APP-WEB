@@ -42,7 +42,7 @@ def lista():
         clave = v.fecha.strftime("%Y-%m")
         mes = meses.setdefault(clave, {"clave": clave, "fecha": v.fecha.replace(day=1),
                                        "total": 0, "costo": 0, "ventas": []})
-        mes["total"] += v.total
+        mes["total"] += v.cobrado
         mes["costo"] += v.costo_total
         mes["ventas"].append(v)
     # El mes en curso viene abierto; los anteriores, plegados con su resumen.
@@ -204,9 +204,9 @@ def cobrar():
             item["cantidad"], precio_unitario=item["precio"], costo_unitario=item["costo"],
             descripcion=item["descripcion"],
         )
-    # Con tarjeta, lo que entra es el neto y cae unos días después
-    venta.bruto_cobrado = condicion.bruto(venta.total)
-    venta.neto_acreditado = condicion.neto(venta.bruto_cobrado)
+    # Con tarjeta, de lo que paga el cliente entra el neto y cae unos días después
+    venta.bruto_cobrado = venta.total
+    venta.neto_acreditado = condicion.neto(venta.total)
     venta.fecha_acreditacion = condicion.acredita(fecha)
     contable.registrar_venta(venta)
     db.session.commit()

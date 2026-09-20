@@ -600,10 +600,10 @@ def _registrar_venta(ot, cobrado, condicion, fecha):
     contable.registrar_venta(venta)
 
 
-def _anotar_tarjeta(venta, condicion, facturado, fecha):
-    """Lo que se le cobra al cliente, lo que deposita la tarjeta y cuándo."""
-    venta.bruto_cobrado = condicion.bruto(facturado)
-    venta.neto_acreditado = condicion.neto(venta.bruto_cobrado)
+def _anotar_tarjeta(venta, condicion, cobrado, fecha):
+    """Lo que pagó el cliente, lo que vamos a percibir de eso y cuándo."""
+    venta.bruto_cobrado = cobrado
+    venta.neto_acreditado = condicion.neto(cobrado)
     venta.fecha_acreditacion = condicion.acredita(fecha)
 
 

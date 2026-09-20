@@ -42,7 +42,7 @@ with app.app_context():
     assert seis.tasa_financiera == 12.64                              # tarifario de Getnet
     assert round(seis.queda, 2) == 82.29
 
-    # El recargo justo deja exactamente lo facturado en el banco
+    # El recargo justo es lo que hay que cobrar para percibir lo calculado
     for cond in (debito, un_pago, tres, seis):
         assert abs(cond.neto(cond.bruto(100000)) - 100000) < 1, cond.nombre
     assert round(tres.recargo_justo, 2) == 12.85
@@ -63,21 +63,22 @@ with app.app_context():
     id_tres, id_debito = tres.id, debito.id
     db.session.commit()
 
-# ── Cerrar una OT con tarjeta: la venta guarda las tres cosas ──
-post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'clasificacion': 'Otro', 'total_cobrado': '$ 98.000',
+# ── Cerrar una OT con tarjeta: lo que se carga es lo que paga el cliente ──
+post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'clasificacion': 'Otro', 'total_cobrado': '$ 180.000',
                             'condicion_id': str(id_tres), 'fecha_fin': '2026-09-18', 'cliente_id': cid})
 with app.app_context():
     v = Venta.query.filter_by(ot_id=otid).one()
     assert v.metodo_pago == 'Crédito 3 cuotas'
-    assert v.total == 98000, 'lo facturado no cambia'
-    assert abs(v.bruto_cobrado - 110592.13) < 1, v.bruto_cobrado      # 98.000 + 12,85 %
-    assert abs(v.neto_acreditado - 98000) < 1, v.neto_acreditado
+    assert v.bruto_cobrado == 180000, 'el cliente pagó lo que se cargó'
+    assert abs(v.cobrado - 159505.02) < 1, v.cobrado                  # 180.000 − 11,39 %
+    assert abs(v.costo_tarjeta - 20494.98) < 1, v.costo_tarjeta
     assert v.fecha_acreditacion == date(2026, 9, 22), v.fecha_acreditacion  # viernes + 2 hábiles
-    assert abs(v.costo_tarjeta - 12592.13) < 1, v.costo_tarjeta
+    # La comisión es un costo más: la ganancia sale de lo que percibimos
+    assert abs(v.ganancia - (v.cobrado - v.costo_total)) < 0.01
 
-    # El ingreso entra por el neto y el día que cae en el banco
+    # El ingreso entra por lo que percibimos y el día que cae en el banco
     m = MovimientoContable.query.filter_by(venta_id=v.id).one()
-    assert abs(m.total - 98000) < 1, m.total
+    assert abs(m.total - 159505.02) < 1, m.total
     assert m.fecha == date(2026, 9, 22) and m.mes_imputacion == '2026-09'
     assert 'se cobraron' in m.concepto, m.concepto
     vid = v.id
@@ -86,12 +87,12 @@ with app.app_context():
 with app.app_context():
     camino = performance.en_camino(date(2026, 9, 19))
     assert [x.id for x in camino['ventas']] == [vid]
-    assert abs(camino['total'] - 98000) < 1
+    assert abs(camino['total'] - 159505.02) < 1
     # Después de la fecha ya no está en camino
     assert performance.en_camino(date(2026, 9, 30))['ventas'] == []
 
 b = B(c.get(f'/ventas/{vid}'))
-assert 'Entra al banco' in b and 'Se le cobró' in b
+assert 'Percibimos' in b and 'Pagó el cliente' in b
 
 # ── Mostrador con débito ──
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Cambio de lamparita',
@@ -100,8 +101,8 @@ post('/ventas/mostrador/cobrar', {'condicion_id': str(id_debito), 'fecha': '2026
 with app.app_context():
     v = Venta.query.filter_by(ot_id=None).order_by(Venta.id.desc()).first()
     assert v.metodo_pago == 'Débito'
-    assert abs(v.bruto_cobrado - 50612.34) < 1, v.bruto_cobrado       # 50.000 + 1,22 %
-    assert abs(v.neto_acreditado - 50000) < 1
+    assert v.bruto_cobrado == 50000, v.bruto_cobrado
+    assert abs(v.cobrado - 49395) < 1, v.cobrado                      # 50.000 − 1,21 %
     assert v.fecha_acreditacion == date(2026, 9, 21), v.fecha_acreditacion  # viernes + 1 hábil
 
 # ── Sin forma de pago no se cobra ──

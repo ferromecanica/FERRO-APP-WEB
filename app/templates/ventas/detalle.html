@@ -39,21 +39,25 @@
     <div class="card resultado">
       <div class="card-head seccion"><h2><i class="fa-solid fa-calculator"></i> Números</h2></div>
       <div class="card-body">
-        <div class="precio-final"><span>Total</span><strong>{{ v.total | pesos }}</strong></div>
+        <div class="precio-final"><span>{{ 'Percibimos' if v.costo_tarjeta else 'Total' }}</span>
+          <strong>{{ v.cobrado | pesos }}</strong></div>
         <dl class="props totales" style="margin-top:14px">
           <dt>Costo</dt><dd class="num">{{ v.costo_total | pesos }}</dd>
           <dt><strong>Ganancia</strong></dt><dd class="num"><strong style="color:var(--ok)">{{ v.ganancia | pesos }}</strong></dd>
         </dl>
         {% if v.costo_tarjeta %}
         <dl class="props totales" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-          <dt>Se le cobró</dt><dd class="num">{{ v.bruto_cobrado | pesos }}</dd>
+          <dt>Pagó el cliente</dt><dd class="num">{{ v.bruto_cobrado | pesos }}</dd>
           <dt>{{ v.metodo_pago }} se queda</dt><dd class="num" style="color:var(--danger)">−{{ v.costo_tarjeta | pesos }}</dd>
-          <dt><strong>Entra al banco</strong></dt><dd class="num"><strong>{{ v.cobrado | pesos }}</strong></dd>
+          <dt><strong>Percibimos</strong></dt><dd class="num"><strong>{{ v.cobrado | pesos }}</strong></dd>
         </dl>
         {% endif %}
         {% if v.fecha_acreditacion and v.fecha_acreditacion > hoy %}
-        <div class="aviso-tarjeta" style="margin-top:12px"><i class="fa-solid fa-hourglass-half"></i>
-          Todavía no entró: se acredita el <strong>{{ v.fecha_acreditacion | dia(True) }}</strong>.</div>
+        <div class="percibir con-costo" style="margin-top:12px">
+          <div><span class="percibir-titulo">Todavía no entró</span>
+            <div class="percibir-nota">se acredita el {{ v.fecha_acreditacion | dia(True) }}</div></div>
+          <strong>{{ v.cobrado | pesos }}</strong>
+        </div>
         {% elif v.fecha_acreditacion and v.costo_tarjeta %}
         <div class="muted small" style="margin-top:12px">Acreditado el {{ v.fecha_acreditacion | fecha }}.</div>
         {% endif %}

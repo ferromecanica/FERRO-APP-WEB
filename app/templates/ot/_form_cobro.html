@@ -6,16 +6,25 @@
     {% if not ot.cliente %}
       {% with valor=f.get('cliente', ''), obligatorio=True %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% endif %}
-    <div class="full"><label>Total cobrado *</label>
-      <input name="total_cobrado" inputmode="decimal" required class="input-grande plata"
-             value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
-      <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}).</div></div>
-    <div><label>Forma de pago *</label>
-        <select name="condicion_id" required><option value="">Elegí…</option>
-          {% for c in condiciones %}<option value="{{ c.id }}" data-dias="{{ c.dias_habiles }}"
-        data-queda="{{ c.queda }}" data-recargo="{{ c.recargo_usado }}"
-        {{ 'selected' if c.id|string == f.get('condicion_id') }}>{{ c.nombre }}</option>{% endfor %}</select></div>
-      <div class="full aviso-tarjeta" data-cuenta-tarjeta hidden></div>
+        <div class="full"><label>Forma de pago *</label>
+          <select name="condicion_id" required><option value="">Elegí…</option>
+            {% for c in condiciones %}<option value="{{ c.id }}" data-dias="{{ c.dias_habiles }}"
+              data-queda="{{ c.queda }}" data-nombre="{{ c.nombre }}"
+              {{ 'selected' if c.id|string == f.get('condicion_id') }}>{{ c.nombre }}</option>{% endfor %}</select>
+          <div class="muted small" style="margin-top:4px" data-nota-condicion></div></div>
+
+        <div class="full"><label>Total cobrado *</label>
+          <input name="total_cobrado" inputmode="decimal" class="input-grande plata"
+                 data-sugerido="{{ total_calculado or 0 }}" placeholder="$"
+                 value="{{ f.get('total_cobrado', '') }}">
+          <div class="muted small" style="margin-top:4px">
+            Sugerido <a href="#" data-usar-sugerido>{{ total_calculado | pesos }}</a><span data-para-percibir></span></div></div>
+
+        <div class="full percibir" data-percibir hidden>
+          <div><span class="percibir-titulo">A percibir</span>
+            <div class="percibir-nota" data-percibir-nota></div></div>
+          <strong data-percibir-monto>$ 0</strong>
+        </div>
     <div><label>Fecha del cobro</label><input type="date" name="fecha_cobro" value="{{ f.get('fecha_cobro', hoy.isoformat()) }}">
       <div class="muted small" style="margin-top:4px">La venta cuenta en el mes de esta fecha.</div></div>
   </div>

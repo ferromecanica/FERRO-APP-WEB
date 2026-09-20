@@ -42,7 +42,8 @@
             {%- if v.ot_id %}<a href="{{ url_for('ot.detalle', id=v.ot_id) }}" onclick="event.stopPropagation()">OT #{{ v.ot_id }}</a>
             {%- else %}Mostrador{% endif %} · {{ v.items | length }} ítem{{ 's' if v.items | length != 1 }}</div></td>
         <td class="izq hide-sm" data-titulo="Pago">{{ v.metodo_pago or '—' }}</td>
-        <td class="num" data-titulo="Total"><strong>{{ v.total | pesos }}</strong></td>
+        <td class="num" data-titulo="Total"><strong>{{ v.cobrado | pesos }}</strong>
+          {% if v.costo_tarjeta %}<div class="muted small">pagó {{ v.bruto_cobrado | pesos }}</div>{% endif %}</td>
         <td class="num hide-sm muted">{{ v.costo_total | pesos }}</td>
         <td class="num" style="color:var(--ok)">{{ v.ganancia | pesos }}</td></tr>
       {% endfor %}

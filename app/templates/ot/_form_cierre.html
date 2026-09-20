@@ -28,16 +28,25 @@
 
     <div class="full bloque-cobro" {{ '' if f.get('cobrado') == 'si' else 'hidden' }}>
       <div class="form-grid">
-        <div class="full"><label>Total cobrado *</label>
-          <input name="total_cobrado" inputmode="decimal" class="input-grande plata"
-                 value="{{ f.get('total_cobrado', (total_calculado | numero) if total_calculado else '') }}">
-          <div class="muted small" style="margin-top:4px">Sugerido: el total calculado ({{ total_calculado | pesos }}). Cambialo por lo que realmente se cobró.</div></div>
-        <div><label>Forma de pago *</label>
+        <div class="full"><label>Forma de pago *</label>
           <select name="condicion_id"><option value="">Elegí…</option>
             {% for c in condiciones %}<option value="{{ c.id }}" data-dias="{{ c.dias_habiles }}"
-              data-queda="{{ c.queda }}" data-recargo="{{ c.recargo_usado }}"
-              {{ 'selected' if c.id|string == f.get('condicion_id') }}>{{ c.nombre }}</option>{% endfor %}</select></div>
-        <div class="full aviso-tarjeta" data-cuenta-tarjeta hidden></div>
+              data-queda="{{ c.queda }}" data-nombre="{{ c.nombre }}"
+              {{ 'selected' if c.id|string == f.get('condicion_id') }}>{{ c.nombre }}</option>{% endfor %}</select>
+          <div class="muted small" style="margin-top:4px" data-nota-condicion></div></div>
+
+        <div class="full"><label>Total cobrado *</label>
+          <input name="total_cobrado" inputmode="decimal" class="input-grande plata"
+                 data-sugerido="{{ total_calculado or 0 }}" placeholder="$"
+                 value="{{ f.get('total_cobrado', '') }}">
+          <div class="muted small" style="margin-top:4px">
+            Sugerido <a href="#" data-usar-sugerido>{{ total_calculado | pesos }}</a><span data-para-percibir></span></div></div>
+
+        <div class="full percibir" data-percibir hidden>
+          <div><span class="percibir-titulo">A percibir</span>
+            <div class="percibir-nota" data-percibir-nota></div></div>
+          <strong data-percibir-monto>$ 0</strong>
+        </div>
       </div>
     </div>
 

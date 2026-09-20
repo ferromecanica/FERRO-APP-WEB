@@ -942,7 +942,11 @@ class Venta(TimestampMixin, db.Model):
 
     @property
     def ganancia(self):
-        return self.total - self.costo_total
+        """Lo que queda: lo que percibimos menos lo que costó.
+
+        Con tarjeta, la comisión es un costo más de la venta.
+        """
+        return self.cobrado - self.costo_total
 
     @property
     def cobrado(self):
