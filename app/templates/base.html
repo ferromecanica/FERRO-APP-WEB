@@ -2,6 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <script>
+    // Tamaño elegido en Configuración. Va antes del CSS para que no parpadee.
+    try {
+      var d = localStorage.getItem('ferro-densidad');
+      if (d) document.documentElement.dataset.densidad = d;
+    } catch (e) { /* navegador sin almacenamiento: queda el tamaño normal */ }
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ taller_nombre }}{% endblock %} · Ferro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">

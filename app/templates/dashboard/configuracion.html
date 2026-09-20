@@ -17,4 +17,43 @@
   </div>
   <div class="card-body" style="border-top:1px solid var(--border)"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Guardar</button></div>
 </form>
+
+<div class="card" style="max-width:760px;margin-top:16px">
+  <div class="card-head"><h2>Tamaño de la pantalla</h2></div>
+  <div class="card-body">
+    <p class="muted small" style="margin:0 0 12px">Achica o agranda todo: letra, panel del costado y tablas.
+      Queda guardado <strong>en esta computadora</strong>, así la notebook puede estar compacta y el monitor grande no.</p>
+    <div class="segmented" id="densidad">
+      <button type="button" class="seg" data-valor="compacto"><i class="fa-solid fa-compress"></i> Compacto</button>
+      <button type="button" class="seg" data-valor=""><i class="fa-solid fa-equals"></i> Normal</button>
+      <button type="button" class="seg" data-valor="amplio"><i class="fa-solid fa-expand"></i> Amplio</button>
+    </div>
+    <p class="muted small" style="margin:10px 0 0">Para una notebook de 13" o 14", <strong>Compacto</strong>.</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var caja = document.getElementById('densidad');
+    function marcar(valor) {
+      caja.querySelectorAll('.seg').forEach(function (b) { b.classList.toggle('active', b.dataset.valor === valor); });
+    }
+    function leer() {
+      try { return localStorage.getItem('ferro-densidad') || ''; } catch (e) { return ''; }
+    }
+    caja.querySelectorAll('.seg').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var valor = b.dataset.valor;
+        if (valor) {
+          document.documentElement.dataset.densidad = valor;
+        } else {
+          delete document.documentElement.dataset.densidad;
+        }
+        try { valor ? localStorage.setItem('ferro-densidad', valor) : localStorage.removeItem('ferro-densidad'); } catch (e) {}
+        marcar(valor);
+      });
+    });
+    marcar(leer());
+  })();
+</script>
 {% endblock %}
