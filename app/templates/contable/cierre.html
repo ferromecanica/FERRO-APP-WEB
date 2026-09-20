@@ -15,6 +15,15 @@
   <div class="actions"><a class="btn" href="{{ url_for('contable.cierres') }}"><i class="fa-solid fa-arrow-left"></i> Todos los meses</a></div>
 </div>
 
+{% if not socios %}
+<div class="aviso aviso-alto" style="margin-bottom:14px">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+  <div><strong>Todavía no hay socios cargados.</strong>
+    El cierre reparte sueldos y ganancias entre los socios, así que primero hay que cargarlos:
+    <a href="{{ url_for('dashboard.configuracion') }}#socios">ir a Configuración</a>.</div>
+</div>
+{% endif %}
+
 <form method="post">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <div class="grid grid-3-1">

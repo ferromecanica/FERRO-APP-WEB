@@ -225,7 +225,7 @@ def cierres():
 def cierre(mes):
     guardado = CierreMensual.query.filter_by(mes=mes).first()
     socios = Socio.query.order_by(Socio.orden, Socio.nombre).all()
-    if not socios:
+    if request.method == "POST" and not socios:
         flash("Cargá los socios en Configuración antes de cerrar un mes.", "error")
         return redirect(url_for("dashboard.configuracion") + "#socios")
 

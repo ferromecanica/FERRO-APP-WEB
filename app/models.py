@@ -537,6 +537,7 @@ class MovimientoContable(db.Model):
     venta_id = db.Column(db.Integer, db.ForeignKey("venta.id"))
     ingreso_id = db.Column(db.Integer, db.ForeignKey("ingreso_stock.id"))
     cierre_id = db.Column(db.Integer, db.ForeignKey("cierre_mensual.id"))  # lo generó un cierre
+    origen = db.Column(db.String(40), index=True)  # id que tenía en la app contable de AppSheet
 
     venta = db.relationship("Venta")
     ingreso = db.relationship("IngresoStock")
@@ -567,6 +568,7 @@ class AporteCapital(db.Model):
     cotizacion = db.Column(db.Float)  # cuánto valía el dólar ese día
     notas = db.Column(db.String(300))
     cierre_id = db.Column(db.Integer, db.ForeignKey("cierre_mensual.id"))  # devolución hecha en un cierre
+    origen = db.Column(db.String(40), index=True)  # id que tenía en la app contable de AppSheet
 
     socio = db.relationship("Socio", back_populates="aportes")
     cierre = db.relationship("CierreMensual", back_populates="devoluciones")
