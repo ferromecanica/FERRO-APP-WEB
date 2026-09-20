@@ -9,6 +9,9 @@
  * accion=foto: guarda una foto (JPEG en base64) en la carpeta de fotos (o en una subcarpeta,
  *   p. ej. "Repuestos", que se crea sola) y devuelve su id.
  * accion=borrar_foto: manda una foto a la papelera.
+ * accion=copiar_fotos: trae las fotos viejas de AppSheet. Recibe el nombre de la carpeta
+ *   de origen (p. ej. "Fotos_OT_Images") y los nombres de archivo separados por "|";
+ *   copia a la carpeta de fotos de Ferro los que falten y devuelve el id de cada uno.
  *
  * Instalación (una sola vez), en el MISMO proyecto de Apps Script donde está el backup diario:
  *  1. Archivo → "+" → Script → nombre "Reportes" → pegar este código. (Usa la constante
@@ -35,6 +38,7 @@ function doPost(e) {
     if (accion === 'reporte') return generarReporte(p);
     if (accion === 'foto') return guardarFoto(p);
     if (accion === 'borrar_foto') return borrarFoto(p);
+    if (accion === 'copiar_fotos') return copiarFotos(p);
     return json({ ok: false, error: 'acción desconocida: ' + accion });
   } catch (err) {
     return json({ ok: false, error: String(err.message || err) });
@@ -79,6 +83,31 @@ function borrarFoto(p) {
   if (!p.id) return json({ ok: false, error: 'falta el id' });
   DriveApp.getFileById(p.id).setTrashed(true);
   return json({ ok: true });
+}
+
+function copiarFotos(p) {
+  if (!p.origen || !p.nombres) return json({ ok: false, error: 'faltan la carpeta de origen o los nombres' });
+
+  const encontradas = DriveApp.getFoldersByName(p.origen);
+  if (!encontradas.hasNext()) return json({ ok: false, error: 'no encontré la carpeta ' + p.origen });
+  const origen = encontradas.next();
+  if (encontradas.hasNext()) return json({ ok: false, error: 'hay más de una carpeta llamada ' + p.origen });
+
+  const destino = DriveApp.getFolderById(FOLDER_FOTOS_ID);
+  const resultado = {};
+  p.nombres.split('|').forEach(function (nombre) {
+    if (!nombre) return;
+    const yaEstan = destino.getFilesByName(nombre);   // si ya se copió, no se copia de nuevo
+    if (yaEstan.hasNext()) { resultado[nombre] = yaEstan.next().getId(); return; }
+    const originales = origen.getFilesByName(nombre);
+    if (!originales.hasNext()) { resultado[nombre] = null; return; }
+    const copia = originales.next().makeCopy(nombre, destino);
+    try {
+      copia.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) { /* si la cuenta no lo permite, la foto igual queda copiada */ }
+    resultado[nombre] = copia.getId();
+  });
+  return json({ ok: true, fotos: resultado });
 }
 
 function imagenBase64(folderId, nombre) {
