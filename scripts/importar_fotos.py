@@ -82,11 +82,16 @@ def importar(libro, probar=False, carpetas=None):
     print(f"{len(todas)} fotos en el Excel · {ya_estaban} ya estaban · "
           f"{sin_ot} de OT que no tenemos · {len(pendientes)} para traer")
 
+    # Los pedidos van por carpeta: el script de Google busca en una sola por vez
+    por_carpeta = {}
+    for f in pendientes:
+        por_carpeta.setdefault(f["carpeta"], []).append(f)
+
     guardadas = perdidas = 0
-    for desde in range(0, len(pendientes), DE_A_VEZ):
-        tanda = pendientes[desde:desde + DE_A_VEZ]
-        carpeta = tanda[0]["carpeta"]
-        tanda = [f for f in tanda if f["carpeta"] == carpeta]  # una carpeta por pedido
+    hechas = 0
+    for carpeta, fotos in por_carpeta.items():
+      for desde in range(0, len(fotos), DE_A_VEZ):
+        tanda = fotos[desde:desde + DE_A_VEZ]
         elegida = (carpetas or {}).get(carpeta)
         donde = {"origen_id": elegida} if elegida else {"origen": carpeta}
         try:
@@ -107,7 +112,8 @@ def importar(libro, probar=False, carpetas=None):
             ))
             guardadas += 1
         db.session.commit()
-        print(f"  {min(desde + DE_A_VEZ, len(pendientes)):>4}/{len(pendientes)} · guardadas {guardadas}"
+        hechas += len(tanda)
+        print(f"  {hechas:>4}/{len(pendientes)} · guardadas {guardadas}"
               + (f" · sin archivo en Drive {perdidas}" if perdidas else ""))
     return guardadas, perdidas
 
