@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}Listas de precios{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Stock</div><h1>Listas de precios</h1>
+    <div class="muted small" style="margin-top:4px">Subí la lista que te manda el proveedor y Ferro actualiza los costos y los precios de venta.</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('stock.lista') }}"><i class="fa-solid fa-arrow-left"></i> Volver al stock</a></div>
+</div>
+{% include "stock/_tabs.html" %}
+
+<form class="card" method="post" enctype="multipart/form-data" id="subir">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-body">
+    <div class="form-grid" style="margin-bottom:14px">
+      <div><label>Proveedor *</label>
+        <select name="proveedor" required>
+          <option value="">Elegí…</option>
+          {% for r in resumen %}<option value="{{ r.proveedor }}">{{ r.proveedor }} ({{ r.repuestos }} repuestos)</option>{% endfor %}
+        </select></div>
+    </div>
+    <label class="dropzone" id="zona">
+      <input type="file" name="archivo" accept=".xlsx,.xlsm,.csv,.txt" hidden required>
+      <i class="fa-solid fa-file-arrow-up"></i>
+      <strong>Arrastrá acá el archivo</strong>
+      <span class="muted small">o hacé clic para buscarlo · Excel, CSV o TXT</span>
+      <span class="elegido muted small" hidden></span>
+    </label>
+    <button class="btn btn-primary" style="margin-top:14px"><i class="fa-solid fa-magnifying-glass-chart"></i> Ver qué cambiaría</button>
+    <p class="muted small" style="margin:10px 0 0">No se aplica nada hasta que veas la comparación y confirmes.</p>
+  </div>
+</form>
+
+<div class="card" style="margin-top:16px">
+  <div class="card-head seccion"><h2><i class="fa-solid fa-clock-rotate-left"></i> Última actualización por proveedor</h2></div>
+  {% if resumen %}
+  <div class="table-wrap"><table class="tabla-densa">
+    <thead><tr><th class="izq">Proveedor</th><th class="num">Repuestos</th><th class="izq">Columnas configuradas</th><th class="izq">Última vez</th></tr></thead>
+    <tbody>
+    {% for r in resumen %}
+      <tr><td class="izq"><strong>{{ r.proveedor }}</strong></td>
+        <td class="num">{{ r.repuestos }}</td>
+        <td class="izq muted small">{% if r.perfil %}Código: {{ r.perfil.col_codigo }} · Precio: {{ r.perfil.col_precio }}
+            {%- if r.perfil.col_envase %} ÷ {{ r.perfil.col_envase }}{% endif %}
+            {%- if r.perfil.factor and r.perfil.factor != 1 %} × {{ r.perfil.factor | numero(4) }}{% endif %}
+          {% else %}—{% endif %}</td>
+        <td class="izq muted small">{% if r.perfil and r.perfil.actualizada %}{{ r.perfil.actualizada | fecha }}{% else %}nunca{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-truck-field', 'Todavía no hay repuestos con proveedor cargado.') }}{% endif %}
+</div>
+
+<script>
+  var zona = document.getElementById('zona'), campo = zona.querySelector('input[type=file]'),
+      elegido = zona.querySelector('.elegido');
+  function mostrar() {
+    if (!campo.files.length) return;
+    elegido.textContent = campo.files[0].name;
+    elegido.hidden = false;
+    zona.classList.add('con-archivo');
+  }
+  campo.addEventListener('change', mostrar);
+  ['dragenter', 'dragover'].forEach(function (e) {
+    zona.addEventListener(e, function (ev) { ev.preventDefault(); zona.classList.add('encima'); });
+  });
+  ['dragleave', 'drop'].forEach(function (e) {
+    zona.addEventListener(e, function (ev) { ev.preventDefault(); zona.classList.remove('encima'); });
+  });
+  zona.addEventListener('drop', function (ev) {
+    if (ev.dataTransfer.files.length) { campo.files = ev.dataTransfer.files; mostrar(); }
+  });
+</script>
+{% endblock %}

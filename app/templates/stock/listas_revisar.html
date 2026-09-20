@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}Revisar lista de {{ subida.proveedor }}{% endblock %}
+{% macro columna(nombre, etiqueta, ayuda='', obligatoria=false) -%}
+  <div><label>{{ etiqueta }}{{ ' *' if obligatoria }}</label>
+    <select name="{{ nombre }}">
+      <option value="">{{ '—' if not obligatoria else 'Elegí…' }}</option>
+      {% for c in columnas %}<option value="{{ c }}" {{ 'selected' if perfil.get(nombre) == c }}>{{ c }}</option>{% endfor %}
+    </select>
+    {% if ayuda %}<div class="muted small" style="margin-top:4px">{{ ayuda }}</div>{% endif %}</div>
+{%- endmacro %}
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Listas de precios · {{ subida.proveedor }}</div><h1>Revisar antes de aplicar</h1>
+    <div class="muted small" style="margin-top:4px">{{ subida.original }} · {{ total_filas }} filas</div></div>
+  <div class="actions">
+    <form method="post" action="{{ url_for('stock.lista_precios_cancelar') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn"><i class="fa-solid fa-xmark"></i> Cancelar</button></form>
+  </div>
+</div>
+
+<form method="post" class="card" id="mapeo">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card-head seccion"><h2><i class="fa-solid fa-table-columns"></i> Qué columna es cuál</h2>
+    <span class="muted small">se guarda para la próxima</span></div>
+  <div class="card-body">
+    <div class="form-grid">
+      {{ columna('col_codigo', 'Columna del código', 'El código con el que se identifica el artículo.', true) }}
+      <div><label>Ese código es nuestro…</label>
+        <select name="campo_codigo">
+          {% for valor, texto in campos_codigo.items() %}
+            <option value="{{ valor }}" {{ 'selected' if perfil.get('campo_codigo') == valor }}>{{ texto }}</option>{% endfor %}
+        </select></div>
+      {{ columna('col_marca', 'Columna de la marca', 'Opcional: si dos artículos comparten código, la marca desempata.') }}
+      {{ columna('col_precio', 'Columna del precio', 'El número que trae el archivo, antes de descuentos.', true) }}
+      {{ columna('col_envase', 'Columna del envase', 'Opcional: si el precio es por bidón, acá va cuántos litros trae.') }}
+      <div><label>Multiplicar por</label>
+        <input name="factor" inputmode="decimal" value="{{ perfil.get('factor') | numero(4) if perfil.get('factor') else '1' }}">
+        <div class="muted small" style="margin-top:4px">Para llegar al costo. Ej.: 0,5711 si la lista trae precio de venta.</div></div>
+      <div><label>Envases que se cuentan distinto</label>
+        <input name="equivalencias" value="{{ perfil.get('equivalencias') or '' }}" placeholder="16=4">
+        <div class="muted small" style="margin-top:4px">Opcional. Ej.: <code>16=4</code> si el envase de 16 se divide por 4.</div></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px"><i class="fa-solid fa-rotate"></i> Actualizar la comparación</button>
+  </div>
+
+  <div class="card-head seccion" style="border-top:1px solid var(--border)"><h2><i class="fa-solid fa-eye"></i> Primeras filas del archivo</h2></div>
+  <div class="table-wrap"><table class="tabla-densa">
+    <thead><tr>{% for c in columnas %}<th class="izq">{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for f in filas %}<tr>{% for c in columnas %}<td class="izq">{{ f[c] if f[c] is not none }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+
+  {% if cambios or sin_cambio or no_encontrados %}
+  <div class="card-head seccion" style="border-top:1px solid var(--border)">
+    <h2><i class="fa-solid fa-scale-balanced"></i> Qué cambiaría</h2>
+    <span class="muted small">{{ cambios | length }} cambian · {{ sin_cambio | length }} quedan igual ·
+      {{ no_encontrados | length }} sin precio en el archivo · {{ sobrantes }} filas del archivo que no tenemos</span>
+  </div>
+  {% if cambios %}
+  <div class="table-wrap" style="max-height:460px;overflow:auto">
+    <table class="tabla-densa">
+      <thead><tr><th class="izq">Repuesto</th><th class="izq hide-sm">Código</th><th class="num">Costo hoy</th>
+        <th class="num">Costo nuevo</th><th class="num">Var.</th><th class="num">Venta nueva</th></tr></thead>
+      <tbody>
+      {% for d in cambios %}
+        <tr><td class="izq">{{ d.repuesto.nombre }}<div class="muted small">{{ d.repuesto.marca }}</div></td>
+          <td class="izq hide-sm muted small">{{ d.repuesto.nro_parte }}</td>
+          <td class="num muted">{{ d.costo_viejo | pesos }}</td>
+          <td class="num"><strong>{{ d.costo_nuevo | pesos }}</strong></td>
+          <td class="num" style="color:{{ 'var(--ok)' if (d.variacion or 0) < 0 else 'var(--peligro, #b3261e)' }}">
+            {% if d.variacion is not none %}{{ '+' if d.variacion > 0 }}{{ d.variacion | numero(1) }} %{% else %}nuevo{% endif %}</td>
+          <td class="num">{{ d.venta_nueva | pesos }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-body" style="border-top:1px solid var(--border)">
+    <button class="btn btn-primary" name="accion" value="aplicar"
+            data-confirmar="¿Actualizar {{ cambios | length }} precios de {{ subida.proveedor }}?"
+            data-confirmar-detalle="Se cambia el costo y se recalcula el precio de venta con el markup de cada uno."
+            data-confirmar-boton="Actualizar precios">
+      <i class="fa-solid fa-check"></i> Aplicar los {{ cambios | length }} cambios</button>
+  </div>
+  {% else %}
+  <div class="card-body">{{ vacio('fa-equals', 'Con este mapeo no cambia ningún precio. Revisá las columnas de arriba.') }}</div>
+  {% endif %}
+
+  {% if no_encontrados %}
+  <div class="card-body" style="border-top:1px solid var(--border)">
+    <details><summary class="muted small">{{ no_encontrados | length }} repuestos de {{ subida.proveedor }} que no están en el archivo</summary>
+      <ul class="muted small" style="columns:2;margin-top:8px">
+        {% for r in no_encontrados %}<li>{{ r.nro_parte or '—' }} · {{ r.nombre | truncate(60) }}</li>{% endfor %}
+      </ul></details>
+  </div>
+  {% endif %}
+  {% endif %}
+</form>
+
+<script>
+  // el botón de aplicar usa la ventanita de confirmación aunque el form no la tenga
+  document.querySelectorAll('button[data-confirmar]').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      var form = b.form;
+      if (form.dataset.confirmado) return;
+      e.preventDefault();
+      ['confirmar', 'confirmarDetalle', 'confirmarBoton', 'confirmarTono'].forEach(function (k) {
+        if (b.dataset[k]) form.dataset[k] = b.dataset[k];
+      });
+      var oculto = document.createElement('input');
+      oculto.type = 'hidden'; oculto.name = b.name; oculto.value = b.value;
+      form.appendChild(oculto);
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    });
+  });
+</script>
+{% endblock %}

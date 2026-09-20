@@ -359,6 +359,24 @@ class ConfigMarkup(db.Model):
     markup = db.Column(db.Float, nullable=False)
 
 
+class PerfilLista(db.Model):
+    """Cómo leer la lista de precios de un proveedor (qué columna es cuál).
+
+    Se guarda cuando se actualizan precios, así la próxima vez ya viene elegido.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    proveedor = db.Column(db.String(60), nullable=False, unique=True)
+    col_codigo = db.Column(db.String(120))
+    col_marca = db.Column(db.String(120))
+    col_precio = db.Column(db.String(120), nullable=False)
+    col_envase = db.Column(db.String(120))
+    campo_codigo = db.Column(db.String(20), default="nro_parte")  # nro_parte | cod_proveedor | codigo_barras
+    factor = db.Column(db.Float, default=1.0)  # lo que hay que multiplicar para llegar al costo
+    equivalencias = db.Column(db.String(120))  # envases que se cuentan distinto, ej. "16=4"
+    actualizada = db.Column(db.DateTime)
+
+
 class Repuesto(TimestampMixin, db.Model):
     ID_VARIOS = 99  # "Varios / Mano de Obra": ítem genérico sin control de stock
 

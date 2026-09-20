@@ -1,8 +1,10 @@
 import base64
 import secrets
+import time
 from datetime import date, datetime
+from pathlib import Path
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import login_required
 from sqlalchemy import func, or_
 
@@ -15,13 +17,14 @@ from ..models import (
     FotoRepuesto,
     IngresoStockItem,
     MovimientoStock,
+    PerfilLista,
     PresupuestoItem,
     Proveedor,
     Repuesto,
     Subcategoria,
     VentaItem,
 )
-from ..services import drive
+from ..services import drive, listas
 from ..services.stock import (
     anular_ingreso, buscar_repuesto, confirmar_ingreso, posibles_duplicados, recalcular_precio_venta, regla_markup,
     registrar_movimiento,
@@ -336,6 +339,138 @@ def foto_eliminar(fid):
 
 
 # ──────────────────────────────────── Markups ───────────────────────────────
+
+
+# ───────────────────────── Listas de precios del proveedor ──────────────────
+
+CARPETA_LISTAS = "listas"
+VIDA_ARCHIVO = 24 * 60 * 60  # se borran solos al día siguiente
+
+
+def _carpeta_listas():
+    carpeta = Path(current_app.instance_path) / CARPETA_LISTAS
+    carpeta.mkdir(parents=True, exist_ok=True)
+    for viejo in carpeta.iterdir():  # limpieza de archivos que quedaron a medio camino
+        if time.time() - viejo.stat().st_mtime > VIDA_ARCHIVO:
+            viejo.unlink(missing_ok=True)
+    return carpeta
+
+
+def _archivo_en_curso():
+    """(ruta, datos de la subida) de la lista que se está revisando, o (None, None)."""
+    datos = session.get("lista_precios")
+    if not datos:
+        return None, None
+    ruta = _carpeta_listas() / datos["archivo"]
+    return (ruta, datos) if ruta.exists() else (None, None)
+
+
+def _perfil_guardado(proveedor):
+    perfil = PerfilLista.query.filter_by(proveedor=proveedor).first()
+    if perfil is None:
+        return {"proveedor": proveedor, "campo_codigo": "nro_parte", "factor": 1.0}
+    return {"proveedor": proveedor, "col_codigo": perfil.col_codigo, "col_marca": perfil.col_marca,
+            "col_precio": perfil.col_precio, "col_envase": perfil.col_envase,
+            "campo_codigo": perfil.campo_codigo, "factor": perfil.factor,
+            "equivalencias": perfil.equivalencias}
+
+
+@bp.route("/listas", methods=["GET", "POST"])
+def lista_precios():
+    """Paso 1: elegir proveedor y subir el archivo que mandó."""
+    if request.method == "POST":
+        proveedor = request.form.get("proveedor", "").strip()
+        archivo = request.files.get("archivo")
+        if not proveedor or not archivo or not archivo.filename:
+            flash("Elegí el proveedor y el archivo con la lista.", "error")
+            return redirect(url_for(".lista_precios"))
+        datos = archivo.read()
+        try:
+            listas.leer(datos, archivo.filename)
+        except listas.ErrorLista as e:
+            flash(str(e), "error")
+            return redirect(url_for(".lista_precios"))
+        except Exception:
+            flash("No pude leer el archivo. ¿Es el Excel o el CSV que manda el proveedor?", "error")
+            return redirect(url_for(".lista_precios"))
+        nombre = f"{secrets.token_hex(8)}{Path(archivo.filename).suffix.lower()}"
+        (_carpeta_listas() / nombre).write_bytes(datos)
+        session["lista_precios"] = {"archivo": nombre, "original": archivo.filename, "proveedor": proveedor}
+        return redirect(url_for(".lista_precios_revisar"))
+
+    perfiles = {p.proveedor: p for p in PerfilLista.query.all()}
+    nombres = {p for (p,) in db.session.query(Repuesto.proveedor).filter(Repuesto.proveedor.isnot(None)).distinct()}
+    resumen = [{"proveedor": p, "perfil": perfiles.get(p),
+                "repuestos": Repuesto.query.filter_by(proveedor=p).count()}
+               for p in sorted(nombres | set(_proveedores()), key=str.lower)]
+    return render_template("stock/listas.html", resumen=[r for r in resumen if r["repuestos"]])
+
+
+@bp.route("/listas/revisar", methods=["GET", "POST"])
+def lista_precios_revisar():
+    """Paso 2: decir qué columna es cuál y ver qué cambiaría antes de aplicar."""
+    ruta, subida = _archivo_en_curso()
+    if ruta is None:
+        flash("Subí de nuevo el archivo: el anterior ya no está.", "error")
+        return redirect(url_for(".lista_precios"))
+    try:
+        columnas, filas = listas.leer(ruta.read_bytes(), subida["original"])
+    except listas.ErrorLista as e:
+        flash(str(e), "error")
+        return redirect(url_for(".lista_precios"))
+
+    perfil = _perfil_guardado(subida["proveedor"])
+    if request.method == "POST":
+        perfil.update({
+            "col_codigo": request.form.get("col_codigo") or None,
+            "col_marca": request.form.get("col_marca") or None,
+            "col_precio": request.form.get("col_precio") or None,
+            "col_envase": request.form.get("col_envase") or None,
+            "campo_codigo": request.form.get("campo_codigo") or "nro_parte",
+            "factor": numero_ar(request.form.get("factor")) or 1.0,
+            "equivalencias": request.form.get("equivalencias", "").strip() or None,
+        })
+    if not perfil.get("col_codigo") or not perfil.get("col_precio"):
+        perfil.setdefault("col_codigo", None)
+        cambios = sin_cambio = no_encontrados = []
+        sobrantes = 0
+        if request.method == "POST":
+            flash("Decime al menos qué columna trae el código y cuál el precio.", "error")
+    else:
+        cambios, sin_cambio, no_encontrados, sobrantes = listas.previsualizar(filas, perfil)
+        if request.form.get("accion") == "aplicar":
+            cantidad = listas.aplicar(cambios)
+            _guardar_perfil(perfil)
+            db.session.commit()
+            session.pop("lista_precios", None)
+            ruta.unlink(missing_ok=True)
+            flash(f"Listo: {cantidad} precios actualizados de {perfil['proveedor']}.", "ok")
+            return redirect(url_for(".lista"))
+
+    return render_template("stock/listas_revisar.html", columnas=columnas, filas=filas[:5], perfil=perfil,
+                           subida=subida, cambios=cambios, sin_cambio=sin_cambio,
+                           no_encontrados=no_encontrados, sobrantes=sobrantes,
+                           campos_codigo=listas.CAMPOS_CODIGO, total_filas=len(filas))
+
+
+def _guardar_perfil(perfil):
+    """Se acuerda del mapeo para la próxima lista de ese proveedor."""
+    guardado = PerfilLista.query.filter_by(proveedor=perfil["proveedor"]).first()
+    if guardado is None:
+        guardado = PerfilLista(proveedor=perfil["proveedor"])
+        db.session.add(guardado)
+    for campo in ("col_codigo", "col_marca", "col_precio", "col_envase", "campo_codigo", "factor", "equivalencias"):
+        setattr(guardado, campo, perfil.get(campo))
+    guardado.actualizada = datetime.now()
+
+
+@bp.route("/listas/cancelar", methods=["POST"])
+def lista_precios_cancelar():
+    ruta, _ = _archivo_en_curso()
+    if ruta is not None:
+        ruta.unlink(missing_ok=True)
+    session.pop("lista_precios", None)
+    return redirect(url_for(".lista_precios"))
 
 
 @bp.route("/markups", methods=["GET", "POST"])
