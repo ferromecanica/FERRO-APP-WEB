@@ -24,18 +24,26 @@ PATENTE_VIEJA = re.compile(r"^([A-Z]{3})(\d{3})$")          # AAA123, hasta 2016
 PATENTE_MERCOSUR = re.compile(r"^[A-Z]{2}\d{3}[A-Z]{2}$")   # AB123CD
 PATENTE_MOTO = re.compile(r"^[A-Z]\d{3}[A-Z]{3}$")          # A123BCD, motos Mercosur
 
-FORMATOS_PATENTE = "AB123CD (Mercosur), A123BCD (moto) o AAA123 (la vieja)"
+# Para el auto que entra sin chapa (0 km, chapa perdida, sin papeles)
+SIN_PATENTE = "SINPATENTE"
+
+FORMATOS_PATENTE = ("AB123CD (Mercosur), A123BCD (moto) o AAA123 (la vieja). "
+                    "Si el auto no tiene chapa, escribí SIN PATENTE")
 
 
 def patente_valida(patente):
     """Solo los formatos reales: así no entra un «SINNUMERO» ni una patente a medias."""
     texto = patente or ""
+    if texto == SIN_PATENTE:
+        return True
     return bool(PATENTE_VIEJA.match(texto) or PATENTE_MERCOSUR.match(texto) or PATENTE_MOTO.match(texto))
 
 
 def formato_patente(valor):
     """Qué chapón le corresponde y cómo se escribe el número."""
     texto = normalizar_patente(valor)
+    if texto == SIN_PATENTE:
+        return {"tipo": "otra", "texto": "SIN PATENTE"}
     vieja = PATENTE_VIEJA.match(texto)
     if vieja:
         return {"tipo": "vieja", "texto": f"{vieja.group(1)} {vieja.group(2)}"}
