@@ -46,7 +46,7 @@
       {% for ot in ots_abiertas %}
         <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
           <td><strong>#{{ ot.id }}</strong><div class="muted small">{{ ot.detalle or '' }}</div></td>
-          <td>{% with patente=ot.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %}<div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
+          <td class="centro">{% with patente=ot.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %}<div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
           <td class="hide-sm" data-titulo="Cliente">{{ ot.cliente.nombre if ot.cliente else "—" }}</td>
           <td>{{ estado(ot.estado) }}</td>
           <td class="num hide-sm" data-titulo="Ingreso">{{ ot.fecha_ingreso | fecha }}</td>

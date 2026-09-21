@@ -23,7 +23,7 @@
         <tbody>
         {% for v in cliente.vehiculos %}
           <tr class="clickable" onclick="location='{{ url_for('clientes.vehiculo_detalle', id=v.id) }}'">
-            <td>{% with patente=v.patente %}{% include "partials/_patente.html" %}{% endwith %}</td>
+            <td class="centro">{% with patente=v.patente %}{% include "partials/_patente.html" %}{% endwith %}</td>
             <td class="destacado">{{ v.descripcion or '—' }}<div class="muted small">{{ v.color or '' }}</div></td>
             <td class="num hide-sm" data-titulo="Año">{{ v.anio or '—' }}</td>
             <td class="num" data-titulo="Km">{{ v.kilometraje | numero }}</td>
