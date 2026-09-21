@@ -29,7 +29,8 @@ from ..models import (
 from ..filters import dia
 from ..services import contable, drive, reporte
 from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
-from ..validaciones import MARCAS_COMUNES, normalizar_patente, numero_ar, patente_valida
+from ..validaciones import (FORMATOS_PATENTE, MARCAS_COMUNES, normalizar_patente, numero_ar,
+                            patente_valida)
 
 bp = Blueprint("ot", __name__)
 
@@ -264,7 +265,8 @@ def _resolver_vehiculo():
     if request.form.get("v_nuevo"):
         patente = normalizar_patente(request.form.get("v_patente"))
         if not patente_valida(patente):
-            return None, [f"Escribí una patente válida para el vehículo nuevo («{request.form.get('v_patente', '')}»)."]
+            return None, [f"La patente del vehículo nuevo («{request.form.get('v_patente', '')}») "
+                          f"tiene que ser {FORMATOS_PATENTE}."]
         if Vehiculo.query.filter_by(patente=patente).first():
             return None, [f"La patente {patente} ya está cargada: buscala en el campo Patente."]
         anio = request.form.get("v_anio", "").strip()

@@ -531,21 +531,22 @@ body.movil { background: var(--bg); font-size: 16px; }
 /* La patente como el chapón Mercosur, dibujada acá (sin imagen: escala con el
    tamaño de letra y no pide un archivo más). */
 .patente {
-  display: inline-block; vertical-align: middle; min-width: 7.9em; overflow: hidden;
-  border: 2px solid #1f2937; border-radius: 7px; background: #fff; text-align: center;
-  font-family: var(--font-display); line-height: 1.1;
+  display: inline-block; vertical-align: middle; min-width: 6.9em; overflow: hidden;
+  border: 1.5px solid #1f2937; border-radius: 6px; background: #fff; text-align: center;
+  font-family: var(--font-display); line-height: 1.05;
 }
 .patente .pais {
-  display: block; background: #1f6feb; color: #fff; font-size: .42em; font-weight: 700;
-  letter-spacing: .12em; padding: 2px 0 1px;
+  display: block; background: #1f6feb; color: #fff; font-size: .34em; font-weight: 700;
+  letter-spacing: .05em; padding: 1px 0; white-space: nowrap;
 }
 .patente .numero {
-  display: block; font-weight: 700; letter-spacing: .1em; padding: 3px 4px 4px;
+  display: block; font-weight: 700; letter-spacing: .06em; padding: 2px 5px 3px;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-/* La anterior a Mercosur: chapa negra, letras blancas y ARGENTINA en celeste */
-.patente.vieja { background: #16181d; }
-.patente.vieja .pais { background: #fff; color: #4aa3d8; letter-spacing: .18em; }
+/* La anterior a Mercosur: más angosta (seis caracteres), chapa negra con letras
+   blancas y ARGENTINA en celeste. */
+.patente.vieja { min-width: 5.9em; background: #16181d; }
+.patente.vieja .pais { background: #fff; color: #4aa3d8; letter-spacing: .1em; }
 .patente.vieja .numero { color: #fff; }
 .movil-ot-auto { font-weight: 600; margin-top: 8px; }
 .movil-ot-motivo { color: var(--muted); font-size: .92rem; margin-top: 2px; }

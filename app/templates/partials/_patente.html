@@ -2,9 +2,9 @@
    {% with patente=v.patente, tam='1.35rem' %}{% include "partials/_patente.html" %}{% endwith %} #}
 {% set p = patente | patente %}
 {% if p.tipo == 'otra' %}
-<span class="plate" style="font-size:{{ tam or '.82rem' }}">{{ p.texto }}</span>
+<span class="plate" style="font-size:{{ tam or '.8rem' }}">{{ p.texto }}</span>
 {% else %}
-<span class="patente {{ 'vieja' if p.tipo == 'vieja' }}" style="font-size:{{ tam or '1rem' }}">
+<span class="patente {{ 'vieja' if p.tipo == 'vieja' }}" style="font-size:{{ tam or '.8rem' }}">
   <span class="pais">{{ 'ARGENTINA' if p.tipo == 'vieja' else 'REPÚBLICA ARGENTINA' }}</span>
   <span class="numero">{{ p.texto }}</span>
 </span>

@@ -9,6 +9,7 @@ from ..validaciones import (
     MARCAS_COMUNES,
     cuit_valido,
     formatear_cuit,
+    FORMATOS_PATENTE,
     normalizar_patente,
     patente_valida,
 )
@@ -55,7 +56,7 @@ def _cargar_vehiculo(vehiculo, prefijo=""):
     if not patente:
         errores.append("La patente es obligatoria.")
     elif not patente_valida(patente):
-        errores.append(f"La patente {patente} no parece válida.")
+        errores.append(f"«{patente}» no tiene formato de patente. Va {FORMATOS_PATENTE}.")
     else:
         with db.session.no_autoflush:
             duplicado = Vehiculo.query.filter(Vehiculo.patente == patente, Vehiculo.id != vehiculo.id).first()

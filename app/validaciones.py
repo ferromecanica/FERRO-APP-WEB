@@ -15,12 +15,33 @@ def solo_digitos(texto):
 
 
 def normalizar_patente(texto):
-    """'ab 123 cd' → 'AB123CD'. Acepta cualquier formato (motos, patentes viejas, extranjeras)."""
+    """'ab 123 cd' → 'AB123CD'. Limpia espacios y guiones; el formato lo revisa patente_valida."""
     return re.sub(r"[^A-Z0-9]", "", (texto or "").upper())
 
 
+# Los tres formatos que existen en Argentina
+PATENTE_VIEJA = re.compile(r"^([A-Z]{3})(\d{3})$")          # AAA123, hasta 2016
+PATENTE_MERCOSUR = re.compile(r"^[A-Z]{2}\d{3}[A-Z]{2}$")   # AB123CD
+PATENTE_MOTO = re.compile(r"^[A-Z]\d{3}[A-Z]{3}$")          # A123BCD, motos Mercosur
+
+FORMATOS_PATENTE = "AB123CD (Mercosur), A123BCD (moto) o AAA123 (la vieja)"
+
+
 def patente_valida(patente):
-    return 5 <= len(patente) <= 8
+    """Solo los formatos reales: así no entra un «SINNUMERO» ni una patente a medias."""
+    texto = patente or ""
+    return bool(PATENTE_VIEJA.match(texto) or PATENTE_MERCOSUR.match(texto) or PATENTE_MOTO.match(texto))
+
+
+def formato_patente(valor):
+    """Qué chapón le corresponde y cómo se escribe el número."""
+    texto = normalizar_patente(valor)
+    vieja = PATENTE_VIEJA.match(texto)
+    if vieja:
+        return {"tipo": "vieja", "texto": f"{vieja.group(1)} {vieja.group(2)}"}
+    if PATENTE_MERCOSUR.match(texto) or PATENTE_MOTO.match(texto):
+        return {"tipo": "mercosur", "texto": texto}
+    return {"tipo": "otra", "texto": texto}
 
 
 def cuit_valido(cuit):
