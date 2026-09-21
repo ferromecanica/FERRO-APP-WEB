@@ -169,9 +169,13 @@ tr.clickable { cursor: pointer; }
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
 .badge-info { background: var(--info-soft); color: var(--info); }
 .badge-accent { background: var(--accent-soft); color: var(--accent-ink); }
+/* Todas del mismo ancho: el de una patente Mercosur (AB123CD). A las viejas
+   de seis les sobra lugar, pero así quedan todas alineadas. */
 .plate {
   display: inline-block; font-family: var(--font-display); font-weight: 700; letter-spacing: .08em;
   padding: 2px 8px; border: 1.5px solid #1f2937; border-radius: 5px; background: #fff; font-size: .82rem;
+  min-width: 7.4em; text-align: center; box-sizing: border-box; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .empty { text-align: center; padding: 42px 16px; color: var(--muted); }
@@ -523,6 +527,22 @@ body.movil { background: var(--bg); font-size: 16px; }
 .movil-ot:hover, .movil-ot:active { text-decoration: none; border-color: var(--accent); }
 .movil-ot-top { display: flex; justify-content: space-between; align-items: center; }
 .plate-grande { font-size: 1.05rem; padding: 3px 10px; }
+
+/* La patente como el chapón Mercosur, dibujada acá (sin imagen: escala con el
+   tamaño de letra y no pide un archivo más). */
+.patente {
+  display: inline-block; vertical-align: middle; width: 7.9em; overflow: hidden;
+  border: 2px solid #1f2937; border-radius: 7px; background: #fff; text-align: center;
+  font-family: var(--font-display); line-height: 1.1;
+}
+.patente .pais {
+  display: block; background: #1f6feb; color: #fff; font-size: .42em; font-weight: 700;
+  letter-spacing: .12em; padding: 2px 0 1px;
+}
+.patente .numero {
+  display: block; font-weight: 700; letter-spacing: .1em; padding: 3px 4px 4px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .movil-ot-auto { font-weight: 600; margin-top: 8px; }
 .movil-ot-motivo { color: var(--muted); font-size: .92rem; margin-top: 2px; }
 .movil-ot-pie { display: flex; justify-content: space-between; color: var(--muted); font-size: .82rem; margin-top: 10px; }

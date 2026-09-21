@@ -27,7 +27,7 @@
 <div class="page-head">
   <div>
     <div class="eyebrow">Orden de trabajo · ingresó {{ ot.fecha_ingreso | fecha }}</div>
-    <h1>OT {{ ot.id }} <span class="plate" style="font-size:1rem;vertical-align:middle">{{ ot.vehiculo.patente }}</span>
+    <h1>OT {{ ot.id }} {% with patente=ot.vehiculo.patente, tam='1rem' %}{% include "partials/_patente.html" %}{% endwith %}
       <span style="font-size:1.05rem;font-weight:600;color:var(--muted)">{{ ot.vehiculo.descripcion }}</span></h1>
   </div>
   <div class="actions">

@@ -1,0 +1,5 @@
+{# El chapón Mercosur. Uso: {% with patente=v.patente, tam='1.4rem' %}{% include "partials/_patente.html" %}{% endwith %} #}
+<span class="patente" style="font-size:{{ tam or '1rem' }}">
+  <span class="pais">REPÚBLICA ARGENTINA</span>
+  <span class="numero">{{ patente }}</span>
+</span>

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Vehículo</div>
-    <h1><span class="plate" style="font-size:1.3rem;padding:3px 12px">{{ vehiculo.patente }}</span>
+    <h1>{% with patente=vehiculo.patente, tam='1.35rem' %}{% include "partials/_patente.html" %}{% endwith %}
       <span style="margin-left:8px">{{ vehiculo.descripcion or '' }}</span></h1></div>
   <div class="actions">
     <a class="btn" href="{{ url_for('clientes.vehiculo_form', id=vehiculo.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
