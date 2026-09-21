@@ -16,8 +16,9 @@ from .extensions import db, login_manager
 
 
 class TimestampMixin:
-    creado = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    actualizado = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Hora argentina, como todo el resto (la zona se fija en config.py)
+    creado = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    actualizado = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 # ───────────────────────── Usuarios y configuración ─────────────────────────

@@ -1,10 +1,19 @@
 import os
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
+
+# El servidor de PythonAnywhere corre en UTC: a partir de las 21 ya está en el
+# día siguiente y las OT del día se irían a mañana. El taller está en Rosario,
+# así que todo el proceso trabaja en hora argentina.
+ZONA = os.environ.get("FERRO_TZ", "America/Argentina/Buenos_Aires")
+os.environ["TZ"] = ZONA
+if hasattr(time, "tzset"):
+    time.tzset()
 
 
 class Config:
