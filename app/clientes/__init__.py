@@ -2,7 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 from sqlalchemy import func, or_
 
-from ..extensions import db
+from ..extensions import db, sin_acentos
 from ..models import Cliente, Presupuesto, Turno, Vehiculo, Venta
 from ..validaciones import (
     CONDICIONES_IVA,
@@ -81,17 +81,24 @@ def _requiere_login():
 # ─────────────────────────────────── Clientes ───────────────────────────────
 
 
+def _como(columna, like):
+    """Compara ignorando acentos: 'martin' encuentra 'Martín'."""
+    return db.func.sin_acentos(columna).ilike(like)
+
+
 @bp.route("/")
 def lista():
     q = request.args.get("q", "").strip()
     consulta = Cliente.query
     if q:
-        like = f"%{q}%"
-        consulta = consulta.outerjoin(Vehiculo).filter(
-            or_(Cliente.nombre.ilike(like), Cliente.telefono.ilike(like), Vehiculo.patente.ilike(like),
-                Cliente.cuit.ilike(like), Cliente.notas.ilike(like), Vehiculo.marca.ilike(like),
-                Vehiculo.modelo.ilike(like))
-        ).distinct()
+        consulta = consulta.outerjoin(Vehiculo)
+        for palabra in q.split():
+            like = f"%{sin_acentos(palabra)}%"
+            consulta = consulta.filter(or_(
+                _como(Cliente.nombre, like), _como(Cliente.telefono, like), _como(Vehiculo.patente, like),
+                _como(Cliente.cuit, like), _como(Cliente.notas, like), _como(Vehiculo.marca, like),
+                _como(Vehiculo.modelo, like)))
+        consulta = consulta.distinct()
     clientes = consulta.order_by(Cliente.nombre).all()
     plantilla = "clientes/_tabla.html" if request.headers.get("HX-Request") else "clientes/lista.html"
     return render_template(plantilla, clientes=clientes, q=q)
@@ -157,10 +164,12 @@ def eliminar(id):
 def vehiculos():
     q = request.args.get("q", "").strip()
     consulta = Vehiculo.query.outerjoin(Cliente)
-    if q:
-        like = f"%{q}%"
-        consulta = consulta.filter(or_(Vehiculo.patente.ilike(like), Vehiculo.marca.ilike(like),
-                                       Vehiculo.modelo.ilike(like), Cliente.nombre.ilike(like)))
+    for palabra in q.split():
+        like = f"%{sin_acentos(palabra)}%"
+        consulta = consulta.filter(or_(
+            _como(Vehiculo.patente, like), _como(Vehiculo.marca, like),
+            _como(Vehiculo.modelo, like), _como(Vehiculo.color, like),
+            _como(Vehiculo.motor, like), _como(Cliente.nombre, like)))
     vehiculos = consulta.order_by(Vehiculo.patente).all()
     plantilla = "clientes/_tabla_vehiculos.html" if request.headers.get("HX-Request") else "clientes/vehiculos.html"
     return render_template(plantilla, vehiculos=vehiculos, q=q)

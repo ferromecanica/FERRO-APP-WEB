@@ -6,7 +6,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import login_required
 from sqlalchemy import or_
 
-from ..extensions import db
+from ..extensions import db, sin_acentos
 from ..models import (
     CLASIFICACIONES_CIERRE,
     MOTIVOS_SIN_CARGO,
@@ -88,6 +88,36 @@ def _mecanicos():
 # ─────────────────────────────── Listado y alta ─────────────────────────────
 
 
+# Dónde busca el buscador del listado: casi todo lo que cuelga de la OT
+CAMPOS_BUSQUEDA_OT = [
+    Vehiculo.patente, Vehiculo.marca, Vehiculo.modelo, Vehiculo.motor, Vehiculo.color, Vehiculo.vin,
+    Cliente.nombre, Cliente.telefono,
+    OrdenTrabajo.detalle, OrdenTrabajo.otros, OrdenTrabajo.motivo_sin_cargo, OrdenTrabajo.estado,
+    OrdenTrabajo.clasificacion_cierre, OrdenTrabajo.aceite_motor_detalle, OrdenTrabajo.aceite_caja_detalle,
+    OrdenTrabajo.aceite_diferencial_detalle,
+]
+
+
+def _como(columna, like):
+    """Compara ignorando acentos: 'distribucion' encuentra 'Distribución'."""
+    return db.func.sin_acentos(columna).ilike(like)
+
+
+def _coincide_ot(palabra):
+    """La palabra aparece en la OT, en su vehículo, en su cliente, o en lo que se
+    le hizo: las tareas, los repuestos que se usaron o el mecánico que la tocó."""
+    like = f"%{sin_acentos(palabra)}%"
+    condiciones = [_como(c, like) for c in CAMPOS_BUSQUEDA_OT]
+    condiciones.append(OrdenTrabajo.tareas.any(_como(TareaOT.descripcion, like)))
+    condiciones.append(OrdenTrabajo.consumos.any(_como(ConsumoOT.descripcion, like)))
+    condiciones.append(OrdenTrabajo.horas.any(_como(RegistroHoras.mecanico, like)))
+    if palabra.isdigit():
+        condiciones.append(OrdenTrabajo.id == int(palabra))
+        if len(palabra) == 4:
+            condiciones.append(Vehiculo.anio == int(palabra))
+    return or_(*condiciones)
+
+
 @bp.route("/")
 def lista():
     estado = request.args.get("estado")
@@ -98,13 +128,8 @@ def lista():
                                    OrdenTrabajo.sin_cargo.is_(False))
     elif estado:
         consulta = consulta.filter(OrdenTrabajo.estado == estado)
-    if q:
-        like = f"%{q}%"
-        filtros = [Vehiculo.patente.ilike(like), Cliente.nombre.ilike(like), OrdenTrabajo.detalle.ilike(like),
-                   Vehiculo.modelo.ilike(like)]
-        if q.isdigit():
-            filtros.append(OrdenTrabajo.id == int(q))
-        consulta = consulta.filter(or_(*filtros))
+    for palabra in q.split():  # todas las palabras tienen que aparecer en algún lado
+        consulta = consulta.filter(_coincide_ot(palabra))
     ordenes = consulta.order_by(OrdenTrabajo.id.desc()).all()
     plantilla = "ot/_tabla.html" if request.headers.get("HX-Request") else "ot/lista.html"
     return render_template(plantilla, ordenes=ordenes, estados=ESTADOS_OT, estado=estado, q=q,

@@ -8,7 +8,7 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 from flask_login import login_required
 from sqlalchemy import func, or_
 
-from ..extensions import db
+from ..extensions import db, sin_acentos
 from ..models import (
     Categoria,
     IngresoStock,
@@ -72,13 +72,19 @@ CAMPOS_BUSQUEDA = [
 ]
 
 
+def _como(columna, like):
+    """Compara ignorando acentos: 'distribucion' encuentra 'Distribución'."""
+    return db.func.sin_acentos(columna).ilike(like)
+
+
 def _coincide(palabra):
     """La palabra aparece en algún campo del repuesto, en su categoría o subcategoría, o es su número."""
-    like = f"%{palabra}%"
-    condiciones = [c.ilike(like) for c in CAMPOS_BUSQUEDA]
-    condiciones.append(Repuesto.categoria_id.in_(db.session.query(Categoria.id).filter(Categoria.nombre.ilike(like))))
+    like = f"%{sin_acentos(palabra)}%"
+    condiciones = [_como(c, like) for c in CAMPOS_BUSQUEDA]
+    condiciones.append(Repuesto.categoria_id.in_(
+        db.session.query(Categoria.id).filter(_como(Categoria.nombre, like))))
     condiciones.append(Repuesto.subcategoria_id.in_(
-        db.session.query(Subcategoria.id).filter(Subcategoria.nombre.ilike(like))))
+        db.session.query(Subcategoria.id).filter(_como(Subcategoria.nombre, like))))
     if palabra.isdigit():
         condiciones.append(Repuesto.id == int(palabra))
     return or_(*condiciones)
