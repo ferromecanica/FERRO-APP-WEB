@@ -1,5 +1,5 @@
 <a class="movil-ot" href="{{ url_for('movil.ot', id=ot.id) }}">
-  <div class="movil-ot-top"><span class="plate plate-grande">{{ ot.vehiculo.patente }}</span>{{ estado(ot.estado) }}</div>
+  <div class="movil-ot-top">{% with patente=ot.vehiculo.patente, tam='1.05rem' %}{% include "partials/_patente.html" %}{% endwith %}{{ estado(ot.estado) }}</div>
   <div class="movil-ot-auto">{{ ot.vehiculo.descripcion or '' }}</div>
   <div class="movil-ot-motivo">{{ ot.detalle or '' }}</div>
   <div class="movil-ot-pie"><span>OT {{ ot.id }}</span><span><i class="fa-solid fa-camera"></i> {{ ot.fotos | length }}</span></div>

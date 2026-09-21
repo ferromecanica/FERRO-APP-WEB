@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">{{ dueno.nombre if dueno else 'Vehículos' }}</div>
-    <h1>{% if vehiculo.id %}<span class="plate" style="font-size:1.2rem">{{ vehiculo.patente }}</span>{% else %}Nuevo vehículo{% endif %}</h1></div>
+    <h1>{% if vehiculo.id %}{% with patente=vehiculo.patente, tam='1.2rem' %}{% include "partials/_patente.html" %}{% endwith %}{% else %}Nuevo vehículo{% endif %}</h1></div>
 </div>
 <form class="card" method="post" style="max-width:760px">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

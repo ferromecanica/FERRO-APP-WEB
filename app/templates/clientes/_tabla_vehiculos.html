@@ -8,7 +8,7 @@
   <tbody>
   {% for v in vehiculos %}
     <tr class="clickable" onclick="location='{{ url_for('clientes.vehiculo_detalle', id=v.id) }}'">
-      <td class="centro"><span class="plate">{{ v.patente }}</span></td>
+      <td class="centro">{% with patente=v.patente %}{% include "partials/_patente.html" %}{% endwith %}</td>
       <td class="izq envuelve destacado">{{ v.descripcion or '—' }}{% if v.color %}<div class="muted small">{{ v.color }}</div>{% endif %}</td>
       <td class="izq envuelve" data-titulo="Dueño">{{ v.cliente.nombre if v.cliente else '' }}{% if not v.cliente %}<span class="muted">Sin dueño</span>{% endif %}</td>
       <td class="centro fecha-chica hide-sm" data-titulo="Año">{{ v.anio or '—' }}</td>

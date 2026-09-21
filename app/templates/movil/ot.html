@@ -6,7 +6,7 @@
 {% block content %}
 {% set abierta = ot.abierta %}
 <div class="movil-cabecera">
-  <span class="plate plate-grande">{{ ot.vehiculo.patente }}</span>
+  {% with patente=ot.vehiculo.patente, tam='1.05rem' %}{% include "partials/_patente.html" %}{% endwith %}
   <div><strong>{{ ot.vehiculo.descripcion or 'Vehículo' }}</strong><div class="muted small">OT {{ ot.id }} · {{ ot.cliente.nombre if ot.cliente else 'Sin cliente' }}</div></div>
   {{ estado(ot.estado) }}
 </div>

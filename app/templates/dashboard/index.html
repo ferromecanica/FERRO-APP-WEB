@@ -46,7 +46,7 @@
       {% for ot in ots_abiertas %}
         <tr class="clickable" onclick="location='{{ url_for('ot.detalle', id=ot.id) }}'">
           <td><strong>#{{ ot.id }}</strong><div class="muted small">{{ ot.detalle or '' }}</div></td>
-          <td><span class="plate">{{ ot.vehiculo.patente }}</span><div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
+          <td>{% with patente=ot.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %}<div class="muted small">{{ ot.vehiculo.descripcion }}</div></td>
           <td class="hide-sm" data-titulo="Cliente">{{ ot.cliente.nombre if ot.cliente else "—" }}</td>
           <td>{{ estado(ot.estado) }}</td>
           <td class="num hide-sm" data-titulo="Ingreso">{{ ot.fecha_ingreso | fecha }}</td>
@@ -68,7 +68,7 @@
             <strong>{{ t.fecha | dia }}{% if t.hora %} · {{ t.hora.strftime('%H:%M') }}</strong>{% else %}</strong>{% endif %}
             <div class="muted small">{{ t.quien }}{% if t.motivo %} · {{ t.motivo | truncate(40) }}{% endif %}</div>
           </div>
-          {% if t.vehiculo %}<span class="plate">{{ t.vehiculo.patente }}</span>{% endif %}
+          {% if t.vehiculo %}{% with patente=t.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %}{% endif %}
         </li>
         {% endfor %}
       </ul>

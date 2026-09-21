@@ -29,7 +29,7 @@
         <td><strong>{{ p.id }}</strong></td>
         <td style="white-space:nowrap" data-titulo="Fecha">{{ p.fecha | fecha }}</td>
         <td class="destacado">{{ p.cliente.nombre }}</td>
-        <td class="hide-sm">{% if p.vehiculo %}<span class="plate">{{ p.vehiculo.patente }}</span>{% endif %}</td>
+        <td class="hide-sm">{% if p.vehiculo %}{% with patente=p.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %}{% endif %}</td>
         <td>{{ badge(p.estado) }}</td>
         <td class="num hide-sm" data-titulo="Repuestos">{{ p.total_repuestos | pesos }}</td>
         <td class="num hide-sm" data-titulo="Mano de obra">{{ p.costo_mano_obra | pesos }}</td>

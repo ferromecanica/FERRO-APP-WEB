@@ -9,7 +9,7 @@
     <tr class="clickable" onclick="location='{{ url_for('clientes.detalle', id=c.id) }}'">
       <td class="izq envuelve destacado"><strong>{{ c.nombre }}</strong><div class="muted small">{{ c.codigo }} · {{ c.condicion_iva or '' }}</div></td>
       <td class="izq envuelve">{% for v in c.vehiculos %}
-        <div class="veh-linea"><span class="plate">{{ v.patente }}</span> <span>{{ ((v.marca or '') ~ ' ' ~ (v.modelo or '')).strip() }}</span></div>
+        <div class="veh-linea">{% with patente=v.patente %}{% include "partials/_patente.html" %}{% endwith %} <span>{{ ((v.marca or '') ~ ' ' ~ (v.modelo or '')).strip() }}</span></div>
       {% else %}<span class="muted">—</span>{% endfor %}</td>
       <td class="centro hide-sm" data-titulo="Teléfono">{{ c.telefono or '—' }}</td>
       <td class="izq envuelve hide-sm notas" data-titulo="Notas">{% if c.notas %}<div class="recorte-2" title="{{ c.notas }}">{{ c.notas }}</div>{% else %}<span class="muted">—</span>{% endif %}</td>

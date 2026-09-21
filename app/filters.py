@@ -1,6 +1,22 @@
+import re
 from datetime import date, datetime
 
 from .validaciones import whatsapp_numero
+
+# AAA123 es la vieja (negra); AA123BB y A123BCD (motos) son Mercosur
+PATENTE_VIEJA = re.compile(r"^([A-Z]{3})(\d{3})$")
+PATENTE_MERCOSUR = re.compile(r"^([A-Z]{2}\d{3}[A-Z]{2}|[A-Z]\d{3}[A-Z]{3})$")
+
+
+def patente(valor):
+    """Qué chapón le corresponde y cómo se escribe el número."""
+    texto = (valor or "").strip().upper()
+    vieja = PATENTE_VIEJA.match(texto)
+    if vieja:
+        return {"tipo": "vieja", "texto": f"{vieja.group(1)} {vieja.group(2)}"}
+    if PATENTE_MERCOSUR.match(texto):
+        return {"tipo": "mercosur", "texto": texto}
+    return {"tipo": "otra", "texto": texto}
 
 
 def pesos(valor, decimales=0):
@@ -64,6 +80,7 @@ def register_filters(app):
     app.jinja_env.filters["dia"] = dia
     app.jinja_env.filters["mes_largo"] = mes_largo
     app.jinja_env.filters["whatsapp"] = whatsapp_numero
+    app.jinja_env.filters["patente"] = patente
 
     @app.context_processor
     def inject_globals():

@@ -19,7 +19,7 @@
   <div class="card-body form-grid">
     {% if ot.id %}
       <div class="full"><label>Vehículo</label>
-        <div><span class="plate">{{ ot.vehiculo.patente }}</span> {{ ot.vehiculo.descripcion }}</div></div>
+        <div>{% with patente=ot.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %} {{ ot.vehiculo.descripcion }}</div></div>
       {% with valor=f.get('cliente', ot.cliente.etiqueta if ot.cliente else ''), obligatorio=False %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% else %}
       {# ───── Vehículo ───── #}

@@ -38,7 +38,7 @@
           {% if t.duracion %}<div class="muted small">{{ t.duracion }}</div>{% endif %}</td>
         <td class="izq">
           <strong>{{ t.quien }}</strong>
-          {% if t.vehiculo %} <span class="plate">{{ t.vehiculo.patente }}</span>
+          {% if t.vehiculo %} {% with patente=t.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %}
             <span class="muted small">{{ t.vehiculo.descripcion }}</span>{% endif %}
           <div class="muted small">{{ t.motivo or 'Sin motivo anotado' }}
             {%- if t.observaciones %} · {{ t.observaciones | truncate(60) }}{% endif %}</div></td>

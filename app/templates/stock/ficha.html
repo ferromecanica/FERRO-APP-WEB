@@ -162,7 +162,7 @@
             <div class="muted small">mostrador</div>
           {%- else %}—{% endif %}</td>
         <td class="izq">
-          {%- if u.ot and u.ot.vehiculo %}<span class="plate">{{ u.ot.vehiculo.patente }}</span>
+          {%- if u.ot and u.ot.vehiculo %}{% with patente=u.ot.vehiculo.patente %}{% include "partials/_patente.html" %}{% endwith %}
             <div class="muted small">{{ u.ot.cliente.nombre if u.ot.cliente }}</div>
           {%- elif u.venta %}<div class="muted small">{{ u.venta.cliente.nombre if u.venta.cliente else 'Mostrador' }}</div>
           {%- endif %}</td>
