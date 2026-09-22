@@ -299,7 +299,9 @@ def importar_ots(libro, turnos, numeros=None):
         ot.detalle = texto(o.get("Detalle_Trabajo"))
         ot.estado = ESTADOS_VIEJOS.get(texto(o.get("Estado")), "Finalizada")
         ot.presupuesto_cliente = numero(o.get("Presupuesto_Cliente"))
-        ot.total_cobrado = numero(o.get("Total_Cobrado"))
+        # En AppSheet la OT abierta ya trae Total_Cobrado en 0: así mostraría
+        # "$ 0" cobrado en vez de "—" hasta que se cierre
+        ot.total_cobrado = numero(o.get("Total_Cobrado")) if ot.fecha_fin else None
         ot.clasificacion_cierre = texto(o.get("Clasificacion_Cierre"))
         ot.link_reporte = texto(o.get("Link_Reporte"))
         ot.otros = texto(o.get("Otros"))
