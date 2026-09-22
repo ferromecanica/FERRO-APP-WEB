@@ -91,13 +91,21 @@ def importar_socios(libro):
     return nuevos
 
 
-def importar_movimientos(libro):
+def importar_movimientos(libro, ventas=None):
+    """Los movimientos de la contable.
+
+    Con `ventas` ({ID_Venta de AppSheet: venta}) trae solo los que salen de esas
+    ventas y los deja atados a ellas, como los que genera Ferro al cobrar.
+    """
     nuevos = actualizados = 0
     for m in filas(libro, "Movimientos"):
         origen = texto(m.get("ID_Movimiento"))
         fecha = fecha_de(m.get("Fecha"))
         total = numero(m.get("Importe_Total"))
         if not origen or not fecha or total is None:
+            continue
+        venta = (ventas or {}).get(texto(m.get("ID_Origen_Taller")))
+        if ventas is not None and venta is None:
             continue
         mov = MovimientoContable.query.filter_by(origen=origen).first()
         if mov is None:
@@ -120,6 +128,8 @@ def importar_movimientos(libro):
         mov.percepciones = numero(m.get("Percepciones")) or 0
         mov.no_gravado = numero(m.get("Importe_No_Gravado")) or 0
         mov.cobrado = tipo != "Ingreso" or texto(m.get("Estado_Cobro")) == "Cobrado"
+        if venta is not None:
+            mov.venta = venta
     return nuevos, actualizados
 
 

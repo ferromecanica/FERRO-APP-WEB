@@ -3,6 +3,12 @@
 Uso:  python scripts/importar_appsheet.py <ruta al .xlsx> repuestos   (repuestos, proveedores, markups)
       python scripts/importar_appsheet.py <ruta al .xlsx> clientes    (clientes y vehículos)
       python scripts/importar_appsheet.py <ruta al .xlsx> historial   (turnos, OTs y ventas)
+      python scripts/importar_appsheet.py <ruta al .xlsx> ot 10099 10100 [--contable "<Admin Taller.xlsx>"]
+
+El modo "ot" trae solo esas órdenes: la OT con sus renglones, su venta y, si se
+le pasa el Excel de la contable, el ingreso de esa venta atado a ella. Es para
+las últimas OT que quedaron cargadas en AppSheet después de la mudanza. Solo
+crea el cliente y el vehículo si faltan: a los que ya están no los toca.
 
 Se puede correr varias veces: actualiza por número (no duplica). El historial
 vuelve a escribir los renglones de cada OT y venta importada, así que no se
@@ -123,52 +129,66 @@ def id_cliente(codigo):
     return int(t.split("-")[-1]) if t.split("-")[-1].isdigit() else None
 
 
+def guardar_cliente(c):
+    """Escribe una fila de la hoja Clientes. Devuelve (cliente, era_nuevo)."""
+    cid = id_cliente(c["ID_Cliente"])
+    if cid is None:
+        return None, False
+    cli = db.session.get(Cliente, cid)
+    nuevo = cli is None
+    if nuevo:
+        cli = Cliente(id=cid)
+        db.session.add(cli)
+    cli.nombre = texto(c["Nombre_Completo"]) or f"Cliente {cid}"
+    cli.telefono = texto(c["Telefono"])
+    cli.email = (texto(c["Email"]) or "").lower() or None
+    cli.direccion = texto(c["Direccion"])
+    cli.notas = texto(c["Notas"])
+    cuit = texto(c["CUIT"])
+    cli.cuit = formatear_cuit(cuit) if cuit and cuit_valido(cuit) else cuit
+    cli.condicion_iva = texto(c["Condicion_IVA"]) or "Consumidor Final"
+    return cli, nuevo
+
+
+def guardar_vehiculo(v):
+    """Escribe una fila de la hoja Vehiculos. Devuelve (vehículo, era_nuevo)."""
+    patente = normalizar_patente(texto(v["ID_Patente"]))
+    if not patente:
+        return None, False
+    veh = Vehiculo.query.filter_by(patente=patente).first()
+    nuevo = veh is None
+    if nuevo:
+        veh = Vehiculo(patente=patente)
+        db.session.add(veh)
+    cid = id_cliente(v["ID_Cliente"])
+    veh.cliente_id = cid if cid and db.session.get(Cliente, cid) else None
+    veh.marca, veh.modelo, veh.motor = texto(v["Marca"]), texto(v["Modelo"]), texto(v["Motor"])
+    veh.traccion, veh.color = texto(v["Tracción"]), texto(v["Color"])
+    veh.vin, veh.ecu_marca, veh.ecu_modelo = texto(v["VIN"]), texto(v["ECU_Marca"]), texto(v["ECU_Modelo"])
+    anio, km = v["Año"], v["Kilometraje"]
+    veh.anio = int(anio) if isinstance(anio, (int, float)) else None
+    veh.kilometraje = int(km) if isinstance(km, (int, float)) else None
+    db.session.flush()
+    return veh, nuevo
+
+
 def importar_clientes(libro):
     nuevos = actualizados = 0
     for c in filas(libro, "Clientes"):
-        cid = id_cliente(c["ID_Cliente"])
-        if cid is None:
-            continue
-        cli = db.session.get(Cliente, cid)
+        cli, nuevo = guardar_cliente(c)
         if cli is None:
-            cli = Cliente(id=cid)
-            db.session.add(cli)
-            nuevos += 1
-        else:
-            actualizados += 1
-        cli.nombre = texto(c["Nombre_Completo"]) or f"Cliente {cid}"
-        cli.telefono = texto(c["Telefono"])
-        cli.email = (texto(c["Email"]) or "").lower() or None
-        cli.direccion = texto(c["Direccion"])
-        cli.notas = texto(c["Notas"])
-        cuit = texto(c["CUIT"])
-        cli.cuit = formatear_cuit(cuit) if cuit and cuit_valido(cuit) else cuit
-        cli.condicion_iva = texto(c["Condicion_IVA"]) or "Consumidor Final"
+            continue
+        nuevos, actualizados = nuevos + nuevo, actualizados + (not nuevo)
     return nuevos, actualizados
 
 
 def importar_vehiculos(libro):
     nuevos = actualizados = 0
     for v in filas(libro, "Vehiculos"):
-        patente = normalizar_patente(texto(v["ID_Patente"]))
-        if not patente:
-            continue
-        veh = Vehiculo.query.filter_by(patente=patente).first()
+        veh, nuevo = guardar_vehiculo(v)
         if veh is None:
-            veh = Vehiculo(patente=patente)
-            db.session.add(veh)
-            nuevos += 1
-        else:
-            actualizados += 1
-        cid = id_cliente(v["ID_Cliente"])
-        veh.cliente_id = cid if cid and db.session.get(Cliente, cid) else None
-        veh.marca, veh.modelo, veh.motor = texto(v["Marca"]), texto(v["Modelo"]), texto(v["Motor"])
-        veh.traccion, veh.color = texto(v["Tracción"]), texto(v["Color"])
-        veh.vin, veh.ecu_marca, veh.ecu_modelo = texto(v["VIN"]), texto(v["ECU_Marca"]), texto(v["ECU_Modelo"])
-        anio, km = v["Año"], v["Kilometraje"]
-        veh.anio = int(anio) if isinstance(anio, (int, float)) else None
-        veh.kilometraje = int(km) if isinstance(km, (int, float)) else None
-        db.session.flush()
+            continue
+        nuevos, actualizados = nuevos + nuevo, actualizados + (not nuevo)
     return nuevos, actualizados
 
 
@@ -250,11 +270,14 @@ def importar_turnos(libro):
     return por_codigo
 
 
-def importar_ots(libro, turnos):
+def importar_ots(libro, turnos, numeros=None):
+    """Con `numeros`, solo esas órdenes; sin nada, todas las del Excel."""
     nuevas = actualizadas = 0
     ots = {}
     for o in filas(libro, "Ordenes_trabajo"):
         numero_ot = entero(o.get("ID_OT"))
+        if numeros is not None and numero_ot not in numeros:
+            continue
         patente = normalizar_patente(texto(o.get("ID_Patente")))
         vehiculo = Vehiculo.query.filter_by(patente=patente).first() if patente else None
         if numero_ot is None or vehiculo is None:
@@ -342,18 +365,25 @@ def importar_renglones_ot(libro, ots):
     return consumos, horas, tareas
 
 
-def importar_ventas(libro, ots):
-    """Las ventas viejas, con su renglón. Las de OT se reconocen por la OT; las de mostrador por fecha y total."""
+def importar_ventas(libro, ots, solo_de_ot=False):
+    """Las ventas viejas, con su renglón. Las de OT se reconocen por la OT; las de mostrador por fecha y total.
+
+    Con `solo_de_ot` deja afuera las de mostrador: es para el modo "ot", que
+    trae únicamente lo que cuelga de las órdenes pedidas.
+    """
     detalles = {}
     for d in filas(libro, "Detalle_Venta"):
         detalles.setdefault(texto(d.get("ID_Venta")), []).append(d)
 
     nuevas = actualizadas = 0
+    por_origen = {}
     for v in filas(libro, "Ventas"):
         fecha = fecha_de(v.get("Fecha"))
         if not fecha:
             continue
         ot = ots.get(entero(v.get("ID_OT")))
+        if solo_de_ot and ot is None:
+            continue
         cid = id_cliente(v.get("Cliente"))
         cliente = db.session.get(Cliente, cid) if cid else None
         total = numero(v.get("Total_Venta")) or 0
@@ -377,6 +407,7 @@ def importar_ventas(libro, ots):
         venta.tipo_comprobante = texto(v.get("Tipo_Comprobante")) or "X"
         venta.link_comprobante = texto(v.get("Link_Factura"))
         db.session.flush()
+        por_origen[texto(v.get("ID_Venta"))] = venta
         items = []
         for d in detalles.get(texto(v.get("ID_Venta")), []):
             repuesto_id = entero(d.get("ID_Repuesto"))
@@ -397,23 +428,93 @@ def importar_ventas(libro, ots):
                 costo = ot.costo_repuestos
             if costo:
                 items[0].costo_unitario = costo / (items[0].cantidad or 1)
-    return nuevas, actualizadas
+    return nuevas, actualizadas, por_origen
+
+
+# ────────────────────── Una OT suelta (después de la mudanza) ───────────────────────
+
+
+def asegurar_dueno(libro, numeros):
+    """Crea el cliente y el vehículo de esas OT si todavía no están en la base.
+
+    A los que ya existen no los toca: en Ferro pueden haberse corregido a mano.
+    """
+    filas_ot = [o for o in filas(libro, "Ordenes_trabajo") if entero(o.get("ID_OT")) in numeros]
+    clientes = {texto(o.get("ID_Cliente")) for o in filas_ot}
+    patentes = {normalizar_patente(texto(o.get("ID_Patente"))) for o in filas_ot}
+    nuevos = []
+    for c in filas(libro, "Clientes"):
+        if texto(c["ID_Cliente"]) in clientes and db.session.get(Cliente, id_cliente(c["ID_Cliente"])) is None:
+            cli, _ = guardar_cliente(c)
+            nuevos.append(f"cliente {cli.nombre}")
+    db.session.flush()
+    for v in filas(libro, "Vehiculos"):
+        patente = normalizar_patente(texto(v["ID_Patente"]))
+        if patente in patentes and Vehiculo.query.filter_by(patente=patente).first() is None:
+            guardar_vehiculo(v)
+            nuevos.append(f"vehículo {patente}")
+    db.session.flush()
+    return nuevos
+
+
+def importar_ot_suelta(libro, numeros, contable=None):
+    """Las OT pedidas con todo lo que cuelga: renglones, venta e ingreso contable."""
+    faltaban = asegurar_dueno(libro, numeros)
+    ots, ot_n, ot_a = importar_ots(libro, {}, numeros)
+    consumos, horas, tareas = importar_renglones_ot(libro, ots)
+    db.session.flush()
+    db.session.expire_all()  # los renglones recién escritos, para que el costo de la OT salga bien
+    v_n, v_a, ventas = importar_ventas(libro, ots, solo_de_ot=True)
+
+    m_n = m_a = 0
+    if contable is not None:
+        from importar_contable import importar_movimientos  # noqa: E402  (mismo directorio)
+        m_n, m_a = importar_movimientos(contable, ventas=ventas)
+
+    db.session.commit()
+    if faltaban:
+        print("  Faltaban en la base y se crearon: " + ", ".join(faltaban))
+    print(f"✓ OTs: {ot_n} nuevas, {ot_a} actualizadas ({', '.join(str(n) for n in sorted(ots))})")
+    print(f"  Renglones: {consumos} consumos, {horas} registros de horas, {tareas} tareas")
+    print(f"  Ventas: {v_n} nuevas, {v_a} actualizadas · Ingresos contables: {m_n} nuevos, {m_a} actualizados")
+    for n in sorted(ots):
+        ot = ots[n]
+        venta = ot.ventas[0] if ot.ventas else None
+        plata = f"venta ${venta.total:,.0f} ({venta.metodo_pago})".replace(",", ".") if venta else "sin venta"
+        quien = ot.cliente.nombre if ot.cliente else "sin cliente"
+        print(f"  OT {n} · {ot.vehiculo.patente} · {quien} · {ot.estado} · {plata}")
+    sin_importar = sorted(numeros - set(ots))
+    if sin_importar:
+        print(f"  ⚠ No estaban en el Excel (o sin patente): {sin_importar}")
+    print("  (las fotos de la OT quedan en AppSheet: hay que bajarlas de Drive aparte)")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or sys.argv[2] not in ("repuestos", "clientes", "historial"):
+    if len(sys.argv) < 3 or sys.argv[2] not in ("repuestos", "clientes", "historial", "ot"):
         sys.exit(__doc__)
     libro = openpyxl.load_workbook(sys.argv[1], data_only=True, read_only=True)
     app = create_app()
     with app.app_context():
         print("Copia de seguridad:", hacer_copia(app.config["SQLALCHEMY_DATABASE_URI"]).name)
+        if sys.argv[2] == "ot":
+            resto = sys.argv[3:]
+            contable = None
+            if "--contable" in resto:
+                i = resto.index("--contable")
+                contable = openpyxl.load_workbook(resto[i + 1], data_only=True, read_only=True)
+                resto = resto[:i] + resto[i + 2:]
+            numeros = {int(n) for n in resto if n.isdigit()}
+            if not numeros:
+                sys.exit("Decime qué OT importar, por número:  ... ot 10099 10100")
+            importar_ot_suelta(libro, numeros, contable)
+            sys.exit(0)
         if sys.argv[2] == "historial":
             turnos = importar_turnos(libro)
             ots, ot_n, ot_a = importar_ots(libro, turnos)
             consumos, horas, tareas = importar_renglones_ot(libro, ots)
             db.session.flush()
             db.session.expire_all()  # los renglones recién escritos, para que el costo de la OT salga bien
-            v_n, v_a = importar_ventas(libro, ots)
+            v_n, v_a, _ = importar_ventas(libro, ots)
             db.session.commit()
             print(f"✓ Turnos: {len(turnos)} · OTs: {ot_n} nuevas, {ot_a} actualizadas")
             print(f"  Renglones: {consumos} consumos, {horas} registros de horas, {tareas} tareas")
