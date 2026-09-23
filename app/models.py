@@ -98,8 +98,15 @@ class Cliente(TimestampMixin, db.Model):
 
 
 class Vehiculo(TimestampMixin, db.Model):
+    # La patente es única, salvo SIN PATENTE: de esos puede haber varios (0 km,
+    # chapa perdida, sin papeles), así que el índice los deja afuera
+    __table_args__ = (
+        db.Index("ix_vehiculo_patente", "patente", unique=True,
+                 sqlite_where=db.text("patente <> 'SINPATENTE'")),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
-    patente = db.Column(db.String(10), unique=True, nullable=False, index=True)
+    patente = db.Column(db.String(10), nullable=False)
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"))  # puede no tener dueño asignado todavía
     marca = db.Column(db.String(40))
     modelo = db.Column(db.String(60))
