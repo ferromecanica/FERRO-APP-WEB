@@ -10,7 +10,10 @@ Las de Fotos_OT van al reporte; las de Fotos_Taller son de uso interno.
 Se puede cortar y volver a correr: sigue por donde iba (no copia dos veces).
 Con --probar hace solo las primeras 5, para ver que funcione.
 Con --carpeta se le dice qué carpeta de Drive es cuál, por si hay varias con el
-mismo nombre:  --carpeta Fotos_OT_Images=1phGuTnt…
+mismo nombre. Hay tres Fotos_OT_Images en el Drive y la buena es la que está en
+"SOFTWARE GESTIÓN (APPSHEET)", así que hay que pasarla siempre:
+    --carpeta Fotos_OT_Images=1XbCu2_FdiR08_mzfzhPcsNifW2Cr1qjf
+(Fotos_Taller_Images es única.) Para verlas: acción ver_carpetas del Apps Script.
 """
 import posixpath
 import sys
