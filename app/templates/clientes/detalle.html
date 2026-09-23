@@ -5,6 +5,7 @@
 <div class="page-head">
   <div><div class="eyebrow">{{ cliente.codigo }}</div><h1>{{ cliente.nombre }}</h1></div>
   <div class="actions">
+    <a class="btn" href="{{ url_for('clientes.lista') }}"><i class="fa-solid fa-arrow-left"></i> Volver a clientes</a>
     {% set wa = cliente.telefono | whatsapp %}
     {% if wa %}<a class="btn" href="https://wa.me/{{ wa }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp" style="color:#25d366"></i> WhatsApp</a>{% endif %}
     {% if cliente.telefono %}<a class="btn" href="tel:{{ cliente.telefono }}"><i class="fa-solid fa-phone"></i> Llamar</a>{% endif %}

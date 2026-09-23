@@ -101,7 +101,7 @@ def lista():
         consulta = consulta.distinct()
     clientes = consulta.order_by(Cliente.nombre).all()
     plantilla = "clientes/_tabla.html" if request.headers.get("HX-Request") else "clientes/lista.html"
-    return render_template(plantilla, clientes=clientes, q=q)
+    return render_template(plantilla, clientes=clientes, q=q, total=Cliente.query.count())
 
 
 @bp.route("/nuevo", methods=["GET", "POST"])
@@ -172,7 +172,7 @@ def vehiculos():
             _como(Vehiculo.motor, like), _como(Cliente.nombre, like)))
     vehiculos = consulta.order_by(Vehiculo.patente).all()
     plantilla = "clientes/_tabla_vehiculos.html" if request.headers.get("HX-Request") else "clientes/vehiculos.html"
-    return render_template(plantilla, vehiculos=vehiculos, q=q)
+    return render_template(plantilla, vehiculos=vehiculos, q=q, total=Vehiculo.query.count())
 
 
 @bp.route("/vehiculos/<int:id>")

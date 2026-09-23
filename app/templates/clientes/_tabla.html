@@ -1,5 +1,8 @@
 {% from "partials/macros.html" import vacio %}
 {% if clientes %}
+{# La cuenta va acá adentro y no en el encabezado: la búsqueda recambia solo esta parte #}
+<div class="card-head"><span class="muted small">{{ clientes | length }}
+  cliente{{ 's' if clientes | length != 1 }}{% if q %} de {{ total | default(0) }}{% endif %}</span></div>
 <div class="table-wrap"><table class="tabla-densa lista-movil">
   <colgroup><col style="width:26%"><col style="width:26%"><col style="width:120px"><col><col style="width:54px"></colgroup>
   <thead><tr><th class="izq">Cliente</th><th class="izq">Vehículos</th><th class="centro hide-sm">Teléfono</th>

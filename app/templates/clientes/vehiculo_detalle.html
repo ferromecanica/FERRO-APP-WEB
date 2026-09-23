@@ -7,6 +7,7 @@
     <h1>{% with patente=vehiculo.patente, tam='1.35rem' %}{% include "partials/_patente.html" %}{% endwith %}
       <span style="margin-left:8px">{{ vehiculo.descripcion or '' }}</span></h1></div>
   <div class="actions">
+    <a class="btn" href="{{ url_for('clientes.vehiculos') }}"><i class="fa-solid fa-arrow-left"></i> Volver a vehículos</a>
     <a class="btn" href="{{ url_for('clientes.vehiculo_form', id=vehiculo.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
     <a class="btn btn-primary" href="{{ url_for('ot.form', vehiculo_id=vehiculo.id) }}"><i class="fa-solid fa-plus"></i> Nueva OT</a>
   </div>

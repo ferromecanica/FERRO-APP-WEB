@@ -31,6 +31,7 @@
       <span style="font-size:1.05rem;font-weight:600;color:var(--muted)">{{ ot.vehiculo.descripcion }}</span></h1>
   </div>
   <div class="actions">
+    <a class="btn" href="{{ url_for('ot.lista') }}"><i class="fa-solid fa-arrow-left"></i> Volver al listado</a>
     {% if editable %}
       <a class="btn" href="{{ url_for('ot.form', id=ot.id) }}"><i class="fa-solid fa-pen"></i> Editar</a>
       <button type="button" class="btn btn-primary" data-abrir="dialogo-cierre"><i class="fa-solid fa-flag-checkered"></i> Cerrar OT</button>
