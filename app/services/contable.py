@@ -91,38 +91,51 @@ def conciliar(mes):
     """Cruza las ventas del taller con los ingresos de la administración.
 
     Lo de antes venía de dos apps separadas, así que además del enganche por id
-    se busca la correspondencia como la haría uno a ojo: por el número de OT
-    escrito en el concepto y, si no, por importe. Cada ingreso tapa una sola
-    venta, para que dos ventas del mismo monto no se tapen con uno solo.
+    se busca la correspondencia como la haría uno a ojo: primero el emparejado
+    a mano, después el número de OT escrito en el concepto y, si no, el importe.
+    Cada ingreso tapa una sola venta, para que dos ventas del mismo monto no se
+    tapen con uno solo.
 
-    Devuelve tres cosas: las ventas que no están cargadas, los ingresos que no
-    salen de una venta (cobros de deudas viejas, intereses, lo que sea) y los
-    pares que se corresponden pero por distinto importe.
+    Devuelve cuatro cosas: las ventas que no están cargadas, los ingresos que no
+    salen de una venta (cobros de deudas viejas, intereses, lo que sea), los
+    pares que se corresponden pero por distinto importe, y las ventas que uno ya
+    dio por revisadas y no se reclaman más.
     """
     ingresos = MovimientoContable.query.filter_by(mes_imputacion=mes, tipo="Ingreso").all()
 
     atadas = {m.venta_id for m in ingresos if m.venta_id}
-    libres = [m for m in ingresos if not m.venta_id]
+    a_mano = {m.venta_conciliada_id: m for m in ingresos if m.venta_conciliada_id}
+    libres = [m for m in ingresos if not m.venta_id and not m.venta_conciliada_id]
     pendientes = [v for v in _ventas_que_acreditan(mes) if v.cobrado and v.id not in atadas]
 
-    sin_ot, distintos = [], []
+    sin_ot, distintos, revisadas = [], [], []
     for v in pendientes:
-        mov = next((m for m in libres if _nombra_ot(m, v.ot_id)), None)
+        # El emparejado a mano manda: uno ya dijo que ese ingreso es el de esta venta
+        mov = a_mano.get(v.id) or next((m for m in libres if _nombra_ot(m, v.ot_id)), None)
         if mov is None:
             sin_ot.append(v)
             continue
-        libres.remove(mov)
-        if abs(mov.total - v.cobrado) >= 1:
-            distintos.append({"venta": v, "movimiento": mov, "diferencia": v.cobrado - mov.total})
+        if mov in libres:
+            libres.remove(mov)
+        par = {"venta": v, "movimiento": mov, "diferencia": v.cobrado - mov.total,
+               "a_mano": mov.venta_conciliada_id == v.id}
+        # Emparejarlo a mano o darlo por revisado es aceptar la diferencia. Los
+        # emparejados van a la lista aunque coincidan, para poder deshacerlos
+        if par["a_mano"] or v.revisada:
+            revisadas.append(par)
+        elif abs(par["diferencia"]) >= 1:
+            distintos.append(par)
 
     faltan = []
     for v in sin_ot:
         mov = next((m for m in libres if abs(m.total - v.cobrado) < 1), None)
         if mov is not None:
             libres.remove(mov)
+        elif v.revisada:
+            revisadas.append({"venta": v, "movimiento": None, "diferencia": v.cobrado, "a_mano": False})
         else:
             faltan.append(v)
-    return faltan, libres, distintos
+    return faltan, libres, distintos, revisadas
 
 
 def ventas_sin_ingreso(mes):
@@ -137,7 +150,7 @@ def control_del_mes(mes):
     de AppSheet por separado y quedó como quedó.
 
     La cuenta cierra siempre así:
-        facturado − costo de tarjeta − lo que falta cargar
+        facturado − lo que falta cargar − lo desestimado
         − lo cargado por otro importe + lo que no sale de ventas = ingresos
     """
     cierre = CierreMensual.query.filter_by(mes=mes).first()
@@ -149,7 +162,11 @@ def control_del_mes(mes):
     tarjeta = sum(v.costo_tarjeta for v in ventas)
     ingresos = sum(m.total for m in MovimientoContable.query.filter_by(
         mes_imputacion=mes, tipo="Ingreso").all())
-    faltantes, sin_venta, distintos = conciliar(mes)
+    faltantes, sin_venta, distintos, revisadas = conciliar(mes)
+    # Las revisadas que no tienen ingreso salen del cuadre enteras; las que lo
+    # tienen por otro importe aportan solo la diferencia, igual que las distintas
+    sin_ingreso = [r for r in revisadas if r["movimiento"] is None]
+    con_ingreso = [r for r in revisadas if r["movimiento"] is not None]
     return {
         "facturado": facturado,
         "tarjeta": tarjeta,
@@ -160,5 +177,7 @@ def control_del_mes(mes):
         "sin_venta": sin_venta,
         "otros": sum(m.total for m in sin_venta),
         "distintos": distintos,
-        "ajuste": sum(d["diferencia"] for d in distintos),
+        "revisadas": revisadas,
+        "desestimado": sum(r["diferencia"] for r in sin_ingreso),
+        "ajuste": sum(d["diferencia"] for d in distintos) + sum(r["diferencia"] for r in con_ingreso),
     }

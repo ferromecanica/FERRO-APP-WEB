@@ -27,6 +27,77 @@
     <div class="kpi-value" style="color:{{ 'var(--ok)' if totales.resultado >= 0 else 'var(--danger)' }}">{{ totales.resultado | pesos }}</div></div>
 </div>
 
+{% macro boton_revisar(venta, revisada) %}
+  <form method="post" action="{{ url_for('contable.revisar_venta', id=venta.id) }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="revisada" value="{{ '0' if revisada else '1' }}">
+    <button class="btn btn-sm ">
+      {%- if revisada %}<i class="fa-solid fa-rotate-left"></i> Volver a reclamar
+      {%- else %}<i class="fa-solid fa-check"></i> Ya lo revisé{% endif %}</button></form>
+{% endmacro %}
+
+{% macro emparejar(venta, sueltos) %}
+  {% if sueltos %}
+  <form method="post" action="{{ url_for('contable.emparejar_venta', id=venta.id) }}" class="emparejar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="movimiento_id" required>
+      <option value="">…o es uno de estos ingresos</option>
+      {% for m in sueltos %}
+        <option value="{{ m.id }}">{{ m.fecha | fecha }} · {{ (m.concepto or m.quien) | truncate(38) }}
+          · {{ m.total | pesos }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm"><i class="fa-solid fa-link"></i> Emparejar</button></form>
+  {% endif %}
+{% endmacro %}
+
+{% macro pie_del_cuadre(control, mes) %}
+  <div class="aviso-pie">
+    {% if control.revisadas %}
+    <details class="revisados">
+      <summary>Ya revisados ({{ control.revisadas | length }})</summary>
+      <table class="tabla-densa">
+        <tbody>
+        {% for r in control.revisadas %}
+          <tr>
+            <td class="centro fecha-chica">{{ r.venta.fecha | fecha }}</td>
+            <td class="centro"><a href="{{ url_for('ventas.detalle', id=r.venta.id) }}">
+              {% if r.venta.ot_id %}OT #{{ r.venta.ot_id }}{% else %}Venta {{ r.venta.id }}{% endif %}</a></td>
+            <td class="izq envuelve muted small">
+              {%- if r.movimiento %}va con «{{ (r.movimiento.concepto or r.movimiento.quien) | truncate(44) }}»
+                {%- if r.diferencia | abs >= 1 %} · {{ r.diferencia | abs | pesos }} de diferencia{% endif %}
+              {%- else %}desestimada: no se carga en la administración{% endif %}</td>
+            <td class="num">{{ r.venta.total | pesos }}</td>
+            <td class="num">
+              {%- if r.a_mano %}
+              <form method="post" action="{{ url_for('contable.desemparejar', id=r.movimiento.id) }}"
+                    style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm"><i class="fa-solid fa-link-slash"></i> Desemparejar</button>
+              </form>{% endif %}
+              {%- if r.venta.revisada %}{{ boton_revisar(r.venta, true) }}{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% endif %}
+    <table class="cuadre">
+      <tr><td>Facturado en Ventas</td><td class="num">{{ control.facturado | pesos }}</td></tr>
+      {% if control.falta %}<tr><td>Ventas que falta cargar acá ({{ control.faltantes | length }})</td>
+        <td class="num">− {{ control.falta | pesos }}</td></tr>{% endif %}
+      {% if control.desestimado %}<tr><td>Ventas desestimadas</td>
+        <td class="num">− {{ control.desestimado | pesos }}</td></tr>{% endif %}
+      {% if control.ajuste %}<tr><td>Cargado por otro importe</td>
+        <td class="num">{{ '−' if control.ajuste > 0 else '+' }} {{ control.ajuste | abs | pesos }}</td></tr>{% endif %}
+      {% if control.otros %}<tr><td>Ingresos que no salen de una venta ({{ control.sin_venta | length }})</td>
+        <td class="num">+ {{ control.otros | pesos }}</td></tr>{% endif %}
+      <tr class="total"><td>Ingresos cargados en {{ mes | mes_imputacion }}</td>
+        <td class="num">{{ control.ingresos | pesos }}</td></tr>
+    </table>
+  </div>
+{% endmacro %}
+
 {% if control and (control.faltantes or control.distintos) %}
 <div class="aviso-conciliacion">
   <div class="aviso-titulo"><i class="fa-solid fa-triangle-exclamation"></i>
@@ -36,8 +107,8 @@
 
   {% if control.faltantes %}
   <div class="table-wrap"><table class="tabla-densa lista-movil">
-    <colgroup><col style="width:90px"><col style="width:100px"><col style="width:24%"><col>
-      <col style="width:110px"><col style="width:156px"></colgroup>
+    <colgroup><col style="width:90px"><col style="width:100px"><col style="width:22%"><col>
+      <col style="width:110px"><col style="width:300px"></colgroup>
     <tbody>
     {% for v in control.faltantes %}
       <tr>
@@ -47,10 +118,14 @@
         <td class="izq envuelve destacado">{{ v.cliente.nombre if v.cliente else 'Mostrador' }}</td>
         <td class="izq envuelve muted small" data-titulo="Detalle">{{ v.detalle | truncate(70) }}</td>
         <td class="num" data-titulo="Importe"><strong>{{ v.total | pesos }}</strong></td>
-        <td class="num">
-          <form method="post" action="{{ url_for('contable.ingreso_de_venta', id=v.id) }}" style="display:inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn btn-sm"><i class="fa-solid fa-plus"></i> Cargar el ingreso</button></form></td>
+        <td class="num acciones-conciliacion">
+          <div>
+            <form method="post" action="{{ url_for('contable.ingreso_de_venta', id=v.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm"><i class="fa-solid fa-plus"></i> Cargar el ingreso</button></form>
+            {{ boton_revisar(v, false) }}
+          </div>
+          {{ emparejar(v, control.sin_venta) }}</td>
       </tr>
     {% endfor %}
     </tbody>
@@ -60,9 +135,9 @@
   {% if control.distintos %}
   <div class="table-wrap"><table class="tabla-densa lista-movil">
     <colgroup><col style="width:90px"><col style="width:100px"><col><col style="width:110px">
-      <col style="width:110px"><col style="width:110px"></colgroup>
+      <col style="width:110px"><col style="width:110px"><col style="width:136px"></colgroup>
     <thead><tr><th class="centro">Fecha</th><th class="centro">Venta</th><th class="izq">Concepto</th>
-      <th class="num">En el taller</th><th class="num">Acá</th><th class="num">Diferencia</th></tr></thead>
+      <th class="num">En el taller</th><th class="num">Acá</th><th class="num">Diferencia</th><th></th></tr></thead>
     <tbody>
     {% for d in control.distintos %}
       <tr>
@@ -75,26 +150,24 @@
         <td class="num" data-titulo="Diferencia"
             style="color:{{ 'var(--danger)' if d.diferencia > 0 else 'var(--ok)' }}">
           <strong>{{ d.diferencia | pesos }}</strong></td>
+        <td class="num">{{ boton_revisar(d.venta, false) }}</td>
       </tr>
     {% endfor %}
     </tbody>
   </table></div>
   {% endif %}
 
-  <div class="aviso-pie">
-    <table class="cuadre">
-      <tr><td>Facturado en Ventas</td><td class="num">{{ control.facturado | pesos }}</td></tr>
-      {% if control.falta %}<tr><td>Ventas que falta cargar acá ({{ control.faltantes | length }})</td>
-        <td class="num">− {{ control.falta | pesos }}</td></tr>{% endif %}
-      {% if control.ajuste %}<tr><td>Cargado por otro importe ({{ control.distintos | length }})</td>
-        <td class="num">{{ '−' if control.ajuste > 0 else '+' }} {{ control.ajuste | abs | pesos }}</td></tr>{% endif %}
-      {% if control.otros %}<tr><td>Ingresos que no salen de una venta ({{ control.sin_venta | length }})</td>
-        <td class="num">+ {{ control.otros | pesos }}</td></tr>{% endif %}
-      <tr class="total"><td>Ingresos cargados en {{ mes | mes_imputacion }}</td>
-        <td class="num">{{ control.ingresos | pesos }}</td></tr>
-    </table>
-  </div>
+  {{ pie_del_cuadre(control, mes) }}
 </div>
+{% elif control and (control.revisadas or control.sin_venta) %}
+<details class="aviso-conciliacion conciliado">
+  <summary class="aviso-titulo"><i class="fa-solid fa-circle-check"></i>
+    El taller y la administración están conciliados
+    <span class="muted small" style="margin-left:auto;font-weight:400">
+      {%- if control.revisadas %}{{ control.revisadas | length }} revisado{{ 's' if control.revisadas | length > 1 }}
+      {%- else %}ver el detalle{% endif %}</span></summary>
+  {{ pie_del_cuadre(control, mes) }}
+</details>
 {% endif %}
 
 <div class="filters" style="margin-bottom:14px">

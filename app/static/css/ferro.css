@@ -739,6 +739,16 @@ table.cuadre { width: auto; min-width: 340px; margin-left: auto; background: tra
 table.cuadre td { border: 0; padding: 3px 0; font-size: .92em; }
 table.cuadre td.num { padding-left: 24px; font-variant-numeric: tabular-nums; }
 table.cuadre tr.total td { border-top: 1px solid var(--accent); padding-top: 6px; font-weight: 700; color: var(--accent-ink); }
+/* Cuando ya no hay nada que reclamar, el panel queda cerrado y se abre si uno quiere mirar */
+details.aviso-conciliacion > summary { cursor: pointer; list-style: none; }
+details.aviso-conciliacion > summary::-webkit-details-marker { display: none; }
+details.revisados { margin-bottom: 10px; }
+details.revisados > summary { cursor: pointer; font-size: .9em; font-weight: 600; color: var(--accent-ink); }
+details.revisados > summary + table { margin-top: 8px; }
+.acciones-conciliacion { white-space: normal; }
+.acciones-conciliacion > div { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+form.emparejar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
+form.emparejar select { font-size: .82rem; padding: 5px 8px; min-width: 0; flex: 1; }
 
 /* ── Desplegables de búsqueda (reemplazan al del navegador) ─ */
 .desplegable { position: fixed; z-index: 90; max-height: 292px; overflow-y: auto;

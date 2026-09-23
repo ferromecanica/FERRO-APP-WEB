@@ -196,6 +196,51 @@ def ingreso_de_venta(id):
     return redirect(url_for(".movimientos", mes=MovimientoContable.mes_de(venta.fecha)))
 
 
+def _mes_de_venta(venta):
+    return MovimientoContable.mes_de(venta.fecha_acreditacion or venta.fecha)
+
+
+@bp.route("/ventas/<int:id>/revisada", methods=["POST"])
+def revisar_venta(id):
+    """Da por revisada (o vuelve a reclamar) una venta que el control marcaba."""
+    venta = db.get_or_404(Venta, id)
+    venta.revisada = request.form.get("revisada") == "1"
+    db.session.commit()
+    flash("Listo, no te la reclamo más." if venta.revisada
+          else "Vuelve a entrar en el control del mes.", "ok")
+    return redirect(url_for(".movimientos", mes=_mes_de_venta(venta)))
+
+
+@bp.route("/ventas/<int:id>/emparejar", methods=["POST"])
+def emparejar_venta(id):
+    """Dice que un ingreso cargado a mano es el de esta venta, aunque el importe no coincida."""
+    venta = db.get_or_404(Venta, id)
+    mov = db.session.get(MovimientoContable, request.form.get("movimiento_id", type=int) or 0)
+    if mov is None or mov.tipo != "Ingreso":
+        flash("Elegí el ingreso que corresponde a esa venta.", "error")
+    elif mov.venta_id or mov.venta_conciliada_id:
+        flash("Ese ingreso ya está enganchado a otra venta.", "error")
+    else:
+        mov.venta_conciliada = venta
+        db.session.commit()
+        diferencia = venta.cobrado - mov.total
+        aviso = f"Emparejado con {mov.concepto or mov.quien}"
+        if abs(diferencia) >= 1:
+            aviso += f", con ${abs(diferencia):,.0f} de diferencia".replace(",", ".")
+        flash(aviso + ".", "ok")
+    return redirect(url_for(".movimientos", mes=_mes_de_venta(venta)))
+
+
+@bp.route("/movimientos/<int:id>/desemparejar", methods=["POST"])
+def desemparejar(id):
+    """Deshace el emparejado a mano: el ingreso y su venta vuelven al control."""
+    mov = db.get_or_404(MovimientoContable, id)
+    mov.venta_conciliada = None
+    db.session.commit()
+    flash("Se deshizo el emparejado.", "ok")
+    return redirect(url_for(".movimientos", mes=mov.mes_imputacion))
+
+
 @bp.route("/capital")
 def capital():
     aportes = AporteCapital.query.order_by(AporteCapital.fecha.desc(), AporteCapital.id.desc()).all()

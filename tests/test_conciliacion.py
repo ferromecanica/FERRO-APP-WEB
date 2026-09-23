@@ -113,6 +113,65 @@ with app.app_context():
     assert contable.registrar_venta(sin_cargo) is None
     assert sin_cargo.id not in [v.id for v in contable.ventas_sin_ingreso(MES)]
 
+# El cuadre del mes tiene que cerrar siempre
+def cuadra(control):
+    suma = (control['facturado'] - control['falta'] - control['desestimado']
+            - control['ajuste'] + control['otros'])
+    assert round(suma, 2) == round(control['ingresos'], 2), (round(suma, 2), round(control['ingresos'], 2))
+
+
+# ── Desestimar: la venta que no se va a cargar deja de reclamarse ──
+with app.app_context():
+    olvidada = Venta(fecha=date.today(), cliente_id=cid, metodo_pago='Efectivo')
+    olvidada.items.append(VentaItem(descripcion='No va a la administración', cantidad=1,
+                                    precio_unitario=4321, costo_unitario=0))
+    db.session.add(olvidada); db.session.commit()
+    oid = olvidada.id
+    assert oid in [v.id for v in contable.ventas_sin_ingreso(MES)]
+    cuadra(contable.control_del_mes(MES))
+
+assert 'no te la reclamo' in post(f'/administracion/ventas/{oid}/revisada', {'revisada': '1'})
+with app.app_context():
+    control = contable.control_del_mes(MES)
+    assert oid not in [v.id for v in control['faltantes']], 'la desestimada se sigue reclamando'
+    assert control['desestimado'] == 4321, control['desestimado']
+    assert oid in [r['venta'].id for r in control['revisadas']]
+    cuadra(control)
+
+b = B(c.get(f'/administracion/?mes={MES}'))
+assert 'Ya revisados' in b and 'Volver a reclamar' in b, 'no se ven los revisados'
+
+# y se puede volver atrás
+post(f'/administracion/ventas/{oid}/revisada', {'revisada': '0'})
+with app.app_context():
+    assert oid in [v.id for v in contable.ventas_sin_ingreso(MES)], 'no volvió a reclamarse'
+
+# ── Emparejar a mano: un ingreso cargado por otro importe tapa a su venta ──
+with app.app_context():
+    db.session.add(MovimientoContable(fecha=date.today(), tipo='Ingreso', mes_imputacion=MES, total=4000,
+                                      quien=cnombre, concepto='Lo de la venta chica', cobrado=True))
+    db.session.commit()
+    suelto = MovimientoContable.query.filter_by(concepto='Lo de la venta chica').one().id
+
+assert 'de diferencia' in post(f'/administracion/ventas/{oid}/emparejar', {'movimiento_id': suelto})
+with app.app_context():
+    control = contable.control_del_mes(MES)
+    assert oid not in [v.id for v in control['faltantes']], 'el emparejado se sigue reclamando'
+    par = next(r for r in control['revisadas'] if r['venta'].id == oid)
+    assert par['a_mano'] and par['diferencia'] == 321, par
+    # el ingreso emparejado a mano no es automático: se sigue editando desde la administración
+    assert not db.session.get(MovimientoContable, suelto).automatico
+    cuadra(control)
+
+# un ingreso ya enganchado no se le presta a otra venta
+assert 'ya está enganchado' in post(f'/administracion/ventas/{sid}/emparejar', {'movimiento_id': suelto})
+
+post(f'/administracion/movimientos/{suelto}/desemparejar')
+with app.app_context():
+    assert oid in [v.id for v in contable.ventas_sin_ingreso(MES)], 'no se deshizo el emparejado'
+    cuadra(contable.control_del_mes(MES))
+post(f'/administracion/ventas/{oid}/revisada', {'revisada': '1'})  # queda callada para lo que sigue
+
 # ── Un mes ya cerrado no se controla: la historia quedó como quedó ──
 with app.app_context():
     from app.models import CierreMensual

@@ -541,8 +541,12 @@ class MovimientoContable(db.Model):
     ingreso_id = db.Column(db.Integer, db.ForeignKey("ingreso_stock.id"))
     cierre_id = db.Column(db.Integer, db.ForeignKey("cierre_mensual.id"))  # lo generó un cierre
     origen = db.Column(db.String(40), index=True)  # id que tenía en la app contable de AppSheet
+    # Ingreso cargado a mano que uno emparejó con su venta: el importe puede no
+    # coincidir (así vinieron las dos apps de AppSheet) y está bien que no coincida
+    venta_conciliada_id = db.Column(db.Integer, db.ForeignKey("venta.id"))
 
-    venta = db.relationship("Venta")
+    venta = db.relationship("Venta", foreign_keys=[venta_id])
+    venta_conciliada = db.relationship("Venta", foreign_keys=[venta_conciliada_id])
     ingreso = db.relationship("IngresoStock")
     cierre = db.relationship("CierreMensual", back_populates="movimientos")
 
@@ -927,6 +931,8 @@ class Venta(TimestampMixin, db.Model):
     bruto_cobrado = db.Column(db.Float)       # lo que pagó el cliente, con el recargo
     neto_acreditado = db.Column(db.Float)     # lo que deposita la tarjeta
     fecha_acreditacion = db.Column(db.Date)   # cuándo cae en el banco
+    # "ya lo miré y está bien así": el control del mes deja de reclamarla
+    revisada = db.Column(db.Boolean, default=False, nullable=False)
 
     condicion = db.relationship("CondicionPago", back_populates="ventas")
     cliente = db.relationship("Cliente")
