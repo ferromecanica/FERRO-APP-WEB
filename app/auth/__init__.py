@@ -2,6 +2,7 @@ import secrets
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
 from ..models import Usuario
@@ -21,7 +22,13 @@ def ingreso_automatico():
         usuario = Usuario(email=EMAIL_TALLER, nombre="Taller Ferro", rol="Admin")
         usuario.set_password(secrets.token_hex(32))  # nadie la conoce: solo sirve para el ingreso automático
         db.session.add(usuario)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # Dos pedidos a la vez sobre una base sin el usuario: lo crean los dos
+            # y el segundo choca con el email repetido. Me quedo con el que ganó.
+            db.session.rollback()
+            usuario = Usuario.query.filter_by(email=EMAIL_TALLER).one()
     login_user(usuario)
 
 
