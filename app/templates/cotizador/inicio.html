@@ -126,6 +126,31 @@
         </dl>
       </div>
     </div>
+    {% if formas %}
+    <div class="card">
+      {{ encabezado('fa-credit-card', 'Según cómo lo pague') }}
+      <div class="card-body">
+        <table class="tabla-densa formas-pago"><tbody>
+        {% for f in formas %}
+          <tr>
+            <td class="izq">{{ f.nombre }}
+              {%- if f.recargo %} <span class="muted small">+{{ f.recargo | numero(1) }} %</span>{% endif %}
+              {%- if f.dias %}<div class="muted small">entra a {{ f.dias }} día{{ 's' if f.dias != 1 }}
+                hábil{{ 'es' if f.dias != 1 }}</div>{% endif %}</td>
+            <td class="num"><strong>{{ f.cobra | pesos }}</strong>
+              {%- if (f.entra - t.total) | abs >= 1 %}
+              {# El recargo cargado a mano no cubre la comisión: la diferencia la pone el taller #}
+              <div class="small" style="color:{{ 'var(--danger)' if f.entra < t.total else 'var(--muted)' }}">
+                te entran {{ f.entra | pesos }}</div>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+        <div class="muted small" style="margin-top:10px">Precios para percibir los
+          {{ t.total | pesos }} de arriba. Las comisiones se editan en Configuración.</div>
+      </div>
+    </div>
+    {% endif %}
+
     <form class="card" id="pasar" method="post" action="{{ url_for('cotizador.pasar_a_presupuesto') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {{ encabezado('fa-file-invoice-dollar', 'Pasar a presupuesto') }}

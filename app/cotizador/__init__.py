@@ -11,6 +11,7 @@ from flask_login import login_required
 from ..extensions import db
 from ..models import (
     Cliente,
+    CondicionPago,
     ConfigTaller,
     Presupuesto,
     PresupuestoItem,
@@ -57,13 +58,32 @@ def _totales(coti):
     }
 
 
+def _formas_de_pago(total):
+    """Cuánto sale el trabajo según cómo lo pague, para que al taller le entre el total.
+
+    El cotizador dice lo que queremos percibir; la tarjeta se queda con lo suyo,
+    así que el precio que se le pasa al cliente cambia con la forma de pago.
+    """
+    if not total:
+        return []
+    condiciones = CondicionPago.query.filter_by(activa=True).order_by(
+        CondicionPago.orden, CondicionPago.id).all()
+    formas = []
+    for c in condiciones:
+        cobra = c.bruto(total)
+        formas.append({"nombre": c.nombre, "recargo": c.recargo_usado, "cobra": cobra,
+                       "entra": c.neto(cobra), "dias": c.dias_habiles})
+    return formas
+
+
 @bp.route("/")
 def inicio():
     coti = _cotizacion()
     repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
     clientes = Cliente.query.order_by(db.func.lower(Cliente.nombre)).all()
-    return render_template("cotizador/inicio.html", coti=coti, t=_totales(coti), repuestos=repuestos,
-                           clientes=clientes,
+    totales = _totales(coti)
+    return render_template("cotizador/inicio.html", coti=coti, t=totales, repuestos=repuestos,
+                           clientes=clientes, formas=_formas_de_pago(totales["total"]),
                            vehiculos_por_cliente={c.id: [{"id": v.id, "texto": f"{v.patente} · {v.descripcion}".strip(" ·")}
                                                          for v in c.vehiculos] for c in clientes})
 

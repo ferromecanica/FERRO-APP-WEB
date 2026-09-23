@@ -749,6 +749,10 @@ details.revisados > summary + table { margin-top: 8px; }
 .acciones-conciliacion > div { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 form.emparejar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
 form.emparejar select { font-size: .82rem; padding: 5px 8px; min-width: 0; flex: 1; }
+/* Cuánto sale el trabajo según cómo lo pague el cliente (cotizador) */
+table.formas-pago td { vertical-align: top; padding: 8px 0; }
+table.formas-pago tr:last-child td { border-bottom: 0; }
+table.formas-pago td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ── Desplegables de búsqueda (reemplazan al del navegador) ─ */
 .desplegable { position: fixed; z-index: 90; max-height: 292px; overflow-y: auto;
