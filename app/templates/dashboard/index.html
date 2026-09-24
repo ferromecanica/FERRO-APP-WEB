@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/macros.html" import estado, vacio %}
+{% import "partials/_relojes.html" as relojes %}
 {% block title %}Tablero{% endblock %}
 {% block content %}
 <div class="page-head">
@@ -74,17 +75,15 @@
       </ul>
       {% else %}{{ vacio('fa-calendar', 'Sin turnos próximos.') }}{% endif %}
     </div>
-
-    <div class="card">
-      <div class="card-head"><h2>Reponer</h2><a class="small" href="{{ url_for('stock.lista') }}">Stock</a></div>
-      {% if bajo_stock %}
-      <ul class="list">
-        {% for r in bajo_stock %}
-        <li><span class="small">{{ r.nombre }}</span><span class="badge badge-danger">{{ r.stock_actual | numero(1) }}</span></li>
-        {% endfor %}
-      </ul>
-      {% else %}{{ vacio('fa-circle-check', 'Stock en orden.') }}{% endif %}
-    </div>
   </div>
+</div>
+
+<div class="separador-tablero">
+  <h2><i class="fa-solid fa-chart-line"></i> Cómo viene el mes</h2>
+  <a class="small" href="{{ url_for('contable.performance_') }}">Performance</a>
+</div>
+
+<div class="grid grid-4">
+  {{ relojes.cuatro(perf) }}
 </div>
 {% endblock %}

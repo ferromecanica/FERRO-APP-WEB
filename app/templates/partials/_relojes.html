@@ -1,0 +1,49 @@
+{# Los cuatro relojes del mes. Los usan Performance y el Tablero: se dibujan acá
+   una sola vez para que los dos muestren exactamente lo mismo. #}
+
+{% macro reloj(r, titulo, icono, valor, pie, nota=None, tono='', marca_texto=None, pie2=None) %}
+<div class="card">
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2>
+    {% if nota %}<span class="muted small">{{ nota }}</span>{% endif %}</div>
+  <div class="card-body">
+    <svg class="reloj" viewBox="0 0 140 86">
+      <path class="fondo" d="M14,70 A56,56 0 0,1 126,70"></path>
+      <path class="valor {{ tono }}" d="M14,70 A56,56 0 0,1 126,70" stroke-dasharray="{{ r.largo }} 999"></path>
+      {% if r.marca %}<line class="marca" x1="{{ r.marca.x1 }}" y1="{{ r.marca.y1 }}"
+        x2="{{ r.marca.x2 }}" y2="{{ r.marca.y2 }}"></line>
+        {% if marca_texto %}<text class="marca-texto" x="{{ r.marca.tx }}" y="{{ r.marca.ty }}"
+          text-anchor="middle">{{ marca_texto }}</text>{% endif %}
+      {% endif %}
+    </svg>
+    <div class="reloj-valor">{{ valor }}</div>
+    <div class="reloj-pie {{ tono }}">{{ pie }}</div>
+    {% if pie2 %}<div class="reloj-pie2">{{ pie2 }}</div>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+
+{% macro cuatro(t) %}
+{{ reloj(t.relojes.facturacion, 'Facturado en el mes', 'fa-chart-line', t.facturado | pesos,
+         (('%+d' % t.contra_promedio) ~ ' % contra el promedio, al día ' ~ t.hoy.day)
+           if t.promedio else 'Sin meses anteriores para comparar',
+         ('Promedio últimos 6 meses ' ~ (t.promedio | pesos)) if t.promedio else None,
+         t.tono, (t.promedio | pesos) if t.promedio else None) }}
+
+{{ reloj(t.relojes.margen, 'Margen bruto', 'fa-percent', (t.margen.porcentaje | numero(0)) ~ ' %',
+         (t.margen.ganancia | pesos) ~ ' sobre ' ~ (t.margen.total | pesos),
+         (t.margen.sin_costo ~ ' sin costo cargado') if t.margen.sin_costo else None) }}
+
+{{ reloj(t.relojes.resultado, 'Resultado del mes', 'fa-scale-balanced', t.plata.resultado | pesos,
+         (('%+d' % t.contra_resultado) ~ ' % contra el promedio')
+           if t.promedio_resultado else 'Sin meses anteriores para comparar',
+         ('Promedio últimos 6 meses ' ~ (t.promedio_resultado | pesos)) if t.promedio_resultado
+           else 'sin sueldos ni capital',
+         t.tono_resultado, (t.promedio_resultado | pesos) if t.promedio_resultado else None,
+         'entraron ' ~ (t.plata.ingresos | pesos) ~ ', salieron ' ~ (t.plata.egresos | pesos)
+           ~ ((', más el colchón de ' ~ (t.plata.colchon | pesos)) if t.plata.colchon else '')) }}
+
+{{ reloj(t.relojes.stock, 'Stock valorizado', 'fa-boxes-stacked', t.stock.costo | pesos,
+         (t.stock.venta | pesos) ~ ' a precio de venta',
+         t.stock.articulos ~ ' artículos con stock') }}
+{% endmacro %}

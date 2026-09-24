@@ -36,12 +36,13 @@ with app.app_context():
     # El mismo criterio que el cierre mensual: ingresos − egresos + colchón
     assert plata['resultado'] == 1700000, plata['resultado']
 
-# ── Los colores del reloj de facturación ──
+# ── Los colores del reloj: amarillo a partir del 20 % abajo, rojo del 30 % ──
 assert performance.tono(-10) == ''
 assert performance.tono(5) == ''
-assert performance.tono(-25) == 'tono-aviso'
-assert performance.tono(-39) == 'tono-aviso'
-assert performance.tono(-40) == 'tono-malo'
+assert performance.tono(-19) == ''
+assert performance.tono(-20) == 'tono-aviso'
+assert performance.tono(-29) == 'tono-aviso'
+assert performance.tono(-30) == 'tono-malo'
 assert performance.tono(-80) == 'tono-malo'
 
 # ── La comparación es contra el mismo tramo de días, no contra meses enteros ──
@@ -65,5 +66,27 @@ b = B(c.get('/administracion/performance'))
 assert 'Performance' in b and 'Mes a mes' in b
 assert 'stroke-dasharray' in b, 'no dibujó los relojes ni las tortas'
 assert 'Repuestos y Proveedores' in b
+
+# ── El resultado se compara contra los meses anteriores, no contra la nada ──
+with app.app_context():
+    from app.services.performance import _mes_de, _restar_meses
+    for n, monto in ((2, 900000), (1, 700000)):
+        mes = _restar_meses(HOY, n)
+        db.session.add(MovimientoContable(fecha=mes, tipo='Ingreso', mes_imputacion=_mes_de(mes),
+                                          total=monto, concepto='De un mes anterior', cobrado=True))
+    db.session.commit()
+    t = performance.relojes_del_mes(HOY)
+    assert t['promedio_resultado'] == 800000, t['promedio_resultado']
+    assert t['relojes']['resultado'].get('marca'), 'el reloj del resultado tiene que marcar el promedio'
+    assert 'tx' in t['relojes']['resultado']['marca'], 'falta dónde escribir el importe del promedio'
+
+# Los dos relojes que comparan muestran el promedio escrito en el dibujo
+b = B(c.get('/administracion/performance'))
+assert 'Promedio últimos 6 meses' in b and 'la rayita' not in b
+assert 'marca-texto' in b, 'no escribió el promedio sobre su marca'
+# Y el Tablero dibuja los mismos cuatro relojes, sin la tarjeta de Reponer
+b = B(c.get('/'))
+assert 'Cómo viene el mes' in b and 'marca-texto' in b
+assert 'Reponer' not in b
 
 print('PERFORMANCE OK')

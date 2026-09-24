@@ -93,6 +93,42 @@
       </div>
       {% endif %}
     </div>
+    {% if not cerrado %}
+    <div class="card">
+      <div class="card-head seccion"><h2><i class="fa-solid fa-file-invoice"></i> Compromisos del mes que viene</h2>
+        <span class="muted small">justifican el colchón</span></div>
+      <div class="card-body">
+        <table class="tabla-densa lista-movil" id="compromisos">
+          <thead><tr><th class="izq">Concepto</th><th class="num">Total</th><th class="num">A dejar</th><th></th></tr></thead>
+          <tbody>
+          {% for k in (c.compromisos if c else []) %}
+            <tr><td class="izq"><input name="compromiso_concepto" value="{{ k.concepto }}"></td>
+              <td class="num"><input name="compromiso_total" inputmode="decimal" class="plata" value="{{ k.total | numero }}"></td>
+              <td class="num"><input name="compromiso_dejar" inputmode="decimal" class="plata" value="{{ k.a_dejar | numero }}"></td>
+              <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
+          {% endfor %}
+            <tr><td class="izq"><input name="compromiso_concepto" placeholder="Ej.: alquiler"></td>
+              <td class="num"><input name="compromiso_total" inputmode="decimal" class="plata" placeholder="$"></td>
+              <td class="num"><input name="compromiso_dejar" inputmode="decimal" class="plata" placeholder="$"></td>
+              <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
+          </tbody>
+          <tfoot>
+            <tr class="total-row"><td class="izq">Total</td>
+              <td class="num" id="total-compromisos">$ 0</td>
+              <td class="num" id="total-dejar">$ 0</td><td></td></tr>
+          </tfoot>
+        </table>
+        <div class="actions" style="margin-top:10px">
+          <button type="button" class="btn btn-sm" id="agregar-compromiso">
+            <i class="fa-solid fa-plus"></i> Agregar</button>
+          <button type="button" class="btn btn-sm" id="usar-colchon">
+            <i class="fa-solid fa-arrow-up"></i> Usar el total como colchón</button>
+        </div>
+        <p class="muted small" style="margin:10px 0 0">Estos importes no se descuentan de nada: son la explicación
+          de por qué dejás ese colchón. Van en la circular.</p>
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <div class="stack">
@@ -172,61 +208,24 @@
 </div>
 
 {% if not cerrado %}
-<div class="grid grid-2" style="margin-top:16px">
-  <div class="card">
-    <div class="card-head seccion"><h2><i class="fa-solid fa-file-invoice"></i> Compromisos del mes que viene</h2>
-      <span class="muted small">justifican el colchón</span></div>
-    <div class="card-body">
-      <table class="tabla-densa lista-movil" id="compromisos">
-        <thead><tr><th class="izq">Concepto</th><th class="num">Total</th><th class="num">A dejar</th><th></th></tr></thead>
-        <tbody>
-        {% for k in (c.compromisos if c else []) %}
-          <tr><td class="izq"><input name="compromiso_concepto" value="{{ k.concepto }}"></td>
-            <td class="num"><input name="compromiso_total" inputmode="decimal" class="plata" value="{{ k.total | numero }}"></td>
-            <td class="num"><input name="compromiso_dejar" inputmode="decimal" class="plata" value="{{ k.a_dejar | numero }}"></td>
-            <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
-        {% endfor %}
-          <tr><td class="izq"><input name="compromiso_concepto" placeholder="Ej.: alquiler"></td>
-            <td class="num"><input name="compromiso_total" inputmode="decimal" class="plata" placeholder="$"></td>
-            <td class="num"><input name="compromiso_dejar" inputmode="decimal" class="plata" placeholder="$"></td>
-            <td><button type="button" class="btn-icon" data-quitar><i class="fa-solid fa-xmark"></i></button></td></tr>
-        </tbody>
-        <tfoot>
-          <tr class="total-row"><td class="izq">Total</td>
-            <td class="num" id="total-compromisos">$ 0</td>
-            <td class="num" id="total-dejar">$ 0</td><td></td></tr>
-        </tfoot>
-      </table>
-      <div class="actions" style="margin-top:10px">
-        <button type="button" class="btn btn-sm" id="agregar-compromiso">
-          <i class="fa-solid fa-plus"></i> Agregar</button>
-        <button type="button" class="btn btn-sm" id="usar-colchon">
-          <i class="fa-solid fa-arrow-up"></i> Usar el total como colchón</button>
-      </div>
-      <p class="muted small" style="margin:10px 0 0">Estos importes no se descuentan de nada: son la explicación
-        de por qué dejás ese colchón. Van en la circular.</p>
+<div class="card" style="margin-top:16px">
+  <div class="card-head seccion"><h2><i class="fa-solid fa-wallet"></i> Plata contada</h2>
+    <span class="muted small">antes de liquidar</span></div>
+  <div class="card-body">
+    <div class="form-grid">
+      <div><label>Caja chica (lo que tiene Iván)</label>
+        <input name="caja_chica" id="caja-chica" class="plata" inputmode="decimal"
+               value="{{ c.caja_chica | numero if c and c.caja_chica else '' }}" placeholder="$"></div>
+      <div><label>Banco</label>
+        <input name="banco" id="banco" class="plata" inputmode="decimal"
+               value="{{ c.banco | numero if c and c.banco else '' }}" placeholder="$"></div>
     </div>
-  </div>
-
-  <div class="card">
-    <div class="card-head seccion"><h2><i class="fa-solid fa-wallet"></i> Plata contada</h2>
-      <span class="muted small">antes de liquidar</span></div>
-    <div class="card-body">
-      <div class="form-grid">
-        <div><label>Caja chica (lo que tiene Iván)</label>
-          <input name="caja_chica" id="caja-chica" class="plata" inputmode="decimal"
-                 value="{{ c.caja_chica | numero if c and c.caja_chica else '' }}" placeholder="$"></div>
-        <div><label>Banco</label>
-          <input name="banco" id="banco" class="plata" inputmode="decimal"
-                 value="{{ c.banco | numero if c and c.banco else '' }}" placeholder="$"></div>
-      </div>
-      <div class="linea-cuenta fuerte" style="margin-top:14px"><span>Total contado</span>
-        <span class="num" id="total-contado">$ 0</span></div>
-      <div class="full" style="margin-top:12px"><label>Observaciones para la circular</label>
-        <textarea name="observaciones" rows="5" placeholder="Una por renglón. Ej.:
+    <div class="linea-cuenta fuerte" style="margin-top:14px"><span>Total contado</span>
+      <span class="num" id="total-contado">$ 0</span></div>
+    <div class="full" style="margin-top:12px"><label>Observaciones para la circular</label>
+      <textarea name="observaciones" rows="5" placeholder="Una por renglón. Ej.:
 FERRO afrontó compras de herramientas por $845.457.
 Nuevo proveedor de aceites ENI, 50% pagado.">{{ (c.observaciones or '') if c else '' }}</textarea></div>
-    </div>
   </div>
 </div>
 {% elif c.link_circular %}

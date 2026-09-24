@@ -4,9 +4,8 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_login import login_required
 
 from ..extensions import db
-from ..models import (ESTADOS_OT_ABIERTA, CondicionPago, ConfigTaller, OrdenTrabajo, Repuesto,
-                      Socio, Turno, Venta)
-from ..services import drive
+from ..models import ESTADOS_OT_ABIERTA, CondicionPago, ConfigTaller, OrdenTrabajo, Socio, Turno, Venta
+from ..services import drive, performance
 from ..validaciones import numero_ar
 
 bp = Blueprint("dashboard", __name__)
@@ -22,8 +21,6 @@ def index():
         .order_by(OrdenTrabajo.fecha_ingreso).all()
     turnos = Turno.query.filter(Turno.fecha >= hoy, Turno.estado != "Cancelado") \
         .order_by(Turno.fecha, Turno.hora).limit(6).all()
-    bajo_stock = [r for r in Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).all() if r.bajo_stock]
-
     por_cobrar = OrdenTrabajo.query.filter(OrdenTrabajo.estado == "Finalizada", ~OrdenTrabajo.ventas.any(),
                                            OrdenTrabajo.sin_cargo.is_(False)).all()
     valor_hora = ConfigTaller.get().valor_hora or 0
@@ -31,13 +28,12 @@ def index():
     ganancia = sum(v.ganancia for v in ventas_mes)
     return render_template(
         "dashboard/index.html",
+        perf=performance.relojes_del_mes(hoy),  # los mismos relojes que Performance
         facturado=facturado,
         ganancia=ganancia,
         cant_ventas=len(ventas_mes),
         ots_abiertas=ots_abiertas,
         turnos=turnos,
-        bajo_stock=bajo_stock[:8],
-        cant_bajo_stock=len(bajo_stock),
         cant_por_cobrar=len(por_cobrar),
         monto_por_cobrar=sum(o.horas_insumidas * valor_hora + o.total_repuestos for o in por_cobrar),
     )

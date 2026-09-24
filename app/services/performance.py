@@ -41,16 +41,16 @@ LARGO_ARCO = math.pi * 56  # el arco del reloj, de punta a punta
 
 
 def tono(contra_promedio):
-    """Verde si el mes viene bien; amarillo por debajo del 25 %, rojo del 40 %."""
-    if contra_promedio <= -40:
+    """Verde si el mes viene bien; amarillo por debajo del 20 %, rojo del 30 %."""
+    if contra_promedio <= -30:
         return "tono-malo"
-    if contra_promedio <= -25:
+    if contra_promedio <= -20:
         return "tono-aviso"
     return ""
 
 
 def reloj(valor, tope, marca=None):
-    """Cuánto se pinta del arco, y dónde va la rayita de referencia."""
+    """Cuánto se pinta del arco, y dónde va la marca de referencia con su importe."""
     tope = tope or 1
     parte = min(max(valor / tope, 0), 1)
     datos = {"largo": round(parte * LARGO_ARCO, 1), "porcentaje": parte * 100}
@@ -59,6 +59,10 @@ def reloj(valor, tope, marca=None):
         datos["marca"] = {
             "x1": round(70 + 47 * math.cos(angulo), 1), "y1": round(70 - 47 * math.sin(angulo), 1),
             "x2": round(70 + 65 * math.cos(angulo), 1), "y2": round(70 - 65 * math.sin(angulo), 1),
+            # El importe va adentro del arco, contra la marca; si queda muy al borde
+            # se corre para adentro para que no se salga del dibujo
+            "tx": round(min(max(70 + 34 * math.cos(angulo), 24), 116), 1),
+            "ty": round(70 - 34 * math.sin(angulo) + 4, 1),
         }
     return datos
 
@@ -127,6 +131,17 @@ def resultado_del_mes(mes):
     sueldos = sum(m.total for m in movs if m.comprobante == "Liquidación")
     return {"ingresos": ingresos, "egresos": egresos, "colchon": colchon, "sueldos": sueldos,
             "resultado": ingresos - egresos + colchon}
+
+
+def promedio_de_resultados(hoy, cuantos=MESES_COMPARA):
+    """El resultado promedio de los meses anteriores, para tener contra qué comparar.
+
+    Un resultado suelto no dice nada: $300.000 puede ser un buen mes o uno malo.
+    Los meses sin movimiento no cuentan, si no arrastrarían el promedio a cero.
+    """
+    anteriores = [resultado_del_mes(_mes_de(m))["resultado"] for m in _ultimos_meses(hoy, cuantos)[:-1]]
+    con_movimiento = [r for r in anteriores if r]
+    return sum(con_movimiento) / len(con_movimiento) if con_movimiento else 0
 
 
 def _torta(pares):
@@ -228,42 +243,63 @@ def taller(hoy):
 # ───────────────────────────── Todo junto ───────────────────────────
 
 
-def tablero(hoy=None):
+def relojes_del_mes(hoy=None):
+    """Los cuatro relojes y los números que muestran.
+
+    Va aparte de tablero() porque el Tablero los usa solos: no hace falta
+    calcular las tortas ni los rankings para dibujar cuatro relojes.
+    """
     hoy = hoy or date.today()
     comparativa = facturacion_al_dia(hoy)
     actual = comparativa[-1]
     anteriores = [f["total"] for f in comparativa[:-1] if f["total"]]
     promedio = sum(anteriores) / len(anteriores) if anteriores else 0
     contra = (actual["total"] / promedio - 1) * 100 if promedio else 0
-    tope = max([f["total"] for f in comparativa] + [1])
-    for f in comparativa:
-        f["alto"] = f["total"] / tope * 100
 
     margen = margen_del_mes(hoy)
     plata = resultado_del_mes(_mes_de(hoy))
     stock = valor_del_stock()
+    # El resultado se compara contra el promedio de los meses anteriores, igual que
+    # la facturación: un número suelto no dice si el mes viene bien o mal
+    prom_resultado = promedio_de_resultados(hoy)
+    contra_resultado = (plata["resultado"] / prom_resultado - 1) * 100 if prom_resultado else 0
     return {
         "hoy": hoy,
         "relojes": {
             "facturacion": reloj(actual["total"], max(actual["total"], promedio) * 1.25 or 1, promedio),
             "margen": reloj(margen["porcentaje"], 100),
-            "resultado": reloj(max(plata["resultado"], 0), (plata["ingresos"] + plata["colchon"]) or 1),
+            "resultado": reloj(max(plata["resultado"], 0),
+                               max(plata["resultado"], prom_resultado) * 1.25 or 1, prom_resultado),
             "stock": reloj(stock["costo"], stock["venta"] or 1),
         },
-        "mes": _mes_de(hoy),
         "comparativa": comparativa,
         "facturado": actual["total"],
         "promedio": promedio,
         "contra_promedio": contra,
         "tono": tono(contra) if promedio else "",
-        "proyeccion": _proyeccion(hoy, actual["total"]),
         "margen": margen,
         "plata": plata,
+        "promedio_resultado": prom_resultado,
+        "contra_resultado": contra_resultado,
+        "tono_resultado": tono(contra_resultado) if prom_resultado else "",
+        "stock": stock,
+    }
+
+
+def tablero(hoy=None):
+    hoy = hoy or date.today()
+    t = relojes_del_mes(hoy)
+    tope = max([f["total"] for f in t["comparativa"]] + [1])
+    for f in t["comparativa"]:
+        f["alto"] = f["total"] / tope * 100
+    t.update({
+        "mes": _mes_de(hoy),
+        "proyeccion": _proyeccion(hoy, t["facturado"]),
         "egresos": egresos_por_clasificacion(hoy),
         "origen": de_donde_sale(hoy),
         "clientes": top_clientes(hoy),
         "proveedores": top_proveedores(hoy),
-        "stock": stock,
         "en_camino": en_camino(hoy),
         "taller": taller(hoy),
-    }
+    })
+    return t

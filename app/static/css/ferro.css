@@ -811,9 +811,18 @@ table.formas-pago td.num { font-variant-numeric: tabular-nums; white-space: nowr
 .reloj-pie.tono-aviso { color: var(--warn); font-weight: 600; }
 .reloj-pie.tono-malo { color: var(--danger); font-weight: 600; }
 .reloj .marca { stroke: var(--accent-ink); stroke-width: 2.5; opacity: .8; }
-.reloj-valor { font-family: var(--font-display); font-size: 1.55rem; font-weight: 700; text-align: center;
+/* El promedio, escrito contra su marca: es contra lo que se compara el mes */
+.reloj .marca-texto { fill: var(--accent-ink); font-size: 10px; font-weight: 700;
+  font-family: var(--font-body); font-variant-numeric: tabular-nums; }
+.reloj-valor { font-family: var(--font-display); font-size: 1.8rem; font-weight: 700; text-align: center;
   margin-top: -16px; font-variant-numeric: tabular-nums; }
 .reloj-pie { text-align: center; color: var(--muted); font-size: .84rem; margin-top: 5px; line-height: 1.35; }
+.reloj-pie2 { text-align: center; color: var(--muted); font-size: .76rem; margin-top: 3px; line-height: 1.3; opacity: .85; }
+/* Separa el taller (arriba) de los números del mes (abajo) en el Tablero */
+.separador-tablero { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin: 26px 0 14px; padding-top: 18px; border-top: 1px solid var(--border); }
+.separador-tablero h2 { font-size: 1.05rem; display: flex; align-items: center; gap: 10px; margin: 0; }
+.separador-tablero h2 i { color: var(--accent); }
 
 .torta-caja { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .torta { width: 132px; height: 132px; flex: 0 0 132px; }
