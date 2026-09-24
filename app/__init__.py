@@ -73,4 +73,12 @@ def create_app(config_class=Config):
         if request.endpoint and request.endpoint != "static":
             respaldar_si_toca(app)
 
+    @app.route("/sw.js")
+    def service_worker():
+        """Se sirve desde la raíz porque un service worker solo manda en su carpeta y las de abajo."""
+        respuesta = app.send_static_file("js/sw.js")
+        respuesta.headers["Content-Type"] = "application/javascript"
+        respuesta.headers["Cache-Control"] = "no-cache"  # que un cambio se note en la próxima visita
+        return respuesta
+
     return app

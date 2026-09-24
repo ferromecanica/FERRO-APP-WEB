@@ -35,6 +35,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700;800;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}" type="image/svg+xml">
+  {# Para poder instalarla en el celular con "Agregar a pantalla de inicio" #}
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Ferro">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ferro.css') }}">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/htmx/1.9.12/htmx.min.js" defer></script>
   <script src="{{ url_for('static', filename='js/plata.js') }}"></script>
@@ -97,5 +105,13 @@
 </div>
 <script src="{{ url_for('static', filename='js/escaner.js') }}"></script>
 <script src="{{ url_for('static', filename='js/confirmar.js') }}"></script>
+<script>
+  // Deja la app instalable en el celular. Si el navegador no lo soporta, no pasa nada.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () { /* sigue andando igual */ });
+    });
+  }
+</script>
 </body>
 </html>
