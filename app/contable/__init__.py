@@ -11,6 +11,7 @@ from flask_login import login_required
 from ..extensions import db
 from ..models import (
     CLASIFICACIONES,
+    MOVIMIENTOS_CAJA,
     CierreMensual,
     CierreSocio,
     CompromisoCierre,
@@ -18,10 +19,12 @@ from ..models import (
     TIPOS_CAPITAL,
     TIPOS_MOVIMIENTO_CONTABLE,
     AporteCapital,
+    MovimientoCaja,
     MovimientoContable,
     Socio,
     Venta,
 )
+from ..services import caja
 from ..services import cierre as calculo
 from ..services import contable
 from ..services import performance
@@ -239,6 +242,40 @@ def desemparejar(id):
     db.session.commit()
     flash("Se deshizo el emparejado.", "ok")
     return redirect(url_for(".movimientos", mes=mov.mes_imputacion))
+
+
+@bp.route("/caja")
+def caja_chica():
+    """El extracto de la caja de Iván: lo que entró en efectivo y lo que salió."""
+    return render_template("contable/caja.html", filas=caja.movimientos(), r=caja.resumen(),
+                           tipos=MOVIMIENTOS_CAJA, hoy=date.today())
+
+
+@bp.route("/caja/nuevo", methods=["POST"])
+def caja_nuevo():
+    tipo = request.form.get("tipo")
+    monto = numero_ar(request.form.get("monto"))
+    if tipo not in MOVIMIENTOS_CAJA:
+        flash("Elegí qué estás anotando.", "error")
+    elif not monto or monto <= 0:
+        flash("Poné cuánta plata.", "error")
+    else:
+        m = caja.anotar(tipo, monto, fecha=_fecha("fecha", date.today()),
+                        concepto=request.form.get("concepto", "").strip() or None,
+                        quien=request.form.get("quien", "").strip() or None)
+        db.session.commit()
+        aviso = f"{m.tipo}: ${m.monto:,.0f}".replace(",", ".")
+        flash(aviso + (". Queda también en los egresos del mes." if m.es_gasto else "."), "ok")
+    return redirect(url_for(".caja_chica"))
+
+
+@bp.route("/caja/<int:id>/eliminar", methods=["POST"])
+def caja_eliminar(id):
+    m = db.get_or_404(MovimientoCaja, id)
+    caja.borrar(m)
+    db.session.commit()
+    flash("Movimiento de caja eliminado.", "ok")
+    return redirect(url_for(".caja_chica"))
 
 
 @bp.route("/capital")

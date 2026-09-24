@@ -60,7 +60,7 @@ def anotar(venta, partes, fecha):
     venta.pagos = []
     for orden, (condicion, bruto) in enumerate(partes, start=1):
         venta.pagos.append(PagoVenta(
-            condicion=condicion, orden=orden, bruto=bruto,
+            condicion=condicion, orden=orden, bruto=bruto, destino=condicion.destino,
             neto=condicion.neto(bruto), fecha_acreditacion=condicion.acredita(fecha),
         ))
 

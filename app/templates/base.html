@@ -75,6 +75,7 @@
       <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if seccion == 'stock' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
       <div class="nav-label">Administración</div>
       <a href="{{ url_for('contable.movimientos') }}" class="nav-contable {{ 'active' if ep in ('contable.movimientos', 'contable.form') }}"><i class="fa-solid fa-right-left"></i> Movimientos</a>
+      <a href="{{ url_for('contable.caja_chica') }}" class="nav-contable {{ 'active' if ep == 'contable.caja_chica' }}"><i class="fa-solid fa-wallet"></i> Caja chica</a>
       <a href="{{ url_for('contable.capital') }}" class="nav-contable {{ 'active' if ep == 'contable.capital' }}"><i class="fa-solid fa-piggy-bank"></i> Capital</a>
       <a href="{{ url_for('contable.performance_') }}" class="nav-contable {{ 'active' if ep == 'contable.performance_' }}"><i class="fa-solid fa-gauge-high"></i> Performance</a>
       <a href="{{ url_for('contable.cierres') }}" class="nav-contable {{ 'active' if ep in ('contable.cierres', 'contable.cierre') }}"><i class="fa-solid fa-calendar-check"></i> Cierre mensual</a>

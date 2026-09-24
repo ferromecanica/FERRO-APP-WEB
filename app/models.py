@@ -497,6 +497,20 @@ CLASIFICACIONES = ["Gasto Corriente", "Inversión de Capital", "Ventas", "Repues
 COMPROBANTES = ["S/C", "Factura A", "Factura B", "Factura C", "Ticket", "Liquidación", "Recibo"]
 TIPOS_CAPITAL = ["Aporte de Capital", "Devolución de Capital"]
 
+# Qué se puede anotar en la caja chica. El signo dice si suma o resta al saldo.
+MOVIMIENTOS_CAJA = {
+    "Gasto": {"signo": -1, "gasto": True,
+              "ayuda": "Algo que se pagó con la plata de la caja. Va también a los egresos del mes."},
+    "Pasa al banco": {"signo": -1, "gasto": False,
+                      "ayuda": "Plata de la caja que se depositó. No es un gasto: cambia de lugar."},
+    "Retiro de socio": {"signo": -1, "gasto": False,
+                        "ayuda": "Plata que se llevó un socio. Se salda en el cierre del mes."},
+    "Entra plata": {"signo": 1, "gasto": False,
+                    "ayuda": "Efectivo que entra sin ser una venta: un vuelto, plata que repusiste."},
+    "Apertura": {"signo": 1, "gasto": False,
+                 "ayuda": "Lo que había en la caja cuando se empezó a llevar acá. Se carga una sola vez."},
+}
+
 
 class Socio(db.Model):
     """Los dueños del taller: sueldo de referencia y cuánto le toca a cada uno."""
@@ -991,6 +1005,42 @@ class Venta(TimestampMixin, db.Model):
         return " · ".join(r for r in renglones if r)
 
 
+class MovimientoCaja(TimestampMixin, db.Model):
+    """Lo que sale (y a veces entra) de la caja chica que maneja Iván.
+
+    Lo que entra por ventas no se anota acá: sale solo de las partes de cobro
+    que van a la caja, así que no hay que cargar dos veces lo mismo ni se puede
+    olvidar. Acá van los gastos que Iván paga con esa plata, lo que se deposita
+    en el banco, lo que se lleva un socio y la apertura del primer día.
+
+    Un gasto deja además su egreso en la administración: la plata salió de la
+    caja, pero es un gasto del taller igual que cualquier otro.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, default=date.today, nullable=False, index=True)
+    tipo = db.Column(db.String(20), nullable=False)
+    monto = db.Column(db.Float, default=0, nullable=False)  # siempre positivo: el signo lo pone el tipo
+    concepto = db.Column(db.String(300))
+    quien = db.Column(db.String(120))
+    movimiento_id = db.Column(db.Integer, db.ForeignKey("movimiento_contable.id"))  # el egreso que generó
+
+    movimiento = db.relationship("MovimientoContable", foreign_keys=[movimiento_id])
+
+    @property
+    def signo(self):
+        return MOVIMIENTOS_CAJA.get(self.tipo, {}).get("signo", -1)
+
+    @property
+    def contra_la_caja(self):
+        """Cuánto le suma (o le resta) al saldo."""
+        return (self.monto or 0) * self.signo
+
+    @property
+    def es_gasto(self):
+        return MOVIMIENTOS_CAJA.get(self.tipo, {}).get("gasto", False)
+
+
 class PagoVenta(db.Model):
     """Una parte del cobro de una venta.
 
@@ -1007,6 +1057,9 @@ class PagoVenta(db.Model):
     bruto = db.Column(db.Float, default=0, nullable=False)   # lo que pagó el cliente en esta parte
     neto = db.Column(db.Float, default=0, nullable=False)    # lo que nos queda de esa parte
     fecha_acreditacion = db.Column(db.Date)
+    # Se copia de la condición al cobrar: si mañana se cambia la configuración,
+    # la plata que ya entró a la caja no se puede mudar al banco
+    destino = db.Column(db.String(10), default=BANCO, nullable=False)
 
     venta = db.relationship("Venta", back_populates="pagos")
     condicion = db.relationship("CondicionPago")
