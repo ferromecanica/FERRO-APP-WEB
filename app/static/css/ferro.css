@@ -78,7 +78,11 @@ html[data-fuente="serif"] { --font-body: "Source Serif 4", Georgia, "Times New R
 
 
 * { box-sizing: border-box; }
-html, body { margin: 0; }
+/* En el celular la pantalla se sentía flotante: el rebote de iOS estiraba la
+   página para abajo y, cuando una tabla ancha llegaba a su borde, el dedo
+   arrastraba toda la pantalla para el costado. Cada scroll se queda en lo suyo. */
+html, body { margin: 0; overscroll-behavior: none; }
+.table-wrap, .desplegable, .sidebar { overscroll-behavior: contain; }
 body {
   font-family: var(--font-body);
   font-size: .9rem;
@@ -488,7 +492,9 @@ tr.fila-edicion td { padding: 12px 14px; }
 .destinos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .destinos-label { font-size: .8rem; font-weight: 600; color: #374151; margin-right: 4px; }
 .destino { margin: 0; cursor: pointer; }
-.destino input { position: absolute; opacity: 0; pointer-events: none; }
+/* Ocultos pero heredaban el width:100% de los inputs: aunque no se vieran,
+   estiraban la página a lo ancho y en el celular se iba para el costado */
+.destino input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
 .destino span { display: inline-flex; gap: 7px; align-items: center; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: .86rem; color: #4b5563; }
 .destino input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
 .destino input:focus-visible + span { outline: 2px solid var(--accent-soft); }
@@ -735,7 +741,7 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .aviso-conciliacion .aviso-pie { border-top: 1px solid var(--accent); background: transparent; }
 .aviso-conciliacion table { background: var(--surface); }
 .aviso-conciliacion .aviso-pie { display: block; }
-table.cuadre { width: auto; min-width: 340px; margin-left: auto; background: transparent !important; }
+table.cuadre { width: auto; min-width: min(340px, 100%); margin-left: auto; background: transparent !important; }
 table.cuadre td { border: 0; padding: 3px 0; font-size: .92em; }
 table.cuadre td.num { padding-left: 24px; font-variant-numeric: tabular-nums; }
 table.cuadre tr.total td { border-top: 1px solid var(--accent); padding-top: 6px; font-weight: 700; color: var(--accent-ink); }
