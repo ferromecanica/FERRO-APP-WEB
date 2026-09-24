@@ -44,12 +44,12 @@ assert f"{total:,.0f}".replace(',', '.') in b
 
 # no se cobra vacío
 post('/ventas/mostrador/limpiar')
-assert 'Cargá lo que estás vendiendo' in post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Efectivo')})
+assert 'Cargá lo que estás vendiendo' in post('/ventas/mostrador/cobrar', {'pago_condicion_1': condicion('Efectivo')})
 
 # cobrar: queda la venta y se descuenta el stock
 post('/ventas/mostrador/items', {'tipo': 'stock', 'repuesto': str(rid), 'cantidad': '2'})
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Mano de obra', 'precio': '9.000', 'costo': '0'})
-b = post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Transferencia'), 'cliente_id': cid,
+b = post('/ventas/mostrador/cobrar', {'pago_condicion_1': condicion('Transferencia'), 'cliente_id': cid,
                                       'fecha': date.today().isoformat()})
 assert 'registrada' in b and cnombre in b and 'Transferencia' in b
 with app.app_context():

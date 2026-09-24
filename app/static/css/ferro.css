@@ -867,3 +867,9 @@ table.formas-pago td.num { font-variant-numeric: tabular-nums; white-space: nowr
   margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); border: 1px solid #f5b56b; }
 .resultado .precio-final span { font-weight: 600; color: var(--accent-ink); }
 .resultado .precio-final strong { font-family: var(--font-display); font-size: 1.6rem; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+/* Cobrar una venta: una forma de pago, o dos cuando el cliente parte el pago */
+.pago-fila { display: grid; grid-template-columns: 1fr 190px auto; gap: 10px; align-items: end; margin-bottom: 10px; }
+.pago-fila .pago-nota { grid-column: 1 / -1; margin-top: -4px; }
+.pago-fila[hidden] { display: none; }
+.pago-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+@media (max-width: 720px) { .pago-fila { grid-template-columns: 1fr; } }

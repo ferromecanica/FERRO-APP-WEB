@@ -53,7 +53,7 @@ with app.app_context():
     assert not ot.sin_cargo and ot.motivo_sin_cargo is None and ot.estado == 'En proceso'
 
 # y se puede cerrar cobrando, como siempre
-b = post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'total_cobrado': '120.000', 'condicion_id': condicion('Efectivo'),
+b = post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'pago_total_1': '120.000', 'pago_condicion_1': condicion('Efectivo'),
                                 'clasificacion': 'Otro', 'fecha_fin': date.today().isoformat()})
 assert 'Venta registrada por $120.000' in b
 with app.app_context():

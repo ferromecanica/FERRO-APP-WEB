@@ -1,0 +1,47 @@
+{# El cobro de una venta: una forma de pago, o dos cuando el cliente deja una
+   parte en efectivo y el resto con tarjeta. Lo usan el cierre de OT, el cobro
+   de una OT que quedó por cobrar y la venta de mostrador. #}
+
+{% macro opciones(condiciones, elegida=None) -%}
+  <option value="">Elegí…</option>
+  {%- for c in condiciones %}<option value="{{ c.id }}" data-dias="{{ c.dias_habiles }}"
+    data-queda="{{ c.queda }}" data-nombre="{{ c.nombre }}" data-destino="{{ c.destino }}"
+    {{ 'selected' if elegida and c.id | string == elegida }}>{{ c.nombre }}</option>{% endfor %}
+{%- endmacro %}
+
+{% macro cobro(condiciones, sugerido, f=None) %}
+{% set f = f or {} %}
+<div data-cobro>
+  <div class="pago-fila" data-pago>
+    <div class="pago-como"><label>Cómo paga *</label>
+      <select name="pago_condicion_1" required>{{ opciones(condiciones, f.get('pago_condicion_1')) }}</select></div>
+    <div class="pago-cuanto"><label>Total cobrado *</label>
+      <input name="pago_total_1" inputmode="decimal" class="input-grande plata"
+             data-sugerido="{{ sugerido or 0 }}" placeholder="$" value="{{ f.get('pago_total_1', '') }}"></div>
+    <div class="pago-nota muted small" data-nota-condicion></div>
+  </div>
+
+  {# La segunda parte aparece solo si hace falta: casi siempre se paga de una #}
+  <div class="pago-fila" data-pago data-segunda {{ '' if f.get('pago_total_2') else 'hidden' }}>
+    <div class="pago-como"><label>Y el resto con *</label>
+      <select name="pago_condicion_2">{{ opciones(condiciones, f.get('pago_condicion_2')) }}</select></div>
+    <div class="pago-cuanto"><label>Cuánto *</label>
+      <input name="pago_total_2" inputmode="decimal" class="input-grande plata" placeholder="$"
+             value="{{ f.get('pago_total_2', '') }}"></div>
+    <div class="pago-nota muted small" data-nota-condicion></div>
+    <button type="button" class="btn btn-sm" data-quitar-pago><i class="fa-solid fa-xmark"></i> Quitar</button>
+  </div>
+
+  <div class="pago-pie">
+    <span class="muted small">Sugerido <a href="#" data-usar-sugerido>{{ sugerido | pesos }}</a><span data-para-percibir></span></span>
+    <button type="button" class="btn btn-sm" data-agregar-pago>
+      <i class="fa-solid fa-plus"></i> Paga con dos formas</button>
+  </div>
+
+  <div class="percibir" data-percibir hidden>
+    <div><span class="percibir-titulo">A percibir</span>
+      <div class="percibir-nota" data-percibir-nota></div></div>
+    <strong data-percibir-monto>$ 0</strong>
+  </div>
+</div>
+{% endmacro %}

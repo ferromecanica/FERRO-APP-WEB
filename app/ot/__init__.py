@@ -27,7 +27,7 @@ from ..models import (
     VentaItem,
 )
 from ..filters import dia
-from ..services import contable, drive, reporte
+from ..services import cobros, contable, drive, reporte
 from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
 from ..validaciones import (FORMATOS_PATENTE, MARCAS_COMUNES, normalizar_patente, numero_ar,
                             patente_valida)
@@ -611,12 +611,13 @@ def _guardar_checklist(ot, es_servicio):
     ot.otros = (request.form.get("otros", "").strip() or None) if es_servicio else None
 
 
-def _registrar_venta(ot, cobrado, condicion, fecha):
+def _registrar_venta(ot, partes, fecha):
     """Crea la venta de la OT (la fecha es la del cobro: la ganancia cuenta ese mes)."""
     costo = ot.costo_repuestos  # antes de crear la venta (consultar la OT no debe arrastrar objetos a medio armar)
+    cobrado = sum(b for _, b in partes)
     ot.total_cobrado = cobrado
-    venta = Venta(fecha=fecha, cliente=ot.cliente, metodo_pago=condicion.nombre, condicion=condicion)
-    _anotar_tarjeta(venta, condicion, cobrado, fecha)
+    venta = Venta(fecha=fecha, cliente=ot.cliente)
+    cobros.anotar(venta, partes, fecha)
     venta.items.append(VentaItem(
         descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
         precio_unitario=cobrado, costo_unitario=costo,
@@ -625,25 +626,16 @@ def _registrar_venta(ot, cobrado, condicion, fecha):
     venta.ot = ot
     db.session.flush()  # la venta necesita id para atarle el ingreso
     contable.registrar_venta(venta)
-
-
-def _anotar_tarjeta(venta, condicion, cobrado, fecha):
-    """Lo que pagó el cliente, lo que vamos a percibir de eso y cuándo."""
-    venta.bruto_cobrado = cobrado
-    venta.neto_acreditado = condicion.neto(cobrado)
-    venta.fecha_acreditacion = condicion.acredita(fecha)
+    return cobrado
 
 
 def _datos_cobro(ot):
-    """Valida cliente (obligatorio para cobrar), total y condición de pago del formulario."""
+    """Valida cliente (obligatorio para cobrar) y las partes del cobro del formulario."""
     errores, cliente = [], None
     if ot.cliente is None:
         cliente, errores = _resolver_cliente(obligatorio=True)
-    cobrado = numero_ar(request.form.get("total_cobrado"))
-    condicion = db.session.get(CondicionPago, request.form.get("condicion_id", type=int) or 0)
-    if cobrado is None or cobrado < 0 or condicion is None:
-        errores.append("Completá el total cobrado y la forma de pago.")
-    return cliente, cobrado, condicion, errores
+    partes, fallas = cobros.leer_del_formulario(request.form)
+    return cliente, partes, errores + fallas
 
 
 @bp.route("/<int:id>/cerrar", methods=["GET", "POST"])
@@ -658,11 +650,11 @@ def cerrar(id):
     cobra_ahora = cobro == "si"
     sin_cargo = cobro == "sin_cargo"
     clasificacion = request.form.get("clasificacion")
-    errores, cliente, cobrado, condicion = [], None, None, None
+    errores, cliente, partes = [], None, []
     if cobro not in ("si", "no", "sin_cargo"):
         errores.append("Indicá si el trabajo se cobró.")
     elif cobra_ahora:
-        cliente, cobrado, condicion, errores = _datos_cobro(ot)
+        cliente, partes, errores = _datos_cobro(ot)
     elif ot.cliente is None:
         cliente, errores = _resolver_cliente(obligatorio=False)
     if clasificacion not in CLASIFICACIONES_CIERRE:
@@ -682,7 +674,7 @@ def cerrar(id):
     ot.sin_cargo = sin_cargo
     ot.motivo_sin_cargo = (request.form.get("motivo_sin_cargo", "").strip()[:120] or None) if sin_cargo else None
     if cobra_ahora:
-        _registrar_venta(ot, cobrado, condicion, ot.fecha_fin)
+        cobrado = _registrar_venta(ot, partes, ot.fecha_fin)
         mensaje = f"OT #{ot.id} cerrada. Venta registrada por ${cobrado:,.0f}.".replace(",", ".")
     elif sin_cargo:
         ot.total_cobrado = 0
@@ -727,7 +719,7 @@ def cobrar(id):
     if request.method == "GET":
         return _volver(ot, "cobrar")
 
-    cliente, cobrado, condicion, errores = _datos_cobro(ot)
+    cliente, partes, errores = _datos_cobro(ot)
     if errores:
         db.session.rollback()
         for e in errores:
@@ -735,7 +727,7 @@ def cobrar(id):
         return render_template("ot/cobrar.html", ot=ot, **_contexto_cierre(ot))
     if ot.cliente is None:
         _asignar_cliente(ot, cliente)
-    _registrar_venta(ot, cobrado, condicion, _fecha("fecha_cobro", date.today()))
+    cobrado = _registrar_venta(ot, partes, _fecha("fecha_cobro", date.today()))
     db.session.commit()
     flash(f"Cobro registrado: ${cobrado:,.0f}.".replace(",", "."), "ok")
     return _volver(ot)

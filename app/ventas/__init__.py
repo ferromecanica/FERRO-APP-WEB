@@ -12,7 +12,7 @@ from flask_login import login_required
 
 from ..extensions import db
 from ..models import Cliente, CondicionPago, Repuesto, Venta
-from ..services import contable
+from ..services import cobros, contable
 from ..services.stock import anular_venta, buscar_repuesto, vender_en_mostrador
 from ..validaciones import numero_ar
 
@@ -181,9 +181,11 @@ def cobrar():
         flash("Cargá lo que estás vendiendo.", "error")
         return redirect(url_for(".mostrador"))
 
-    condicion = db.session.get(CondicionPago, request.form.get("condicion_id", type=int) or 0)
-    if condicion is None:
-        flash("Elegí la forma de pago.", "error")
+    # Sin importe escrito se cobra el total de lo que se lleva, que es lo que dice la pantalla
+    partes, errores = cobros.leer_del_formulario(request.form, sugerido=_totales(borrador)['total'])
+    if errores:
+        for e in errores:
+            flash(e, "error")
         return redirect(url_for(".mostrador"))
     try:
         fecha = datetime.strptime(request.form.get("fecha", ""), "%Y-%m-%d").date()
@@ -192,10 +194,9 @@ def cobrar():
     venta = Venta(
         fecha=fecha,
         cliente=db.session.get(Cliente, request.form.get("cliente_id", type=int) or 0),
-        metodo_pago=condicion.nombre,
-        condicion=condicion,
         tipo_comprobante="X",
     )
+    cobros.anotar(venta, partes, fecha)
     db.session.add(venta)
     db.session.flush()
     for item in borrador["items"]:
@@ -204,12 +205,8 @@ def cobrar():
             item["cantidad"], precio_unitario=item["precio"], costo_unitario=item["costo"],
             descripcion=item["descripcion"],
         )
-    # Con tarjeta, de lo que paga el cliente entra el neto y cae unos días después
-    venta.bruto_cobrado = venta.total
-    venta.neto_acreditado = condicion.neto(venta.total)
-    venta.fecha_acreditacion = condicion.acredita(fecha)
     contable.registrar_venta(venta)
     db.session.commit()
     session.pop("mostrador", None)
-    flash(f"Venta {venta.id} registrada por {venta.total:,.0f}".replace(",", ".") + ".", "ok")
+    flash(f"Venta {venta.id} registrada. Percibimos ${venta.cobrado:,.0f}".replace(",", ".") + ".", "ok")
     return redirect(url_for(".detalle", id=venta.id))

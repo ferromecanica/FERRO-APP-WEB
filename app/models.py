@@ -854,16 +854,20 @@ class PresupuestoItem(db.Model):
 
 METODOS_PAGO = ["Efectivo", "Transferencia", "Débito", "Crédito", "Mercado Pago"]
 
+# Dónde queda la plata que entra
+CAJA, BANCO = "Caja", "Banco"
+DESTINOS_PLATA = [CAJA, BANCO]
+
 # Lo que cobra Getnet y cuándo deposita (getnet.net/ar/aranceles, plazo estándar).
-# nombre, días hábiles, arancel %, tasa de financiación %
+# nombre, días hábiles, arancel %, tasa de financiación %, dónde cae
 CONDICIONES_PAGO = [
-    ("Efectivo", 0, 0, 0),
-    ("Transferencia", 0, 0, 0),
-    ("Débito", 1, 1.00, 0),
-    ("Crédito 1 pago", 8, 2.00, 0),
-    ("Crédito 3 cuotas", 2, 2.00, 7.41),
-    ("Crédito 6 cuotas", 2, 2.00, 12.64),
-    ("Mercado Pago", 0, 0, 0),
+    ("Efectivo", 0, 0, 0, CAJA),
+    ("Transferencia", 0, 0, 0, BANCO),
+    ("Débito", 1, 1.00, 0, BANCO),
+    ("Crédito 1 pago", 8, 2.00, 0, BANCO),
+    ("Crédito 3 cuotas", 2, 2.00, 7.41, BANCO),
+    ("Crédito 6 cuotas", 2, 2.00, 12.64, BANCO),
+    ("Mercado Pago", 0, 0, 0, BANCO),
 ]
 
 
@@ -882,6 +886,9 @@ class CondicionPago(db.Model):
     recargo = db.Column(db.Float)      # % que se le suma al cliente; si está vacío, el justo
     activa = db.Column(db.Boolean, default=True, nullable=False)
     orden = db.Column(db.Integer, default=0)
+    # Dónde cae la plata: el efectivo va a la caja chica que maneja Iván y el
+    # resto al banco. De acá sale el saldo de la caja
+    destino = db.Column(db.String(10), default=BANCO, nullable=False)
 
     ventas = db.relationship("Venta", back_populates="condicion")
 
@@ -945,6 +952,10 @@ class Venta(TimestampMixin, db.Model):
     cliente = db.relationship("Cliente")
     ot = db.relationship("OrdenTrabajo", back_populates="ventas")
     items = db.relationship("VentaItem", back_populates="venta", cascade="all, delete-orphan")
+    # Las partes del cobro. Las ventas viejas no tienen: su cobro está en las
+    # tres columnas de acá arriba, que igual se siguen llenando con el resumen
+    pagos = db.relationship("PagoVenta", back_populates="venta", cascade="all, delete-orphan",
+                            order_by="PagoVenta.orden")
 
     @property
     def total(self):
@@ -978,6 +989,35 @@ class Venta(TimestampMixin, db.Model):
             return self.ot.detalle.strip()
         renglones = [i.descripcion or (i.repuesto.nombre if i.repuesto else "") for i in self.items]
         return " · ".join(r for r in renglones if r)
+
+
+class PagoVenta(db.Model):
+    """Una parte del cobro de una venta.
+
+    Muchos clientes pagan una parte en efectivo y otra con tarjeta. Cada parte
+    tiene su forma de pago, así que su propia comisión y su propia fecha de
+    acreditación: el efectivo está hoy y la tarjeta cae unos días después. Por
+    eso cada parte deja su propio ingreso en la administración.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    venta_id = db.Column(db.Integer, db.ForeignKey("venta.id"), nullable=False, index=True)
+    condicion_id = db.Column(db.Integer, db.ForeignKey("condicion_pago.id"))
+    orden = db.Column(db.Integer, default=0, nullable=False)
+    bruto = db.Column(db.Float, default=0, nullable=False)   # lo que pagó el cliente en esta parte
+    neto = db.Column(db.Float, default=0, nullable=False)    # lo que nos queda de esa parte
+    fecha_acreditacion = db.Column(db.Date)
+
+    venta = db.relationship("Venta", back_populates="pagos")
+    condicion = db.relationship("CondicionPago")
+
+    @property
+    def costo_tarjeta(self):
+        return (self.bruto or 0) - (self.neto or 0)
+
+    @property
+    def nombre(self):
+        return self.condicion.nombre if self.condicion else "Sin forma de pago"
 
 
 class VentaItem(db.Model):

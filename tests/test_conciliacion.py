@@ -26,8 +26,8 @@ with app.app_context():
     rid = r.id
 
 # ── Cerrar una OT cobrando: nace el ingreso, atado a la venta ──
-post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'clasificacion': 'Otro', 'total_cobrado': '250.000',
-                            'condicion_id': condicion('Efectivo'), 'fecha_fin': date.today().isoformat(),
+post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'clasificacion': 'Otro', 'pago_total_1': '250.000',
+                            'pago_condicion_1': condicion('Efectivo'), 'fecha_fin': date.today().isoformat(),
                             'cliente_id': cid})
 with app.app_context():
     venta = Venta.query.filter_by(ot_id=otid).one()
@@ -56,7 +56,7 @@ with app.app_context():
 # ── Mostrador: cobrar deja el ingreso; anular lo saca ──
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Revisión pre-compra',
                                  'precio': '80.000', 'costo': '0'})
-post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Transferencia'), 'cliente_id': cid,
+post('/ventas/mostrador/cobrar', {'pago_condicion_1': condicion('Transferencia'), 'cliente_id': cid,
                                   'fecha': date.today().isoformat()})
 with app.app_context():
     venta = Venta.query.filter_by(ot_id=None).order_by(Venta.id.desc()).first()

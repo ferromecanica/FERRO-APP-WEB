@@ -26,7 +26,7 @@ with app.app_context():
 # ── se usa en una OT y en una venta de mostrador ──
 post(f'/ot/{otid}/repuestos', {'repuesto': str(rid), 'cantidad': '2'})
 post('/ventas/mostrador/items', {'tipo': 'stock', 'repuesto': str(rid), 'cantidad': '1'})
-post('/ventas/mostrador/cobrar', {'condicion_id': condicion('Efectivo')})
+post('/ventas/mostrador/cobrar', {'pago_condicion_1': condicion('Efectivo')})
 
 b = limpio(B(c.get(f'/stock/{rid}')))
 historia = b[b.find('Dónde se usó'):b.find('Movimientos de stock')]

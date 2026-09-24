@@ -64,8 +64,8 @@ with app.app_context():
     db.session.commit()
 
 # ── Cerrar una OT con tarjeta: lo que se carga es lo que paga el cliente ──
-post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'clasificacion': 'Otro', 'total_cobrado': '$ 180.000',
-                            'condicion_id': str(id_tres), 'fecha_fin': '2026-09-18', 'cliente_id': cid})
+post(f'/ot/{otid}/cerrar', {'cobrado': 'si', 'clasificacion': 'Otro', 'pago_total_1': '$ 180.000',
+                            'pago_condicion_1': str(id_tres), 'fecha_fin': '2026-09-18', 'cliente_id': cid})
 with app.app_context():
     v = Venta.query.filter_by(ot_id=otid).one()
     assert v.metodo_pago == 'Crédito 3 cuotas'
@@ -97,7 +97,7 @@ assert 'Percibimos' in b and 'Pagó el cliente' in b
 # ── Mostrador con débito ──
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Cambio de lamparita',
                                  'precio': '50.000', 'costo': '0'})
-post('/ventas/mostrador/cobrar', {'condicion_id': str(id_debito), 'fecha': '2026-09-18'})
+post('/ventas/mostrador/cobrar', {'pago_condicion_1': str(id_debito), 'fecha': '2026-09-18'})
 with app.app_context():
     v = Venta.query.filter_by(ot_id=None).order_by(Venta.id.desc()).first()
     assert v.metodo_pago == 'Débito'
@@ -108,6 +108,44 @@ with app.app_context():
 # ── Sin forma de pago no se cobra ──
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Otra cosa', 'precio': '1.000'})
 assert 'Elegí la forma de pago' in post('/ventas/mostrador/cobrar', {'fecha': '2026-09-18'})
+
+# ── Pago partido: una parte en efectivo y el resto con tarjeta ──
+with app.app_context():
+    id_efectivo = CondicionPago.query.filter_by(nombre='Efectivo').one().id
+    assert db.session.get(CondicionPago, id_efectivo).destino == 'Caja', 'el efectivo va a la caja de Iván'
+    id_seis = CondicionPago.query.filter_by(nombre='Crédito 6 cuotas').one().id
+    assert db.session.get(CondicionPago, id_seis).destino == 'Banco'
+
+post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Trabajo partido',
+                                 'precio': '100.000', 'costo': '0'})
+post('/ventas/mostrador/cobrar', {'pago_condicion_1': str(id_efectivo), 'pago_total_1': '60.000',
+                                  'pago_condicion_2': str(id_seis), 'pago_total_2': '40.000',
+                                  'fecha': '2026-09-18'})
+with app.app_context():
+    v = Venta.query.filter_by(ot_id=None).order_by(Venta.id.desc()).first()
+    assert len(v.pagos) == 2, v.pagos
+    efectivo, tarjeta = v.pagos
+    assert efectivo.bruto == 60000 and efectivo.neto == 60000, 'el efectivo no paga comisión'
+    assert efectivo.fecha_acreditacion == date(2026, 9, 18), 'el efectivo está el mismo día'
+    assert efectivo.condicion.destino == 'Caja'
+    assert tarjeta.bruto == 40000 and tarjeta.neto < 40000, 'la tarjeta se queda con lo suyo'
+    assert tarjeta.fecha_acreditacion > efectivo.fecha_acreditacion, 'la tarjeta cae después'
+    # El resumen de la venta suma las partes, para las pantallas que lo leen
+    assert v.bruto_cobrado == 100000 and abs(v.cobrado - (60000 + tarjeta.neto)) < 1
+    assert v.metodo_pago == 'Efectivo + Crédito 6 cuotas', v.metodo_pago
+    assert v.fecha_acreditacion == tarjeta.fecha_acreditacion, 'termina de cobrarse con la última parte'
+
+    # Cada parte deja su propio ingreso, con su fecha: el efectivo ya está y la tarjeta no
+    movs = MovimientoContable.query.filter_by(venta_id=v.id).order_by(MovimientoContable.fecha).all()
+    assert len(movs) == 2, movs
+    assert movs[0].total == 60000 and movs[0].fecha == date(2026, 9, 18)
+    assert abs(movs[1].total - tarjeta.neto) < 1 and movs[1].fecha == tarjeta.fecha_acreditacion
+    assert sum(m.total for m in movs) == v.cobrado
+
+# Anularla se lleva los dos ingresos
+post(f'/ventas/{v.id}/anular')
+with app.app_context():
+    assert not MovimientoContable.query.filter_by(venta_id=v.id).count(), 'quedaron ingresos sin venta'
 
 # ── Se editan desde Configuración ──
 b = B(c.get('/configuracion'))
