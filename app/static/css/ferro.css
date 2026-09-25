@@ -83,7 +83,12 @@ html[data-fuente="serif"] { --font-body: "Source Serif 4", Georgia, "Times New R
    bloquearlo apaga el "tirar para recargar" de Chrome en Android y ahí el scroll
    se siente trabado. El rebote de iOS es nativo y no molesta a nadie. */
 html, body { margin: 0; overscroll-behavior-x: none; }
-.table-wrap, .desplegable, .sidebar { overscroll-behavior: contain; }
+/* La tabla ancha se contiene solo de costado. En vertical no tiene nada que
+   scrollear, y contenerla ahí también dejaba el dedo pegado: apoyado sobre un
+   repuesto, arrastrar para arriba no movía la página. El menú y los
+   desplegables sí scrollean en vertical, así que ahí el contain va entero. */
+.table-wrap { overscroll-behavior-x: contain; }
+.desplegable, .sidebar { overscroll-behavior: contain; }
 body {
   font-family: var(--font-body);
   font-size: .9rem;
