@@ -76,7 +76,12 @@
     var caja = form.querySelector('.bloque-sin-cargo');
     if (caja) caja.hidden = !form.querySelector('input[name="cobrado"][value="sin_cargo"]').checked;
     cobro.hidden = !si;
-    cobro.querySelectorAll('input, select').forEach(function (c) { c.required = si; });
+    // Solo lo que se ve puede ser obligatorio: un campo oculto y sin llenar frena
+    // el envío sin poder mostrar el aviso, y el botón parece que no hace nada.
+    // La segunda forma de pago la maneja FerroCobro cuando se muestra.
+    cobro.querySelectorAll('[data-pago]').forEach(function (fila) {
+      fila.querySelectorAll('input, select').forEach(function (c) { c.required = si && !fila.hidden; });
+    });
     if (picker) picker.setObligatorio(!no);
     textoBoton.textContent = si ? 'Cerrar y registrar venta'
       : (no ? 'Cerrar (queda por cobrar)' : 'Cerrar sin cobrar');

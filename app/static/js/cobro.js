@@ -49,6 +49,12 @@
     var segunda = raiz.querySelector('[data-segunda]');
     var primero = filas[0].querySelector('input');
 
+    /* Un campo oculto y obligatorio frena el envío sin poder avisar: la segunda
+       forma de pago solo es obligatoria mientras se la está usando. */
+    function exigir(fila, si) {
+      fila.querySelectorAll('input, select').forEach(function (c) { c.required = si; });
+    }
+
     function fecha() {
       var campo = raiz.querySelector('[name=fecha_fin], [name=fecha_cobro], [name=fecha]');
       return comoFecha(campo && campo.value);
@@ -120,6 +126,7 @@
       agregar.addEventListener('click', function () {
         segunda.hidden = false;
         agregar.hidden = true;
+        exigir(segunda, true);
         // Lo que falta para llegar al sugerido, que es lo más probable que cobre
         var resto = (+primero.dataset.sugerido || 0) - numero(primero);
         var campo = segunda.querySelector('input');
@@ -134,11 +141,13 @@
       quitar.addEventListener('click', function () {
         segunda.hidden = true;
         if (agregar) agregar.hidden = false;
+        exigir(segunda, false);
         segunda.querySelector('select').value = '';
         segunda.querySelector('input').value = '';
         actualizar();
       });
     }
+    if (segunda) exigir(segunda, !segunda.hidden);
     if (segunda && !segunda.hidden && agregar) agregar.hidden = true;
     raiz.addEventListener('change', actualizar);
     raiz.addEventListener('input', actualizar);
