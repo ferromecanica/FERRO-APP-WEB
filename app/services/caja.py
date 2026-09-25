@@ -10,7 +10,7 @@ de la caja, pero es un gasto del taller como cualquier otro y tiene que estar en
 el resultado del mes. Los depósitos y los retiros no son gastos: la plata cambia
 de lugar o se la lleva un socio, y eso se salda en el cierre.
 """
-from datetime import date
+from datetime import date, timedelta
 
 from ..extensions import db
 from ..models import CAJA, MOVIMIENTOS_CAJA, MovimientoCaja, MovimientoContable, PagoVenta, Venta
@@ -39,11 +39,12 @@ def saldo(hasta=None):
     return entradas_por_ventas(hasta) + sum(m.contra_la_caja for m in anotados.all())
 
 
-def movimientos(desde=None, hasta=None):
-    """Todo lo que pasó por la caja, del más nuevo al más viejo, con el saldo en cada punto.
+def movimientos(desde=None, hasta=None, inicial=0):
+    """Lo que pasó por la caja en ese tramo, del más nuevo al más viejo.
 
     Mezcla las ventas en efectivo (que no se anotan) con lo anotado a mano, para
-    que se lea como un extracto: cada línea dice cuánto quedaba después de ella.
+    que se lea como un extracto: cada línea dice cuánto quedaba después de ella,
+    arrancando de lo que venía de antes.
     """
     filas = []
     for pago, venta in _cobros_en_efectivo(hasta):
@@ -68,7 +69,7 @@ def movimientos(desde=None, hasta=None):
         })
 
     filas.sort(key=lambda f: (f["fecha"], f["movimiento"].id if f["movimiento"] else 0))
-    corriendo = 0
+    corriendo = inicial
     for f in filas:
         corriendo += f["monto"]
         f["saldo"] = corriendo
@@ -112,4 +113,36 @@ def resumen(hasta=None):
         "ventas": entradas_por_ventas(hasta),
         "gastos": sum(m.monto for m in anotados if m.es_gasto),
         "ajustes": sum(m.contra_la_caja for m in anotados if not m.es_gasto),
+    }
+
+
+def _primero_y_ultimo(mes):
+    """Del '2026-09' al 1 y al 30 de septiembre."""
+    anio, numero = (int(x) for x in mes.split("-"))
+    primero = date(anio, numero, 1)
+    ultimo = date(anio + (numero == 12), (numero % 12) + 1, 1) - timedelta(days=1)
+    return primero, ultimo
+
+
+def meses_con_movimiento():
+    """Los meses que tienen algo, del más nuevo al más viejo. Siempre está el actual."""
+    meses = {f"{m:%Y-%m}" for (m,) in db.session.query(MovimientoCaja.fecha).distinct()}
+    meses |= {f"{p.fecha_acreditacion:%Y-%m}" for p, _ in _cobros_en_efectivo() if p.fecha_acreditacion}
+    return sorted(meses | {f"{date.today():%Y-%m}"}, reverse=True)
+
+
+def del_mes(mes):
+    """El extracto de un mes: lo que venía de antes, lo que pasó y cómo quedó.
+
+    Filtrar por mes es lo que evita que esto sea una sábana infinita. No hace
+    falta borrar nada: el saldo necesita toda la historia para tener sentido.
+    """
+    primero, ultimo = _primero_y_ultimo(mes)
+    inicial = saldo(primero - timedelta(days=1))
+    filas = movimientos(desde=primero, hasta=ultimo, inicial=inicial)
+    return {
+        "mes": mes, "filas": filas, "inicial": inicial,
+        "final": filas[0]["saldo"] if filas else inicial,
+        "entro": sum(f["monto"] for f in filas if f["monto"] > 0),
+        "salio": -sum(f["monto"] for f in filas if f["monto"] < 0),
     }

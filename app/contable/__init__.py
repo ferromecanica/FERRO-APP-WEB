@@ -247,7 +247,9 @@ def desemparejar(id):
 @bp.route("/caja")
 def caja_chica():
     """El extracto de la caja de Iván: lo que entró en efectivo y lo que salió."""
-    return render_template("contable/caja.html", filas=caja.movimientos(), r=caja.resumen(),
+    mes = request.args.get("mes") or MovimientoContable.mes_de(date.today())
+    return render_template("contable/caja.html", m=caja.del_mes(mes), saldo=caja.saldo(),
+                           mes=mes, meses=caja.meses_con_movimiento(),
                            tipos=TIPOS_CAJA, hoy=date.today())
 
 
@@ -265,16 +267,22 @@ def caja_nuevo():
         db.session.commit()
         aviso = f"{m.tipo}: ${abs(m.monto):,.0f}".replace(",", ".")
         flash(aviso + (". Queda también en los egresos del mes." if m.es_gasto else "."), "ok")
+        return redirect(url_for(".caja_chica", mes=MovimientoContable.mes_de(m.fecha)))
     return redirect(url_for(".caja_chica"))
 
 
 @bp.route("/caja/<int:id>/eliminar", methods=["POST"])
 def caja_eliminar(id):
     m = db.get_or_404(MovimientoCaja, id)
-    caja.borrar(m)
-    db.session.commit()
-    flash("Movimiento de caja eliminado.", "ok")
-    return redirect(url_for(".caja_chica"))
+    mes = MovimientoContable.mes_de(m.fecha)
+    cierre = CierreMensual.query.filter_by(mes=mes).first()
+    if cierre is not None and cierre.cerrado:
+        flash(f"{mes_lindo(mes)} ya está cerrado: ese movimiento no se toca.", "error")
+    else:
+        caja.borrar(m)
+        db.session.commit()
+        flash("Movimiento de caja eliminado.", "ok")
+    return redirect(url_for(".caja_chica", mes=mes))
 
 
 @bp.route("/capital")

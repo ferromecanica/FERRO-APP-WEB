@@ -89,4 +89,45 @@ with app.app_context():
     assert caja.entradas_por_ventas() == 0, 'la venta anulada no puede seguir en la caja'
     assert caja.saldo(HOY) == 2000, caja.saldo(HOY)   # 50.000 − 40.000 − 8.000
 
+# ── Agrupada por mes: no es una sábana infinita ──
+with app.app_context():
+    from app.services.performance import _restar_meses
+    anterior = _restar_meses(HOY, 1).replace(day=10)
+    mes_ant, mes_hoy = f'{anterior:%Y-%m}', f'{HOY:%Y-%m}'
+
+post('/administracion/caja/nuevo', {'tipo': 'Gasto', 'monto': '1.000', 'concepto': 'Del mes pasado',
+                                    'fecha': anterior.isoformat()})
+with app.app_context():
+    viejo, nuevo = caja.del_mes(mes_ant), caja.del_mes(mes_hoy)
+    assert all(f['fecha'].strftime('%Y-%m') == mes_ant for f in viejo['filas']), 'se colaron filas de otro mes'
+    # Lo que quedaba al cerrar un mes es con lo que arranca el siguiente
+    assert nuevo['inicial'] == viejo['final'], (viejo['final'], nuevo['inicial'])
+    assert nuevo['final'] == caja.saldo(), 'el mes en curso termina en el saldo de hoy'
+    assert mes_ant in caja.meses_con_movimiento() and mes_hoy in caja.meses_con_movimiento()
+
+b = B(c.get(f'/administracion/caja?mes={mes_ant}'))
+assert 'Del mes pasado' in b and 'Venían de antes' in b
+assert 'De mañana' not in b, 'la pantalla de un mes no puede mostrar los de otro'
+
+# ── Un ajuste se puede cargar en negativo, que es como se saca plata ──
+with app.app_context():
+    antes = caja.saldo()
+post('/administracion/caja/nuevo', {'tipo': 'Ajuste', 'monto': '$ -5.000', 'concepto': 'Al banco'})
+with app.app_context():
+    assert caja.saldo() == antes - 5000, caja.saldo()
+# Un gasto en negativo igual resta: no se puede gastar en menos
+post('/administracion/caja/nuevo', {'tipo': 'Gasto', 'monto': '-2.000', 'concepto': 'Escrito al revés'})
+with app.app_context():
+    assert caja.saldo() == antes - 7000, caja.saldo()
+
+# ── Un mes cerrado no se toca ──
+with app.app_context():
+    from app.models import CierreMensual
+    db.session.add(CierreMensual(mes=mes_ant, estado='Cerrado'))
+    db.session.commit()
+    viejo = MovimientoCaja.query.filter_by(concepto='Del mes pasado').one().id
+assert 'ya está cerrado' in post(f'/administracion/caja/{viejo}/eliminar')
+with app.app_context():
+    assert db.session.get(MovimientoCaja, viejo) is not None, 'borró un movimiento de un mes cerrado'
+
 print('CAJA OK')

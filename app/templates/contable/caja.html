@@ -9,22 +9,33 @@
   <div class="actions">
     <div class="card kpi caja-saldo">
       <div class="kpi-label"><i class="fa-solid fa-wallet"></i> Hay ahora</div>
-      <div class="kpi-value" style="color:{{ 'var(--danger)' if r.saldo < 0 else 'var(--ok)' }}">{{ r.saldo | pesos }}</div>
+      <div class="kpi-value" style="color:{{ 'var(--danger)' if saldo < 0 else 'var(--ok)' }}">{{ saldo | pesos }}</div>
     </div>
   </div>
 </div>
 
+<div class="filters" style="margin-bottom:14px">
+  <form method="get" style="display:contents">
+    <select name="mes" onchange="this.form.submit()" style="max-width:220px">
+      {% for x in meses %}<option value="{{ x }}" {{ 'selected' if x == mes }}>{{ x | mes_imputacion | capitalize }}</option>{% endfor %}
+    </select>
+  </form>
+  <span class="muted small" style="align-self:center">Venían de antes <strong>{{ m.inicial | pesos }}</strong>
+    · quedaron <strong>{{ m.final | pesos }}</strong> al final del mes</span>
+</div>
+
 <div class="card">
   <div class="card-head seccion"><h2><i class="fa-solid fa-receipt"></i> Movimientos</h2>
-    <span class="muted small">{{ filas | length }} en total</span></div>
-  {% if filas %}
+    <span class="muted small">{{ m.filas | length }} movimiento{{ 's' if m.filas | length != 1 }}
+      · {{ m.entro | pesos }} entraron, {{ m.salio | pesos }} salieron</span></div>
+  {% if m.filas %}
   <div class="table-wrap"><table class="tabla-densa lista-movil">
     <colgroup><col style="width:100px"><col style="width:140px"><col><col style="width:130px">
       <col style="width:130px"><col style="width:48px"></colgroup>
     <thead><tr><th class="centro">Fecha</th><th class="izq">Qué</th><th class="izq">Concepto</th>
       <th class="num">Monto</th><th class="num hide-sm">Quedaron</th><th></th></tr></thead>
     <tbody>
-    {% for f in filas %}
+    {% for f in m.filas %}
       <tr>
         <td class="centro fecha-chica" data-titulo="Fecha">{{ f.fecha | fecha }}</td>
         <td class="izq" data-titulo="Qué">
@@ -49,7 +60,7 @@
     {% endfor %}
     </tbody>
   </table></div>
-  {% else %}{{ vacio('fa-wallet', 'Todavía no pasó nada por la caja.') }}{% endif %}
+  {% else %}{{ vacio('fa-wallet', 'No pasó nada por la caja en ' ~ (mes | mes_imputacion) ~ '.') }}{% endif %}
 
   <div class="add-box">
     <form method="post" action="{{ url_for('contable.caja_nuevo') }}" class="fila">
@@ -61,7 +72,7 @@
       <div class="c-tipo"><label>Tipo</label>
         <select name="tipo">{% for t in tipos %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
       <div class="c-plata"><label>Monto</label>
-        <input name="monto" inputmode="decimal" class="plata" placeholder="$" required></div>
+        <input name="monto" inputmode="decimal" class="plata con-signo" placeholder="$" required></div>
       <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Anotar</button></div>
     </form>
     <div class="muted small" style="margin-top:8px">Un <strong>gasto</strong> resta y va a los egresos del mes.
