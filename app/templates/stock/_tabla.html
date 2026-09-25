@@ -32,4 +32,9 @@
 </table></div>
 <div class="tabla-pie">{{ repuestos | length }} repuesto{{ 's' if repuestos | length != 1 }}
   <span class="muted"> · Clic en un título: ordena · Arrastrá un título: mueve la columna · Arrastrá su borde: cambia el ancho.</span></div>
+{% if cuantos is defined and cuantos > repuestos | length %}
+<div class="tabla-pie mas-filas">Mostrando las primeras {{ repuestos | length }} de {{ cuantos }}.
+  <a href="{{ url_for(request.endpoint, **dict(request.args, todos=1)) }}">Ver todas</a>
+  <span class="muted">· o buscá la que necesitás, que busca sobre todas.</span></div>
+{% endif %}
 {% else %}{{ vacio('fa-boxes-stacked', 'No hay repuestos' ~ (' que coincidan con la búsqueda' if q or categoria_id or subcategoria_id or filtro else ' cargados todavía') ~ '.') }}{% endif %}

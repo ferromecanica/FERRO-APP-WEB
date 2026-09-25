@@ -33,4 +33,9 @@
   {% endfor %}
   </tbody>
 </table></div>
+{% if cuantas is defined and cuantas > ordenes | length %}
+<div class="tabla-pie mas-filas">Mostrando las primeras {{ ordenes | length }} de {{ cuantas }}.
+  <a href="{{ url_for(request.endpoint, **dict(request.args, todos=1)) }}">Ver todas</a>
+  <span class="muted">· o buscá la que necesitás, que busca sobre todas.</span></div>
+{% endif %}
 {% else %}{{ vacio('fa-clipboard-list', 'No hay órdenes de trabajo' ~ (' que coincidan' if q or estado else ' todavía') ~ '.') }}{% endif %}

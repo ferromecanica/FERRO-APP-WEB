@@ -33,6 +33,8 @@ from ..validaciones import numero_ar
 
 bp = Blueprint("stock", __name__)
 
+TOPE_LISTA = 60  # cuántas filas se dibujan sin pedir "ver todas"
+
 CAMPOS_TEXTO = ["nombre", "marca", "nro_parte", "codigo_barras", "proveedor", "cod_proveedor", "marca_proveedor",
                 "comp_marca", "comp_modelo", "comp_motor", "detalle", "estanteria", "estante"]
 
@@ -138,9 +140,12 @@ def lista():
         consulta = consulta.filter(Repuesto.stock_actual > 0)
     elif filtro == "bajo":
         consulta = consulta.filter(Repuesto.stock_actual <= func.coalesce(Repuesto.stock_minimo, 0))
-    repuestos = _ordenar(consulta, orden, direccion).all()
+    todos = _ordenar(consulta, orden, direccion).all()
+    # En el celular cada fila es una tarjeta: dibujar 240 de una hace pesado el
+    # scroll. Se muestran las primeras y el resto está a un click (o buscando)
+    repuestos = todos if request.args.get("todos") else todos[:TOPE_LISTA]
     plantilla = "stock/_tabla.html" if request.headers.get("HX-Request") else "stock/lista.html"
-    return render_template(plantilla, repuestos=repuestos, q=q, arbol=_arbol_categorias(),
+    return render_template(plantilla, repuestos=repuestos, cuantos=len(todos), q=q, arbol=_arbol_categorias(),
                            categoria_id=categoria_id, subcategoria_id=subcategoria_id, filtro=filtro,
                            orden=orden if orden in ORDENES else "", direccion=direccion)
 

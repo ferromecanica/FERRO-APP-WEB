@@ -34,6 +34,8 @@ from ..validaciones import (FORMATOS_PATENTE, MARCAS_COMUNES, normalizar_patente
 
 bp = Blueprint("ot", __name__)
 
+TOPE_LISTA = 60  # cuántas OT se dibujan sin pedir "ver todas"
+
 CHECKLIST = [
     ("aceite_motor", "Aceite de motor", "aceite_motor_detalle"),
     ("aceite_caja", "Aceite de caja", "aceite_caja_detalle"),
@@ -130,9 +132,11 @@ def lista():
         consulta = consulta.filter(OrdenTrabajo.estado == estado)
     for palabra in q.split():  # todas las palabras tienen que aparecer en algún lado
         consulta = consulta.filter(_coincide_ot(palabra))
-    ordenes = consulta.order_by(OrdenTrabajo.id.desc()).all()
+    todas = consulta.order_by(OrdenTrabajo.id.desc()).all()
+    # Las últimas alcanzan para trabajar; para una vieja está el buscador
+    ordenes = todas if request.args.get("todos") else todas[:TOPE_LISTA]
     plantilla = "ot/_tabla.html" if request.headers.get("HX-Request") else "ot/lista.html"
-    return render_template(plantilla, ordenes=ordenes, estados=ESTADOS_OT, estado=estado, q=q,
+    return render_template(plantilla, ordenes=ordenes, cuantas=len(todas), estados=ESTADOS_OT, estado=estado, q=q,
                            valor_hora=ConfigTaller.get().valor_hora or 0)
 
 

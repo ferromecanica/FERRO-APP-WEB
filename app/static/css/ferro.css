@@ -880,3 +880,5 @@ table.formas-pago td.num { font-variant-numeric: tabular-nums; white-space: nowr
 /* Caja chica: el saldo va en el encabezado, que es lo único que hay que mirar */
 .caja-saldo { padding: 10px 18px; min-width: 190px; }
 .caja-saldo .kpi-value { font-size: 1.6rem; }
+/* Aviso de que la lista está recortada: el resto está a un click */
+.tabla-pie.mas-filas { border-top: 1px solid var(--border); font-weight: 500; }
