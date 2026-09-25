@@ -11,7 +11,7 @@ from flask_login import login_required
 from ..extensions import db
 from ..models import (
     CLASIFICACIONES,
-    MOVIMIENTOS_CAJA,
+    TIPOS_CAJA,
     CierreMensual,
     CierreSocio,
     CompromisoCierre,
@@ -248,23 +248,22 @@ def desemparejar(id):
 def caja_chica():
     """El extracto de la caja de Iván: lo que entró en efectivo y lo que salió."""
     return render_template("contable/caja.html", filas=caja.movimientos(), r=caja.resumen(),
-                           tipos=MOVIMIENTOS_CAJA, hoy=date.today())
+                           tipos=TIPOS_CAJA, hoy=date.today())
 
 
 @bp.route("/caja/nuevo", methods=["POST"])
 def caja_nuevo():
     tipo = request.form.get("tipo")
     monto = numero_ar(request.form.get("monto"))
-    if tipo not in MOVIMIENTOS_CAJA:
-        flash("Elegí qué estás anotando.", "error")
-    elif not monto or monto <= 0:
+    if tipo not in TIPOS_CAJA:
+        flash("Elegí si es un gasto o un ajuste.", "error")
+    elif not monto:
         flash("Poné cuánta plata.", "error")
     else:
         m = caja.anotar(tipo, monto, fecha=_fecha("fecha", date.today()),
-                        concepto=request.form.get("concepto", "").strip() or None,
-                        quien=request.form.get("quien", "").strip() or None)
+                        concepto=request.form.get("concepto", "").strip() or None)
         db.session.commit()
-        aviso = f"{m.tipo}: ${m.monto:,.0f}".replace(",", ".")
+        aviso = f"{m.tipo}: ${abs(m.monto):,.0f}".replace(",", ".")
         flash(aviso + (". Queda también en los egresos del mes." if m.es_gasto else "."), "ok")
     return redirect(url_for(".caja_chica"))
 

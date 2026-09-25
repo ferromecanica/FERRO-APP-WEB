@@ -81,7 +81,10 @@ def anotar(tipo, monto, fecha=None, concepto=None, quien=None):
     if tipo not in MOVIMIENTOS_CAJA:
         raise ValueError(f"No sé qué es «{tipo}» en la caja.")
     fecha = fecha or date.today()
-    m = MovimientoCaja(tipo=tipo, monto=abs(monto), fecha=fecha, concepto=concepto, quien=quien)
+    # Un gasto siempre resta; un ajuste se guarda como se escribió, porque puede
+    # sumar (la apertura, plata que se repone) o restar (un depósito, un retiro)
+    monto = abs(monto) if MOVIMIENTOS_CAJA[tipo]["gasto"] else monto
+    m = MovimientoCaja(tipo=tipo, monto=monto, fecha=fecha, concepto=concepto, quien=quien)
     db.session.add(m)
     if m.es_gasto:
         m.movimiento = MovimientoContable(
@@ -108,7 +111,5 @@ def resumen(hasta=None):
         "saldo": saldo(hasta),
         "ventas": entradas_por_ventas(hasta),
         "gastos": sum(m.monto for m in anotados if m.es_gasto),
-        "al_banco": sum(m.monto for m in anotados if m.tipo == "Pasa al banco"),
-        "retiros": sum(m.monto for m in anotados if m.tipo == "Retiro de socio"),
-        "hay_apertura": any(m.tipo == "Apertura" for m in anotados),
+        "ajustes": sum(m.contra_la_caja for m in anotados if not m.es_gasto),
     }

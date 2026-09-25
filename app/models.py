@@ -497,19 +497,19 @@ CLASIFICACIONES = ["Gasto Corriente", "Inversión de Capital", "Ventas", "Repues
 COMPROBANTES = ["S/C", "Factura A", "Factura B", "Factura C", "Ticket", "Liquidación", "Recibo"]
 TIPOS_CAPITAL = ["Aporte de Capital", "Devolución de Capital"]
 
-# Qué se puede anotar en la caja chica. El signo dice si suma o resta al saldo.
+# Qué se puede anotar en la caja chica. Son dos para que sea fácil de usar:
+# un gasto siempre resta y va a los egresos del mes; un ajuste no es un gasto
+# (plata que se depositó, que se llevó un socio, la apertura) y toma el signo
+# que se escriba. Los nombres viejos quedan para las filas ya cargadas.
 MOVIMIENTOS_CAJA = {
-    "Gasto": {"signo": -1, "gasto": True,
-              "ayuda": "Algo que se pagó con la plata de la caja. Va también a los egresos del mes."},
-    "Pasa al banco": {"signo": -1, "gasto": False,
-                      "ayuda": "Plata de la caja que se depositó. No es un gasto: cambia de lugar."},
-    "Retiro de socio": {"signo": -1, "gasto": False,
-                        "ayuda": "Plata que se llevó un socio. Se salda en el cierre del mes."},
-    "Entra plata": {"signo": 1, "gasto": False,
-                    "ayuda": "Efectivo que entra sin ser una venta: un vuelto, plata que repusiste."},
-    "Apertura": {"signo": 1, "gasto": False,
-                 "ayuda": "Lo que había en la caja cuando se empezó a llevar acá. Se carga una sola vez."},
+    "Gasto": {"signo": -1, "gasto": True},
+    "Ajuste": {"signo": 1, "gasto": False},
+    "Pasa al banco": {"signo": -1, "gasto": False},
+    "Retiro de socio": {"signo": -1, "gasto": False},
+    "Entra plata": {"signo": 1, "gasto": False},
+    "Apertura": {"signo": 1, "gasto": False},
 }
+TIPOS_CAJA = ["Gasto", "Ajuste"]  # los que se ofrecen al anotar
 
 
 class Socio(db.Model):
@@ -1020,7 +1020,7 @@ class MovimientoCaja(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.Date, default=date.today, nullable=False, index=True)
     tipo = db.Column(db.String(20), nullable=False)
-    monto = db.Column(db.Float, default=0, nullable=False)  # siempre positivo: el signo lo pone el tipo
+    monto = db.Column(db.Float, default=0, nullable=False)  # en los ajustes puede ser negativo
     concepto = db.Column(db.String(300))
     quien = db.Column(db.String(120))
     movimiento_id = db.Column(db.Integer, db.ForeignKey("movimiento_contable.id"))  # el egreso que generó

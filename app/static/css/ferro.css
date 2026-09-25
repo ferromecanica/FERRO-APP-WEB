@@ -394,6 +394,8 @@ input:disabled { background: var(--surface-2); color: var(--muted); }
 .fila .c-fecha { flex: 0 0 150px; }
 .fila .c-mec { flex: 0 0 130px; }
 .fila .c-btn { flex: 0 0 auto; }
+.fila .c-fecha { flex: 0 0 160px; }   /* caja chica: fecha, concepto, tipo, monto */
+.fila .c-tipo { flex: 0 0 130px; }
 .fila .c-cant input { text-align: center; }
 .input-grande { font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; }
 .dialogo { border: 0; border-radius: 16px; padding: 0; width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 32px); box-shadow: 0 30px 80px rgba(0, 0, 0, .35); }
@@ -873,3 +875,7 @@ table.formas-pago td.num { font-variant-numeric: tabular-nums; white-space: nowr
 .pago-fila[hidden] { display: none; }
 .pago-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 @media (max-width: 720px) { .pago-fila { grid-template-columns: 1fr; } }
+
+/* Caja chica: el saldo va en el encabezado, que es lo único que hay que mirar */
+.caja-saldo { padding: 10px 18px; min-width: 190px; }
+.caja-saldo .kpi-value { font-size: 1.6rem; }

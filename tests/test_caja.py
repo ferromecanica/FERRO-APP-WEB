@@ -16,11 +16,10 @@ with app.app_context():
     id_debito = CondicionPago.query.filter_by(nombre='Débito').one().id
     assert caja.saldo() == 0, 'la caja arranca en cero'
 
-# ── La apertura: lo que ya había el día que se empezó a llevar ──
-post('/administracion/caja/nuevo', {'tipo': 'Apertura', 'monto': '50.000', 'concepto': 'Lo que había'})
+# ── La apertura es un ajuste que suma: lo que ya había el primer día ──
+post('/administracion/caja/nuevo', {'tipo': 'Ajuste', 'monto': '50.000', 'concepto': 'Apertura'})
 with app.app_context():
     assert caja.saldo() == 50000, caja.saldo()
-    assert caja.resumen()['hay_apertura']
 
 # ── El efectivo de una venta entra solo; lo que va al banco no ──
 post('/ventas/mostrador/items', {'tipo': 'manual', 'descripcion': 'Service', 'precio': '100.000', 'costo': '0'})
@@ -42,29 +41,28 @@ with app.app_context():
     assert 'caja chica' in m.movimiento.concepto
     gid = m.id
 
-# ── Lo que pasa al banco o se lleva un socio NO es gasto del mes ──
-post('/administracion/caja/nuevo', {'tipo': 'Pasa al banco', 'monto': '40.000', 'concepto': 'Depósito'})
-post('/administracion/caja/nuevo', {'tipo': 'Retiro de socio', 'monto': '8.000', 'quien': 'Lucio'})
+# ── Un ajuste en negativo saca plata y NO es gasto del mes ──
+post('/administracion/caja/nuevo', {'tipo': 'Ajuste', 'monto': '-40.000', 'concepto': 'Depósito al banco'})
+post('/administracion/caja/nuevo', {'tipo': 'Ajuste', 'monto': '-8.000', 'concepto': 'Retiro de Lucio'})
 with app.app_context():
     assert caja.saldo() == 60000, caja.saldo()
-    for tipo in ('Pasa al banco', 'Retiro de socio'):
-        assert MovimientoCaja.query.filter_by(tipo=tipo).one().movimiento is None, \
-            f'«{tipo}» no es un gasto: la plata cambia de lugar'
+    for m in MovimientoCaja.query.filter_by(tipo='Ajuste').all():
+        assert m.movimiento is None, 'un ajuste no es un gasto: la plata cambia de lugar'
     r = caja.resumen()
-    assert r['al_banco'] == 40000 and r['retiros'] == 8000 and r['gastos'] == 12000
+    assert r['gastos'] == 12000 and r['ajustes'] == 2000, r   # +50.000 − 40.000 − 8.000
 
 # ── El extracto: del más nuevo al más viejo, con el saldo de cada punto ──
 with app.app_context():
     filas = caja.movimientos()
     assert len(filas) == 5, filas                      # apertura + venta + gasto + banco + retiro
     assert filas[0]['saldo'] == 60000, 'la primera fila es la última que pasó'
-    assert filas[-1]['tipo'] in ('Apertura', 'Venta'), 'la última es la más vieja'
+    assert filas[-1]['tipo'] in ('Ajuste', 'Venta'), 'la última es la más vieja'
     venta = next(f for f in filas if f['venta_id'])
     assert venta['monto'] == 70000 and venta['movimiento'] is None, 'la venta no se borra desde la caja'
 
 b = B(c.get('/administracion/caja'))
 assert 'Caja chica' in b and '$ 60.000' in b
-assert 'Tornillería' in b and 'Depósito' in b
+assert 'Tornillería' in b and 'Depósito al banco' in b
 
 # ── Borrar un gasto se lleva también su egreso ──
 with app.app_context():
