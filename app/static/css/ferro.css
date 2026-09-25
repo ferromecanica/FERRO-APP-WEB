@@ -78,10 +78,11 @@ html[data-fuente="serif"] { --font-body: "Source Serif 4", Georgia, "Times New R
 
 
 * { box-sizing: border-box; }
-/* En el celular la pantalla se sentía flotante: el rebote de iOS estiraba la
-   página para abajo y, cuando una tabla ancha llegaba a su borde, el dedo
-   arrastraba toda la pantalla para el costado. Cada scroll se queda en lo suyo. */
-html, body { margin: 0; overscroll-behavior: none; }
+/* Cuando una tabla ancha llegaba a su borde, el dedo arrastraba toda la pantalla
+   para el costado: eso se frena. El eje vertical se deja como viene, porque
+   bloquearlo apaga el "tirar para recargar" de Chrome en Android y ahí el scroll
+   se siente trabado. El rebote de iOS es nativo y no molesta a nadie. */
+html, body { margin: 0; overscroll-behavior-x: none; }
 .table-wrap, .desplegable, .sidebar { overscroll-behavior: contain; }
 body {
   font-family: var(--font-body);
