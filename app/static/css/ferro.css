@@ -317,6 +317,21 @@ textarea { min-height: 90px; resize: vertical; }
   .lista-movil .acciones-turno { margin-top: 8px; padding-top: 8px !important; border-top: 1px solid var(--border) !important; }
   .lista-movil .acciones-fila { display: flex; gap: 10px; flex-wrap: wrap; }
   .lista-movil .acciones-fila .btn-icon { width: 40px; height: 40px; font-size: 1.05rem; }
+  /* A comprar: es una libreta, no una ficha. El tilde a la izquierda y el texto
+     al lado, para poder repasar la lista de un vistazo y tildar con el pulgar. */
+  .lista-comprar tr {
+    display: grid; align-items: start; column-gap: 4px; padding: 6px 8px;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "tilde que borrar" "tilde nota nota" "tilde cuando cuando";
+  }
+  .lista-comprar .t-tilde { grid-area: tilde; align-self: center; }
+  .lista-comprar .t-que { grid-area: que; }
+  .lista-comprar .t-nota { grid-area: nota; }
+  .lista-comprar .t-cuando { grid-area: cuando; }
+  .lista-comprar .t-borrar { grid-area: borrar; }
+  .lista-comprar td[data-titulo]::before { content: none; }   /* el renglón se lee solo */
+  .lista-comprar .t-nota, .lista-comprar .t-cuando { color: var(--muted); font-size: .88em; }
+  .lista-comprar .t-cuando { text-align: left !important; }
 }
 
 input::placeholder, textarea::placeholder { color: #a8adb7; font-weight: 400; letter-spacing: normal; }
@@ -707,6 +722,16 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .pie-ingreso p { margin: 8px 0 0; }
 .fila-ingreso { width: 100%; }
 @media (max-width: 820px) { .fila .c-repuesto { flex-basis: 100%; min-width: 0; } }
+
+/* ── A comprar: la libreta de pendientes ───────────────── */
+.lista-comprar .quien::before { content: "· "; }
+/* El tilde es el gesto principal de la pantalla: grande, para el dedo */
+.tilde { background: none; border: 0; padding: 8px 12px; cursor: pointer; line-height: 1;
+  font-size: 1.4rem; color: var(--muted); }
+.tilde:hover { color: var(--accent); }
+.tilde.tildado { color: var(--ok); }
+.ya-comprado td:not(:first-child) { opacity: .55; }
+.ya-comprado .envuelve { text-decoration: line-through; }
 
 /* ── Ventanita de confirmación ─────────────────────────── */
 .confirmar { border: 0; border-radius: 16px; padding: 22px; width: min(430px, calc(100vw - 32px));

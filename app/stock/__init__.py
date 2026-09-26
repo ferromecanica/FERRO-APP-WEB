@@ -5,11 +5,12 @@ from datetime import date, datetime
 from pathlib import Path
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 from sqlalchemy import func, or_
 
 from ..extensions import db, sin_acentos
 from ..models import (
+    AComprar,
     Categoria,
     IngresoStock,
     ConfigMarkup,
@@ -749,3 +750,63 @@ def ingreso_eliminar(id):
     db.session.commit()
     flash("Ingreso eliminado.", "ok")
     return redirect(url_for(".ingresos"))
+
+
+# ───────────────────────────── A comprar (pendientes) ───────────────────────
+
+TOPE_COMPRADOS = 20   # los archivados se ven los últimos; el resto, a un click
+
+
+def _lo_que_se_anoto(texto):
+    """Lo escrito en el campo: o es un repuesto del stock, o es texto a mano."""
+    texto = (texto or "").strip()
+    codigo = texto.split("·")[0].strip()
+    repuesto = db.session.get(Repuesto, int(codigo)) if codigo.isdigit() else None
+    repuesto = repuesto or buscar_repuesto(texto)
+    if repuesto is None:  # por si escribió el nombre tal cual, sin elegirlo de la lista
+        repuesto = Repuesto.query.filter(func.lower(Repuesto.nombre) == texto.lower()).first()
+    if repuesto is not None and repuesto.id != Repuesto.ID_VARIOS:
+        return repuesto, None
+    return None, texto
+
+
+@bp.route("/comprar")
+def comprar():
+    pendientes = (AComprar.query.filter_by(comprado=False)
+                  .order_by(AComprar.creado.desc()).all())
+    listos = (AComprar.query.filter_by(comprado=True)
+              .order_by(AComprar.fecha_comprado.desc(), AComprar.id.desc()).all())
+    todos = bool(request.args.get("todos"))
+    return render_template("stock/comprar.html", pendientes=pendientes,
+                           comprados=listos if todos else listos[:TOPE_COMPRADOS],
+                           cuantos_comprados=len(listos), todos=todos,
+                           repuestos=Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS)
+                           .order_by(Repuesto.nombre).all(), hoy=date.today())
+
+
+@bp.route("/comprar/nuevo", methods=["POST"])
+def comprar_nuevo():
+    repuesto, texto = _lo_que_se_anoto(request.form.get("que"))
+    if not repuesto and not texto:
+        flash("Escribí qué hay que comprar.", "error")
+    else:
+        db.session.add(AComprar(repuesto=repuesto, texto=texto,
+                                nota=_texto("nota"), anotado_por=current_user.nombre))
+        db.session.commit()
+    return redirect(url_for(".comprar"))
+
+
+@bp.route("/comprar/<int:id>/listo", methods=["POST"])
+def comprar_listo(id):
+    p = db.get_or_404(AComprar, id)
+    p.comprado = not p.comprado
+    p.fecha_comprado = date.today() if p.comprado else None
+    db.session.commit()
+    return redirect(url_for(".comprar"))
+
+
+@bp.route("/comprar/<int:id>/eliminar", methods=["POST"])
+def comprar_eliminar(id):
+    db.session.delete(db.get_or_404(AComprar, id))
+    db.session.commit()
+    return redirect(url_for(".comprar"))

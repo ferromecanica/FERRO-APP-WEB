@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import vacio %}
+{% block title %}A comprar{% endblock %}
+
+{# Un renglón de la libreta: el tilde, qué es y la nota. #}
+{% macro renglon(p) %}
+<tr class="{{ 'ya-comprado' if p.comprado }}">
+  <td class="centro t-tilde">
+    {# Un tilde de verdad (input) necesitaría JS para guardarse: si no corre, se
+       tilda y no pasa nada. Un botón que se ve igual siempre envía. #}
+    <form method="post" action="{{ url_for('stock.comprar_listo', id=p.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="tilde {{ 'tildado' if p.comprado }}"
+              title="{{ 'Volver a pendiente' if p.comprado else 'Ya lo compré' }}"
+              aria-label="{{ 'Volver a pendiente' if p.comprado else 'Ya lo compré' }}">
+        <i class="fa-{{ 'solid fa-square-check' if p.comprado else 'regular fa-square' }}"></i></button>
+    </form>
+  </td>
+  <td class="izq envuelve t-que" data-titulo="Qué">
+    {% if p.repuesto %}
+      <a href="{{ url_for('stock.ficha', id=p.repuesto_id) }}">{{ p.repuesto.nombre }}</a>
+      <div class="muted small">del stock · quedan {{ p.repuesto.stock_actual | numero(2) | replace(',00', '') }}</div>
+    {% else %}
+      {{ p.texto }}
+      <div class="muted small">a mano</div>
+    {% endif %}
+  </td>
+  <td class="izq envuelve t-nota" data-titulo="Nota">{{- p.nota or '' -}}</td>
+  <td class="centro fecha-chica hide-sm t-cuando" data-titulo="Cuándo">
+    {{ (p.fecha_comprado or p.creado.date()) | fecha }}
+    {% if p.anotado_por and not p.comprado %}<span class="muted small quien">{{ p.anotado_por }}</span>{% endif %}
+  </td>
+  <td class="num t-borrar">
+    <form method="post" action="{{ url_for('stock.comprar_eliminar', id=p.id) }}"
+          data-confirmar="¿Borrar esta anotación?" data-confirmar-boton="Borrar" data-confirmar-tono="peligro">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn-icon" title="Borrar"><i class="fa-solid fa-trash"></i></button></form>
+  </td>
+</tr>
+{% endmacro %}
+
+{% macro cabecera() %}
+<colgroup><col style="width:48px"><col><col><col style="width:110px"><col style="width:48px"></colgroup>
+<thead><tr><th></th><th class="izq">Qué</th><th class="izq">Nota</th>
+  <th class="centro hide-sm">Cuándo</th><th></th></tr></thead>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div><div class="eyebrow">Stock</div><h1>A comprar</h1>
+    <div class="muted small" style="margin-top:4px">Lo que hay que comprar o reponer. Se anota al pasar
+      y se tilda cuando se compró.</div></div>
+</div>
+
+{% include "stock/_tabs.html" %}
+
+<div class="card">
+  <div class="card-head seccion"><h2><i class="fa-regular fa-rectangle-list"></i> Pendientes</h2>
+    <span class="muted small">{{ pendientes | length }} pendiente{{ 's' if pendientes | length != 1 }}</span></div>
+  {% if pendientes %}
+  <div class="table-wrap"><table class="tabla-densa lista-movil lista-comprar">
+    {{ cabecera() }}
+    <tbody>{% for p in pendientes %}{{ renglon(p) }}{% endfor %}</tbody>
+  </table></div>
+  {% else %}{{ vacio('fa-regular fa-rectangle-list', 'No hay nada pendiente de comprar.') }}{% endif %}
+
+  <div class="add-box">
+    <form method="post" action="{{ url_for('stock.comprar_nuevo') }}" class="fila">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="c-repuesto"><label>Qué hay que comprar</label>
+        {# sin autofocus: la lista de repuestos se abriría sola y taparía lo anotado #}
+        <input name="que" list="lista-repuestos" autocomplete="off" required data-escaner
+               placeholder="Buscalo en el stock o escribilo a mano">
+        <datalist id="lista-repuestos">
+          {% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}">quedan {{ r.stock_actual | numero(1) }}</option>{% endfor %}
+        </datalist></div>
+      <div class="c-desc"><label>Nota (opcional)</label>
+        <input name="nota" placeholder="Ej.: para la OT de Pérez, reponer, urgente"></div>
+      <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Anotar</button></div>
+    </form>
+    <div class="muted small" style="margin-top:8px">Si está en el stock, elegilo de la lista y queda enganchado
+      al repuesto. Si no, escribilo como te acuerdes.</div>
+  </div>
+</div>
+
+{% if comprados %}
+<div class="card" style="margin-top:14px">
+  <div class="card-head seccion"><h2><i class="fa-solid fa-check-double"></i> Ya comprados</h2>
+    <span class="muted small">{{ cuantos_comprados }} en total</span></div>
+  <div class="table-wrap"><table class="tabla-densa lista-movil lista-comprar">
+    {{ cabecera() }}
+    <tbody>{% for p in comprados %}{{ renglon(p) }}{% endfor %}</tbody>
+  </table></div>
+  {% if not todos and cuantos_comprados > comprados | length %}
+  <div class="card-body" style="border-top:1px solid var(--border)">
+    <a class="btn btn-sm" href="{{ url_for('stock.comprar', todos=1) }}">Ver los {{ cuantos_comprados }}</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

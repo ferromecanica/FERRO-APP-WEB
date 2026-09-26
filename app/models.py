@@ -778,6 +778,35 @@ class IngresoStockItem(db.Model):
         return (self.cantidad or 0) * (self.costo_unitario or 0)
 
 
+class AComprar(TimestampMixin, db.Model):
+    """La libretita de lo que hay que comprar.
+
+    Se anota al pasar, cuando uno se acuerda: puede ser un repuesto del stock
+    (y ahí sabemos qué es y cuánto había) o un texto escrito a mano, para lo
+    que todavía no está catalogado o no es un repuesto. La nota es para
+    acordarse de por qué se anotó, y puede quedar vacía.
+
+    Cuando se compra se tilda: no se borra, queda archivado con la fecha.
+    """
+
+    __tablename__ = "a_comprar"
+
+    id = db.Column(db.Integer, primary_key=True)
+    repuesto_id = db.Column(db.Integer, db.ForeignKey("repuesto.id"))  # vacío si es a mano
+    texto = db.Column(db.String(200))                                  # lo que se escribió a mano
+    nota = db.Column(db.String(300))
+    comprado = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    fecha_comprado = db.Column(db.Date)
+    anotado_por = db.Column(db.String(120))
+
+    repuesto = db.relationship("Repuesto")
+
+    @property
+    def que_es(self):
+        """Cómo se lee en el listado, sea del stock o escrito a mano."""
+        return self.repuesto.nombre if self.repuesto else (self.texto or "")
+
+
 # ──────────────────────────────── Presupuestos ──────────────────────────────
 
 

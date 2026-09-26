@@ -72,7 +72,8 @@
       <a href="{{ url_for('clientes.vehiculos') }}" class="{{ 'active' if (ep or '').startswith('clientes.vehiculo') }}"><i class="fa-solid fa-car-side"></i> Vehículos</a>
       <div class="nav-label">Comercial</div>
       <a href="{{ url_for('ventas.lista') }}" class="{{ 'active' if seccion == 'ventas' }}"><i class="fa-solid fa-cart-shopping"></i> Ventas</a>
-      <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if seccion == 'stock' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
+      <a href="{{ url_for('stock.lista') }}" class="{{ 'active' if seccion == 'stock' and ep != 'stock.comprar' }}"><i class="fa-solid fa-boxes-stacked"></i> Stock</a>
+      <a href="{{ url_for('stock.comprar') }}" class="{{ 'active' if ep == 'stock.comprar' }}"><i class="fa-regular fa-rectangle-list"></i> A comprar</a>
       <div class="nav-label">Administración</div>
       <a href="{{ url_for('contable.movimientos') }}" class="nav-contable {{ 'active' if ep in ('contable.movimientos', 'contable.form') }}"><i class="fa-solid fa-right-left"></i> Movimientos</a>
       <a href="{{ url_for('contable.caja_chica') }}" class="nav-contable {{ 'active' if ep == 'contable.caja_chica' }}"><i class="fa-solid fa-wallet"></i> Caja chica</a>
