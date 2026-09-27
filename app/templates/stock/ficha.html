@@ -10,8 +10,12 @@
 <div class="page-head">
   <div><div class="eyebrow">Stock{% if r.id %} · #{{ r.id }}{% endif %}</div>
     <h1 style="max-width:900px">{{ r.nombre if r.id else 'Nuevo repuesto' }}</h1></div>
-  {% if r.id %}<div class="actions"><span class="stock-grande {{ 'stock-cero' if r.stock_actual <= 0 else ('stock-bajo' if r.bajo_stock else '') }}">
-    Stock: {{ r.stock_actual | numero(2) | replace(',00', '') }}</span></div>{% endif %}
+  <div class="actions">
+    {# Vuelve al listado como estaba: con la búsqueda y los filtros puestos #}
+    <a class="btn" href="{{ volver }}"><i class="fa-solid fa-arrow-left"></i> Volver al listado</a>
+    {% if r.id %}<span class="stock-grande {{ 'stock-cero' if r.stock_actual <= 0 else ('stock-bajo' if r.bajo_stock else '') }}">
+      Stock: {{ r.stock_actual | numero(2) | replace(',00', '') }}</span>{% endif %}
+  </div>
 </div>
 {% include "stock/_tabs.html" %}
 
@@ -132,7 +136,7 @@
 
     <div class="actions">
       <button class="btn btn-primary"><i class="fa-solid fa-check"></i> {{ 'Guardar' if r.id else 'Crear repuesto' }}</button>
-      <a class="btn" href="{{ url_for('stock.ingreso', id=request.args.get('volver_ingreso')) if request.args.get('volver_ingreso') else url_for('stock.lista') }}">Volver</a>
+      <a class="btn" href="{{ url_for('stock.ingreso', id=request.args.get('volver_ingreso')) if request.args.get('volver_ingreso') else volver }}">Volver</a>
     </div>
   </div>
 </div>

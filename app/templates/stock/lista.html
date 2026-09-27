@@ -49,6 +49,15 @@
 <script src="{{ url_for('static', filename='js/tabla-config.js') }}"></script>
 <script src="{{ url_for('static', filename='js/ordenar.js') }}"></script>
 <script>
+  /* Al entrar a un repuesto se lleva puesto cómo quedó el listado, así el botón
+     Volver devuelve a la misma búsqueda y no hay que filtrar de nuevo */
+  function FerroAbrirRepuesto(url) {
+    var params = new URLSearchParams(location.search);
+    Array.from(params.keys()).forEach(function (k) { if (!params.get(k)) params.delete(k); });
+    var comoQuedo = params.toString();
+    location = url + (comoQuedo ? '?volver=' + encodeURIComponent(comoQuedo) : '');
+  }
+
   /* El panel de filtros por columna: se abre, se cierra y se limpia */
   var panel = document.getElementById('filtros-columna');
   document.getElementById('abrir-filtros').addEventListener('click', function () {

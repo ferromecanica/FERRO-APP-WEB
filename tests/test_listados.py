@@ -85,6 +85,24 @@ assert b.index(ultimo_v.codigo) < b.index(v.codigo), 'los vehículos no arrancan
 b = B(c.get('/clientes/vehiculos?orden=km&dir=desc'))
 assert 'ordenada' in b, 'no marcó la columna por la que está ordenando'
 
+# ── Volver al listado sin perder la búsqueda ni los filtros ──
+import re
+boton = lambda b: re.search(r'<a class="btn" href="([^"]*)"><i class="fa-solid fa-arrow-left', b).group(1)
+
+b = B(c.get(f'/stock/{ids[0]}?volver=f_comp_marca%3Dfiat%26q%3Dfiltro'))
+assert boton(b) == '/stock/?f_comp_marca=fiat&amp;q=filtro', boton(b)
+assert boton(B(c.get(f'/stock/{ids[0]}'))) == '/stock/', 'sin filtros tiene que volver al listado pelado'
+
+# Guardar el repuesto no puede perder el filtrado
+r = c.post(f'/stock/{ids[0]}?volver=f_comp_marca%3Dfiat',
+           data={'nombre': 'Filtro Fiat flojo', 'costo_lista': '100', 'ignorar_duplicados': '1'})
+assert 'volver=f_comp_marca' in r.headers['Location'], r.headers['Location']
+assert boton(B(c.get(r.headers['Location']))) == '/stock/?f_comp_marca=fiat'
+
+# Y lo que llega en "volver" nunca puede mandar a otra parte
+for veneno in ['https://otro-sitio.com', '//otro-sitio.com', '/administracion/caja']:
+    assert boton(B(c.get(f'/stock/{ids[0]}?volver={veneno}'))) == '/stock/', veneno
+
 # ── El disparador de htmx, que es lo que hace que escribir filtre de verdad ──
 # Con dos reglas para el mismo evento htmx se queda con la primera y la otra
 # no dispara nunca: así los filtros por columna no hacían nada.

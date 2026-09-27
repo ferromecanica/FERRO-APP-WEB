@@ -9,7 +9,7 @@
   </tr></thead>
   <tbody>
   {% for r in repuestos %}
-    <tr class="clickable" onclick="location='{{ url_for('stock.ficha', id=r.id) }}'">
+    <tr class="clickable" onclick="FerroAbrirRepuesto('{{ url_for('stock.ficha', id=r.id) }}')">
       <td data-col="material" class="izq destacado" title="{{ r.nombre }}"><span class="muted">{{ r.id }}</span> · {{ r.nombre }}</td>
       <td data-col="marca" data-titulo="Marca" title="{{ r.marca or '' }}">{{ r.marca or '' }}</td>
       <td data-col="parte" class="mono" title="{{ r.nro_parte or '' }}">{{ r.nro_parte or '' }}</td>

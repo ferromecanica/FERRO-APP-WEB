@@ -4,6 +4,7 @@ import secrets
 import time
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
@@ -171,6 +172,26 @@ def _filtros_pedidos():
     return puestos
 
 
+# Lo que puede viajar en "volver": la búsqueda, los filtros y el orden del listado
+PARAMETROS_LISTADO = ({"q", "categoria", "subcategoria", "filtro", "orden", "dir"} |
+                      {f"f_{col}" for col, _, _, _ in COLUMNAS})
+
+
+def _volver_al_listado():
+    """El listado como lo dejó la persona —su búsqueda y sus filtros—, para el botón Volver.
+
+    Viene como query string en "volver". La URL se arma acá a partir de la ruta
+    del listado y solo con los parámetros conocidos: lo que llegó no se usa tal
+    cual, así un link preparado no puede mandar a ninguna otra parte.
+    """
+    guardado = request.args.get("volver", "")
+    if not guardado:
+        return url_for(".lista")
+    conocidos = [(clave, valor) for clave, valor in parse_qsl(guardado.lstrip("?"))
+                 if clave in PARAMETROS_LISTADO and valor]
+    return url_for(".lista") + ("?" + urlencode(conocidos) if conocidos else "")
+
+
 def _ordenar(consulta, orden, direccion):
     """Ordena por la columna elegida; los vacíos siempre al final. Desempata por número de repuesto."""
     columna = ORDENES.get(orden)
@@ -272,7 +293,7 @@ def ficha(id=None):
             volver_ingreso = request.args.get("volver_ingreso", type=int)
             if volver_ingreso:
                 return redirect(url_for(".ingreso", id=volver_ingreso, repuesto=repuesto.id) + "#items")
-            return redirect(url_for(".ficha", id=repuesto.id))
+            return redirect(url_for(".ficha", id=repuesto.id, volver=request.args.get("volver")))
 
     duplicados = locals().get("duplicados") or []
     markup, origen = regla_markup(repuesto) if repuesto.proveedor or repuesto.markup else (1.0, "sin regla de markup")
@@ -287,6 +308,7 @@ def ficha(id=None):
         estanterias=_distintos(Repuesto.estanteria), estantes=_distintos(Repuesto.estante),
         reglas=[{"proveedor": m.proveedor, "marca": m.marca_envase, "markup": m.markup} for m in ConfigMarkup.query.all()],
         usado=_en_uso(repuesto) if repuesto.id else False, duplicados=duplicados,
+        volver=_volver_al_listado(),
     )
 
 
