@@ -100,7 +100,7 @@ ORDENES_VEHICULO = {
 
 
 def _ordenar(consulta, ordenes, orden, direccion, desempate):
-    """Ordena por la columna elegida; los vacíos siempre al final, y desempata por ID."""
+    """Ordena por la columna elegida; los vacíos al final y, si empatan, el más nuevo primero."""
     columna = ordenes.get(orden)
     if columna is None:
         return consulta.order_by(desempate)
@@ -127,9 +127,10 @@ def lista():
                 _como(Cliente.cuit, like), _como(Cliente.notas, like), _como(Vehiculo.marca, like),
                 _como(Vehiculo.modelo, like)))
         consulta = consulta.distinct()
-    orden = request.args.get("orden", "")
-    direccion = "desc" if request.args.get("dir") == "desc" else "asc"
-    clientes = _ordenar(consulta, ORDENES_CLIENTE, orden, direccion, Cliente.id).all()
+    # Sin elegir nada: el último cliente que se cargó, arriba de todo
+    orden = request.args.get("orden", "") or "id"
+    direccion = "asc" if request.args.get("dir") == "asc" else "desc"
+    clientes = _ordenar(consulta, ORDENES_CLIENTE, orden, direccion, Cliente.id.desc()).all()
     plantilla = "clientes/_tabla.html" if request.headers.get("HX-Request") else "clientes/lista.html"
     return render_template(plantilla, clientes=clientes, q=q, total=Cliente.query.count(),
                            orden=orden if orden in ORDENES_CLIENTE else "", direccion=direccion)
@@ -201,9 +202,10 @@ def vehiculos():
             _como(Vehiculo.patente, like), _como(Vehiculo.marca, like),
             _como(Vehiculo.modelo, like), _como(Vehiculo.color, like),
             _como(Vehiculo.motor, like), _como(Cliente.nombre, like)))
-    orden = request.args.get("orden", "")
-    direccion = "desc" if request.args.get("dir") == "desc" else "asc"
-    vehiculos = _ordenar(consulta, ORDENES_VEHICULO, orden, direccion, Vehiculo.id).all()
+    # Sin elegir nada: el último vehículo que se cargó, arriba de todo
+    orden = request.args.get("orden", "") or "id"
+    direccion = "asc" if request.args.get("dir") == "asc" else "desc"
+    vehiculos = _ordenar(consulta, ORDENES_VEHICULO, orden, direccion, Vehiculo.id.desc()).all()
     plantilla = "clientes/_tabla_vehiculos.html" if request.headers.get("HX-Request") else "clientes/vehiculos.html"
     return render_template(plantilla, vehiculos=vehiculos, q=q, total=Vehiculo.query.count(),
                            orden=orden if orden in ORDENES_VEHICULO else "", direccion=direccion)

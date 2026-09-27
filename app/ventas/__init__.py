@@ -13,7 +13,7 @@ from flask_login import login_required
 from ..extensions import db
 from ..models import Cliente, CondicionPago, Repuesto, Venta
 from ..services import cobros, contable
-from ..services.stock import anular_venta, buscar_repuesto, vender_en_mostrador
+from ..services.stock import anular_venta, buscar_repuesto, para_elegir, vender_en_mostrador
 from ..validaciones import numero_ar
 
 bp = Blueprint("ventas", __name__)
@@ -99,7 +99,7 @@ def mostrador():
     return render_template(
         "ventas/mostrador.html", venta=venta, t=_totales(venta),
         condiciones=CondicionPago.query.filter_by(activa=True).order_by(CondicionPago.orden).all(),
-        repuestos=Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all(),
+        repuestos=para_elegir(),
         clientes=Cliente.query.order_by(db.func.lower(Cliente.nombre)).all(),
         hoy=date.today(),
     )

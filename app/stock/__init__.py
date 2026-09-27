@@ -28,7 +28,8 @@ from ..models import (
 )
 from ..services import drive, listas
 from ..services.stock import (
-    anular_ingreso, buscar_repuesto, confirmar_ingreso, posibles_duplicados, recalcular_precio_venta, regla_markup,
+    anular_ingreso, buscar_repuesto, confirmar_ingreso, para_elegir, posibles_duplicados,
+    recalcular_precio_venta, regla_markup,
     registrar_movimiento,
 )
 from ..validaciones import numero_ar
@@ -95,7 +96,9 @@ def _coincide(palabra):
 
 # Columnas por las que se puede ordenar el listado (clave del encabezado → columna)
 ORDENES = {
-    "material": Repuesto.nombre, "marca": Repuesto.marca, "parte": Repuesto.nro_parte, "stock": Repuesto.stock_actual,
+    # La celda de Material muestra "1243 · NOMBRE": ordena por ese número, que es
+    # el que dice cuál se cargó último, y no por el texto del nombre
+    "material": Repuesto.id, "marca": Repuesto.marca, "parte": Repuesto.nro_parte, "stock": Repuesto.stock_actual,
     "ubicacion": Repuesto.estanteria, "costo": Repuesto.precio_costo, "venta": Repuesto.precio_venta,
     "comp_marca": Repuesto.comp_marca, "comp_modelo": Repuesto.comp_modelo, "comp_motor": Repuesto.comp_motor,
     "detalle": Repuesto.detalle, "descuento": Repuesto.descuento_oferta, "cod_prov": Repuesto.cod_proveedor,
@@ -171,8 +174,8 @@ def _filtros_pedidos():
 def _ordenar(consulta, orden, direccion):
     """Ordena por la columna elegida; los vacíos siempre al final. Desempata por número de repuesto."""
     columna = ORDENES.get(orden)
-    if columna is None:
-        return consulta.order_by(Repuesto.id)
+    if columna is None:   # sin elegir nada: el último que se cargó, arriba
+        return consulta.order_by(Repuesto.id.desc())
     if orden == "categoria":
         consulta = consulta.outerjoin(Categoria, Repuesto.categoria_id == Categoria.id)
     elif orden == "subcategoria":
@@ -180,8 +183,8 @@ def _ordenar(consulta, orden, direccion):
     valor = func.lower(columna) if orden in ("material", "marca", "proveedor", "detalle") else columna
     extra = [Repuesto.estante] if orden == "ubicacion" else []
     if direccion == "desc":
-        return consulta.order_by(columna.is_(None), valor.desc(), *[e.desc() for e in extra], Repuesto.id)
-    return consulta.order_by(columna.is_(None), valor, *extra, Repuesto.id)
+        return consulta.order_by(columna.is_(None), valor.desc(), *[e.desc() for e in extra], Repuesto.id.desc())
+    return consulta.order_by(columna.is_(None), valor, *extra, Repuesto.id.desc())
 
 
 @bp.route("/")
@@ -190,8 +193,8 @@ def lista():
     categoria_id = request.args.get("categoria", type=int)
     subcategoria_id = request.args.get("subcategoria", type=int)
     filtro = request.args.get("filtro", "")
-    orden = request.args.get("orden", "")
-    direccion = "desc" if request.args.get("dir") == "desc" else "asc"
+    orden = request.args.get("orden", "") or "material"
+    direccion = "asc" if request.args.get("dir") == "asc" else "desc"
     consulta = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS)
     if q:
         for palabra in q.split():  # todas las palabras tienen que aparecer en algún campo
@@ -709,7 +712,7 @@ def ingreso(id=None):
             db.session.commit()
             flash("Ingreso guardado." if id else "Ingreso creado: ahora cargá los repuestos.", "ok")
             return redirect(url_for(".ingreso", id=ing.id))
-    repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
+    repuestos = para_elegir()
     elegido = db.session.get(Repuesto, request.args.get("repuesto", type=int) or 0)
     return render_template("stock/ingreso.html", ing=ing, proveedores=_proveedores(), repuestos=repuestos,
                            elegido=elegido)
@@ -850,8 +853,7 @@ def comprar():
     return render_template("stock/comprar.html", pendientes=pendientes,
                            comprados=listos if todos else listos[:TOPE_COMPRADOS],
                            cuantos_comprados=len(listos), todos=todos,
-                           repuestos=Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS)
-                           .order_by(Repuesto.nombre).all(), hoy=date.today())
+                           repuestos=para_elegir(), hoy=date.today())
 
 
 @bp.route("/comprar/nuevo", methods=["POST"])

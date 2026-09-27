@@ -19,7 +19,7 @@ from ..models import (
     Repuesto,
     Vehiculo,
 )
-from ..services.stock import buscar_repuesto
+from ..services.stock import buscar_repuesto, para_elegir
 from ..validaciones import numero_ar
 
 bp = Blueprint("cotizador", __name__)
@@ -79,7 +79,7 @@ def _formas_de_pago(total):
 @bp.route("/")
 def inicio():
     coti = _cotizacion()
-    repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
+    repuestos = para_elegir()
     clientes = Cliente.query.order_by(db.func.lower(Cliente.nombre)).all()
     totales = _totales(coti)
     return render_template("cotizador/inicio.html", coti=coti, t=totales, repuestos=repuestos,

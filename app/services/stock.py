@@ -283,6 +283,15 @@ def repuesto_varios():
     return varios
 
 
+def para_elegir():
+    """Los repuestos como se ofrecen para elegir, en la OT, el presupuesto o donde sea.
+
+    Siempre el más nuevo arriba: lo que se acaba de cargar es lo que se está
+    por usar, y así no hay que buscarlo en el medio de la lista.
+    """
+    return Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.id.desc()).all()
+
+
 def buscar_repuesto(codigo):
     """Busca por código de barras, nro de parte o ID (para el scanner)."""
     codigo = (codigo or "").strip()

@@ -17,7 +17,7 @@ from ..models import (
     Vehiculo,
 )
 from ..services import reporte
-from ..services.stock import buscar_repuesto
+from ..services.stock import buscar_repuesto, para_elegir
 from ..validaciones import numero_ar
 
 bp = Blueprint("presupuestos", __name__)
@@ -47,7 +47,7 @@ def _datos_comunes():
         "clientes": clientes,
         "vehiculos_por_cliente": {c.id: [{"id": v.id, "texto": f"{v.patente} · {v.descripcion}".strip(" ·")}
                                          for v in c.vehiculos] for c in clientes},
-        "repuestos": Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all(),
+        "repuestos": para_elegir(),
     }
 
 

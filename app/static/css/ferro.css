@@ -716,6 +716,7 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .filtros-columna label > span { display: block; font-size: .78rem; font-weight: 600; color: var(--muted);
   text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
 .filtros-columna input { width: 100%; }
+.filtros-columna[hidden] { display: none; }   /* el display:grid le gana al atributo hidden */
 .filtros-pie { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
 /* El código del cliente o del vehículo: columna propia, para poder ordenar por él */

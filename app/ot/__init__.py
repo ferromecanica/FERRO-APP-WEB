@@ -28,7 +28,9 @@ from ..models import (
 )
 from ..filters import dia
 from ..services import cobros, contable, drive, reporte
-from ..services.stock import buscar_repuesto, consumir_en_ot, modificar_consumo, repuesto_varios, revertir_consumo
+from ..services.stock import (
+    buscar_repuesto, consumir_en_ot, modificar_consumo, para_elegir, repuesto_varios, revertir_consumo,
+)
 from ..validaciones import (FORMATOS_PATENTE, MARCAS_COMUNES, normalizar_patente, numero_ar,
                             patente_valida)
 
@@ -340,7 +342,7 @@ def _resolver_cliente(obligatorio):
 @bp.route("/<int:id>")
 def detalle(id):
     ot = db.get_or_404(OrdenTrabajo, id)
-    repuestos = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS).order_by(Repuesto.nombre).all()
+    repuestos = para_elegir()
     return render_template(
         "ot/detalle.html", ot=ot, estados=ESTADOS_OT_ABIERTA, mecanicos=_mecanicos(), repuestos=repuestos,
         reportes_configurados=reporte.configurado(),

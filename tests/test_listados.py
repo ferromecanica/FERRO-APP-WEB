@@ -48,26 +48,40 @@ b = B(c.get('/stock/'))
 assert f'{cuantos} repuestos' in b, 'el listado dejó de mostrar todo'
 assert 'Ver todas' not in b and 'Mostrando las primeras' not in b
 
-# ── Clientes: el ID va en su propia columna y ordena por él ──
+# ── El material más nuevo, siempre arriba: ordena por el código, no por el nombre ──
+b = cuerpo('/stock/')
+assert b.index('Filtro Fiat surtido') < b.index('Filtro Chevrolet') < b.index('Filtro Fiat flojo'), \
+    'el listado no arranca por código descendente'
+# Tocando el título se puede ver al revés, pero sigue siendo por código
+b = cuerpo('/stock/?orden=material&dir=asc')
+assert b.index('Filtro Fiat flojo') < b.index('Filtro Chevrolet') < b.index('Filtro Fiat surtido')
+
+# ── Y en todas las listas donde se elige un repuesto ──
+with app.app_context():
+    from app.services.stock import para_elegir
+    elegibles = [r.id for r in para_elegir()]
+    assert elegibles == sorted(elegibles, reverse=True), 'la lista para elegir no viene del más nuevo al más viejo'
+    assert ids[2] == elegibles[0], 'el último que se cargó tiene que estar primero'
+
+# ── Clientes: el ID va en su propia columna, y el más nuevo arriba ──
 with app.app_context():
     primero = Cliente.query.order_by(Cliente.id).first()
     ultimo = Cliente.query.order_by(Cliente.id.desc()).first()
 b = B(c.get('/clientes/'))
-assert primero.codigo in b and b.index(primero.codigo) < b.index(ultimo.codigo), 'no arranca ordenado por ID'
-b = B(c.get('/clientes/?orden=id&dir=desc'))
-assert b.index(ultimo.codigo) < b.index(primero.codigo), 'no ordenó al revés'
+assert primero.codigo in b and b.index(ultimo.codigo) < b.index(primero.codigo), 'no arranca por el más nuevo'
+b = B(c.get('/clientes/?orden=id&dir=asc'))
+assert b.index(primero.codigo) < b.index(ultimo.codigo), 'no se puede dar vuelta el orden'
 
 # Ordenar por nombre no es lo mismo que ordenar por ID
-porid = B(c.get('/clientes/?orden=id&dir=asc'))
-pornombre = B(c.get('/clientes/?orden=cliente&dir=desc'))
-assert porid != pornombre
+assert B(c.get('/clientes/?orden=id&dir=asc')) != B(c.get('/clientes/?orden=cliente&dir=desc'))
 
-# ── Vehículos: su propio código, y ordena por lo que se toque ──
+# ── Vehículos: su propio código, el más nuevo arriba, y ordena por lo que se toque ──
 with app.app_context():
     v = Vehiculo.query.order_by(Vehiculo.id).first()
+    ultimo_v = Vehiculo.query.order_by(Vehiculo.id.desc()).first()
     assert v.codigo == f'VEH-{v.id:03d}', v.codigo
 b = B(c.get('/clientes/vehiculos'))
-assert v.codigo in b
+assert b.index(ultimo_v.codigo) < b.index(v.codigo), 'los vehículos no arrancan por el más nuevo'
 b = B(c.get('/clientes/vehiculos?orden=km&dir=desc'))
 assert 'ordenada' in b, 'no marcó la columna por la que está ordenando'
 
