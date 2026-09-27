@@ -12,12 +12,20 @@
 </div>
 {% if ot.detalle %}<div class="movil-motivo"><i class="fa-solid fa-comment-dots"></i> {{ ot.detalle }}</div>{% endif %}
 
+{# Cada sección saca sus propias fotos: no hay que elegir dónde van #}
 <section class="movil-seccion" id="fotos">
-  <h2><i class="fa-solid fa-camera"></i> Fotos</h2>
-  {% with grande=True, url_subida=url_for('ot.foto_subir', id=ot.id) %}{% include "ot/_subir_fotos.html" %}{% endwith %}
-  <h3 class="movil-sub"><i class="fa-solid fa-file-pdf"></i> Para el reporte</h3>
+  <h2><i class="fa-solid fa-file-pdf"></i> Fotos del reporte</h2>
+  <p class="muted small">Estas las ve el cliente en el PDF.</p>
+  {% with grande=True, destino='reporte', url_subida=url_for('ot.foto_subir', id=ot.id),
+     placeholder_foto='Descripción (opcional): ej. Pastillas gastadas' %}{% include "ot/_subir_fotos.html" %}{% endwith %}
   {% with fotos=ot.fotos | selectattr('en_reporte') | list, vacio_texto='Todavía no hay fotos para el reporte.', volver='movil' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
-  <h3 class="movil-sub"><i class="fa-solid fa-warehouse"></i> Del taller</h3>
+</section>
+
+<section class="movil-seccion" id="fotos-taller">
+  <h2><i class="fa-solid fa-warehouse"></i> Fotos del taller</h2>
+  <p class="muted small">Para uso interno: no salen en el reporte.</p>
+  {% with grande=True, destino='taller', url_subida=url_for('ot.foto_subir', id=ot.id),
+     placeholder_foto='Descripción (opcional): ej. número de motor' %}{% include "ot/_subir_fotos.html" %}{% endwith %}
   {% with fotos=ot.fotos | selectattr('en_taller') | list, vacio_texto='Todavía no hay fotos del taller.', volver='movil' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
 </section>
 

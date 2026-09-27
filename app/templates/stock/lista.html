@@ -7,7 +7,7 @@
 </div>
 {% include "stock/_tabs.html" %}
 <form class="barra-filtros" id="filtros-stock" hx-get="{{ url_for('stock.lista') }}" hx-target="#tabla-stock" hx-push-url="true"
-      hx-trigger="input changed delay:250ms from:input[name=q], change from:select, search, ordenar">
+      hx-trigger="input changed delay:250ms from:input[name=q], input changed delay:350ms from:.filtros-columna input, change from:select, search, ordenar, limpiar">
   <input type="hidden" name="orden" value="{{ orden }}"><input type="hidden" name="dir" value="{{ direccion }}">
   <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
     <input type="search" name="q" value="{{ q }}" placeholder="Buscá por cualquier dato: nombre, proveedor, nº de parte, categoría…" autocomplete="off" data-escaner></div>
@@ -23,21 +23,38 @@
     <button type="button" class="btn"><i class="fa-solid fa-table-columns"></i> Columnas</button>
     <div class="menu-columnas" hidden></div>
   </div>
+  <button type="button" class="btn" id="abrir-filtros"><i class="fa-solid fa-filter"></i> Filtrar por columna
+    {% if por_columna %}<span class="badge badge-accent">{{ por_columna | length }}</span>{% endif %}</button>
+
+  {# Un casillero por columna. Vive acá afuera de la tabla: htmx recambia solo
+     la tabla, así que lo que se está escribiendo no se pierde ni pierde el foco. #}
+  <div class="filtros-columna" id="filtros-columna" {{ 'hidden' if not por_columna }}>
+    {% for col, texto, izq, numerica in columnas %}
+    <label><span>{{ texto }}</span>
+      <input name="f_{{ col }}" value="{{ por_columna.get(col, '') }}" autocomplete="off"
+             placeholder="{{ '> 10' if numerica else 'contiene…' }}"></label>
+    {% endfor %}
+    <div class="filtros-pie">
+      <button type="button" class="btn btn-sm" id="limpiar-filtros"><i class="fa-solid fa-eraser"></i> Limpiar</button>
+      <span class="muted small">En los números podés escribir <strong>&gt; 10</strong>, <strong>&lt;= 3</strong> o un valor exacto.</span>
+    </div>
+  </div>
 </form>
 <div class="card" id="tabla-stock">{% include "stock/_tabla.html" %}</div>
 <script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tabla-config.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ordenar.js') }}"></script>
 <script>
-/* Clic en un título: ordena por esa columna; otro clic invierte (ascendente / descendente) */
-document.addEventListener('click', function (e) {
-  var th = e.target.closest('th[data-orden]');
-  if (!th || e.target.closest('.asa')) return;
-  var form = document.getElementById('filtros-stock');
-  var orden = form.querySelector('[name=orden]'), dir = form.querySelector('[name=dir]');
-  dir.value = (orden.value === th.dataset.orden && dir.value === 'asc') ? 'desc' : 'asc';
-  orden.value = th.dataset.orden;
-  htmx.trigger(form, 'ordenar');
-});
+  /* El panel de filtros por columna: se abre, se cierra y se limpia */
+  var panel = document.getElementById('filtros-columna');
+  document.getElementById('abrir-filtros').addEventListener('click', function () {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) panel.querySelector('input').focus();
+  });
+  document.getElementById('limpiar-filtros').addEventListener('click', function () {
+    panel.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+    htmx.trigger(document.getElementById('filtros-stock'), 'limpiar');
+  });
 </script>
 <script>
 FerroCategorias({{ arbol | tojson }}, {

@@ -141,7 +141,7 @@
 {% if r.id %}
 <div class="card" id="fotos" style="margin-top:16px">
   {{ encabezado('fa-camera', 'Fotos') }}
-  <div class="card-body">{% with grande=False, destinos=False, url_subida=url_for('stock.foto_subir', id=r.id), placeholder_foto='Descripción (opcional): ej. vista frontal, lateral, etiqueta' %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
+  <div class="card-body">{% with grande=False, url_subida=url_for('stock.foto_subir', id=r.id), placeholder_foto='Descripción (opcional): ej. vista frontal, lateral, etiqueta' %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
   {% with fotos=r.fotos, vacio_texto='Sin fotos del repuesto.', volver='', editar_ep='stock.foto_editar', eliminar_ep='stock.foto_eliminar' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
 </div>
 

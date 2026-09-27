@@ -3,7 +3,7 @@ from flask_login import login_required
 from sqlalchemy import func, or_
 
 from ..extensions import db, sin_acentos
-from ..models import Cliente, Presupuesto, Turno, Vehiculo, Venta
+from ..models import Cliente, OrdenTrabajo, Presupuesto, Turno, Vehiculo, Venta
 from ..validaciones import (
     CONDICIONES_IVA,
     MARCAS_COMUNES,
@@ -81,6 +81,34 @@ def _requiere_login():
 # ─────────────────────────────────── Clientes ───────────────────────────────
 
 
+# Cuántas OT tiene cada uno, para poder ordenar por esa columna
+_OT_DEL_CLIENTE = (db.select(func.count(OrdenTrabajo.id))
+                   .where(OrdenTrabajo.cliente_id == Cliente.id).scalar_subquery())
+_OT_DEL_VEHICULO = (db.select(func.count(OrdenTrabajo.id))
+                    .where(OrdenTrabajo.vehiculo_id == Vehiculo.id).scalar_subquery())
+
+# Columnas por las que se puede ordenar cada listado (clave del encabezado → qué mirar)
+ORDENES_CLIENTE = {
+    "id": Cliente.id, "cliente": func.lower(Cliente.nombre), "telefono": Cliente.telefono,
+    "notas": func.lower(Cliente.notas), "ot": _OT_DEL_CLIENTE,
+}
+ORDENES_VEHICULO = {
+    "id": Vehiculo.id, "patente": Vehiculo.patente,
+    "vehiculo": func.lower(Vehiculo.marca + " " + Vehiculo.modelo), "dueno": func.lower(Cliente.nombre),
+    "anio": Vehiculo.anio, "km": Vehiculo.kilometraje, "ot": _OT_DEL_VEHICULO,
+}
+
+
+def _ordenar(consulta, ordenes, orden, direccion, desempate):
+    """Ordena por la columna elegida; los vacíos siempre al final, y desempata por ID."""
+    columna = ordenes.get(orden)
+    if columna is None:
+        return consulta.order_by(desempate)
+    if direccion == "desc":
+        return consulta.order_by(columna.is_(None), columna.desc(), desempate)
+    return consulta.order_by(columna.is_(None), columna, desempate)
+
+
 def _como(columna, like):
     """Compara ignorando acentos: 'martin' encuentra 'Martín'."""
     return db.func.sin_acentos(columna).ilike(like)
@@ -99,9 +127,12 @@ def lista():
                 _como(Cliente.cuit, like), _como(Cliente.notas, like), _como(Vehiculo.marca, like),
                 _como(Vehiculo.modelo, like)))
         consulta = consulta.distinct()
-    clientes = consulta.order_by(Cliente.nombre).all()
+    orden = request.args.get("orden", "")
+    direccion = "desc" if request.args.get("dir") == "desc" else "asc"
+    clientes = _ordenar(consulta, ORDENES_CLIENTE, orden, direccion, Cliente.id).all()
     plantilla = "clientes/_tabla.html" if request.headers.get("HX-Request") else "clientes/lista.html"
-    return render_template(plantilla, clientes=clientes, q=q, total=Cliente.query.count())
+    return render_template(plantilla, clientes=clientes, q=q, total=Cliente.query.count(),
+                           orden=orden if orden in ORDENES_CLIENTE else "", direccion=direccion)
 
 
 @bp.route("/nuevo", methods=["GET", "POST"])
@@ -170,9 +201,12 @@ def vehiculos():
             _como(Vehiculo.patente, like), _como(Vehiculo.marca, like),
             _como(Vehiculo.modelo, like), _como(Vehiculo.color, like),
             _como(Vehiculo.motor, like), _como(Cliente.nombre, like)))
-    vehiculos = consulta.order_by(Vehiculo.patente).all()
+    orden = request.args.get("orden", "")
+    direccion = "desc" if request.args.get("dir") == "desc" else "asc"
+    vehiculos = _ordenar(consulta, ORDENES_VEHICULO, orden, direccion, Vehiculo.id).all()
     plantilla = "clientes/_tabla_vehiculos.html" if request.headers.get("HX-Request") else "clientes/vehiculos.html"
-    return render_template(plantilla, vehiculos=vehiculos, q=q, total=Vehiculo.query.count())
+    return render_template(plantilla, vehiculos=vehiculos, q=q, total=Vehiculo.query.count(),
+                           orden=orden if orden in ORDENES_VEHICULO else "", direccion=direccion)
 
 
 @bp.route("/vehiculos/<int:id>")

@@ -123,6 +123,10 @@ class Vehiculo(TimestampMixin, db.Model):
     ordenes = db.relationship("OrdenTrabajo", back_populates="vehiculo", order_by="OrdenTrabajo.id.desc()")
 
     @property
+    def codigo(self):
+        return f"VEH-{self.id:03d}"
+
+    @property
     def descripcion(self):
         return " ".join(p for p in [self.marca, self.modelo, self.motor] if p)
 
@@ -302,8 +306,8 @@ class ConsumoOT(db.Model):
 class FotoOT(db.Model):
     """Foto de una OT, guardada en la carpeta de fotos de Drive.
 
-    Cada foto puede ir al reporte (registro fotográfico del PDF), al taller
-    (uso interno) o a ambos.
+    Cada foto va a un solo lado: al reporte (el registro fotográfico del PDF que
+    ve el cliente) o al taller (uso interno).
     """
 
     id = db.Column(db.Integer, primary_key=True)
@@ -319,8 +323,6 @@ class FotoOT(db.Model):
 
     @property
     def destino(self):
-        if self.en_reporte and self.en_taller:
-            return "ambos"
         return "reporte" if self.en_reporte else "taller"
 
     @property
@@ -786,7 +788,9 @@ class AComprar(TimestampMixin, db.Model):
     que todavía no está catalogado o no es un repuesto. La nota es para
     acordarse de por qué se anotó, y puede quedar vacía.
 
-    Cuando se compra se tilda: no se borra, queda archivado con la fecha.
+    Cuando se compra se tilda: no se borra, queda archivado con la fecha. Si se
+    compró menos de lo anotado (había que comprar 4 y el proveedor tenía 2), lo
+    comprado se archiva aparte y el resto sigue pendiente.
     """
 
     __tablename__ = "a_comprar"
@@ -795,6 +799,7 @@ class AComprar(TimestampMixin, db.Model):
     repuesto_id = db.Column(db.Integer, db.ForeignKey("repuesto.id"))  # vacío si es a mano
     texto = db.Column(db.String(200))                                  # lo que se escribió a mano
     nota = db.Column(db.String(300))
+    cantidad = db.Column(db.Float, default=1, nullable=False)
     comprado = db.Column(db.Boolean, default=False, nullable=False, index=True)
     fecha_comprado = db.Column(db.Date)
     anotado_por = db.Column(db.String(120))

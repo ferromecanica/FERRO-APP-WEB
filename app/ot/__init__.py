@@ -532,7 +532,8 @@ def consumo_editar(cid):
 
 # ──────────────────────────────────── Fotos ─────────────────────────────────
 
-DESTINOS_FOTO = {"reporte": (True, False), "taller": (False, True), "ambos": (True, True)}
+# Una foto va a un solo lado: o al reporte que ve el cliente, o al uso interno
+DESTINOS_FOTO = {"reporte": (True, False), "taller": (False, True)}
 
 
 @bp.route("/<int:id>/fotos", methods=["POST"])

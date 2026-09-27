@@ -10,3 +10,10 @@
 {% macro vacio(icono, texto) -%}
   <div class="empty"><i class="fa-solid {{ icono }}"></i>{{ texto }}</div>
 {%- endmacro %}
+
+{# Título de tabla por el que se puede ordenar: muestra la flecha del orden actual. #}
+{% macro titulo_ordenable(col, texto, orden, direccion, clases='') -%}
+  <th data-orden="{{ col }}" class="ordenable {{ clases }}{{ ' ordenada' if orden == col }}"
+      title="Ordenar por {{ texto | lower }}">{{ texto }}<i
+      class="fa-solid {{ ('fa-arrow-down-long' if direccion == 'desc' else 'fa-arrow-up-long') if orden == col else 'fa-sort' }} flecha"></i></th>
+{%- endmacro %}

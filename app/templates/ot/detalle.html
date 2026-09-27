@@ -155,24 +155,25 @@
 
       {% if editable %}
       <div class="add-box">
+        {# Lo normal es descargar del stock: esa es la solapa que aparece primero #}
         <div class="segmented" role="tablist">
-          <button type="button" class="seg active" data-tab="varios"><i class="fa-solid fa-pen-to-square"></i> Varios (Manual)</button>
-          <button type="button" class="seg" data-tab="stock"><i class="fa-solid fa-boxes-stacked"></i> Del stock</button>
+          <button type="button" class="seg active" data-tab="stock"><i class="fa-solid fa-boxes-stacked"></i> Del stock</button>
+          <button type="button" class="seg" data-tab="varios"><i class="fa-solid fa-pen-to-square"></i> Varios (Manual)</button>
         </div>
-        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-repuesto" data-panel="varios">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="varios">
-          <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Pastillas de freno delanteras" required></div>
-          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
-          <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" class="plata" placeholder="$" required></div>
-          <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" class="plata" placeholder="$"></div>
-          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
-        </form>
-        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-stock" data-panel="stock" hidden>
+        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-stock" data-panel="stock">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="stock">
           <div class="c-desc"><label>Repuesto (nombre, código o escáner)</label>
             <input name="repuesto" list="lista-repuestos" autocomplete="off" required data-escaner="enviar" placeholder="{{ 'Escribí para buscar…' if repuestos else 'Todavía no hay repuestos en el stock' }}">
             <datalist id="lista-repuestos">{% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}">stock {{ r.stock_actual | numero(1) }} · {{ r.precio_venta | pesos }}</option>{% endfor %}</datalist></div>
           <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
+        </form>
+        <form method="post" action="{{ url_for('ot.repuesto_agregar', id=ot.id) }}" class="tab-panel fila fila-repuesto" data-panel="varios" hidden>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="tipo" value="varios">
+          <div class="c-desc"><label>Descripción</label><input name="descripcion" placeholder="Ej.: Pastillas de freno delanteras" required></div>
+          <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
+          <div class="c-plata"><label>Precio unit.</label><input name="precio" inputmode="decimal" class="plata" placeholder="$" required></div>
+          <div class="c-plata"><label>Costo unit.</label><input name="costo" inputmode="decimal" class="plata" placeholder="$"></div>
           <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Agregar</button></div>
         </form>
       </div>
@@ -225,17 +226,26 @@
       {% endif %}
     </div>
 
-    {# ───── Fotos ───── #}
-    <div class="card" id="fotos">
-      {{ encabezado('fa-camera', 'Fotos', (ot.fotos | length) ~ ' fotos') }}
-      <div class="card-body">{% with grande=False, url_subida=url_for('ot.foto_subir', id=ot.id) %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
-      <div class="sub-seccion"><i class="fa-solid fa-file-pdf"></i> Para el reporte <span class="muted small">({{ ot.fotos | selectattr('en_reporte') | list | length }})</span></div>
+    {# ───── Fotos ─────
+       Dos tarjetas separadas, cada una con su propio "sacar foto" y su
+       descripción: así no hay que acordarse de elegir dónde va cada una. #}
+    <div class="card card-fotos" id="fotos">
+      {{ encabezado('fa-file-pdf', 'Fotos del reporte',
+                    (ot.fotos | selectattr('en_reporte') | list | length) ~ ' fotos · las ve el cliente en el PDF') }}
+      <div class="card-body">{% with grande=False, destino='reporte', url_subida=url_for('ot.foto_subir', id=ot.id),
+            placeholder_foto='Descripción (opcional): ej. Pastillas gastadas' %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
       {% with fotos=ot.fotos | selectattr('en_reporte') | list, vacio_texto='Sin fotos para el reporte.', volver='' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
-      <div class="sub-seccion"><i class="fa-solid fa-warehouse"></i> Del taller <span class="muted small">({{ ot.fotos | selectattr('en_taller') | list | length }})</span></div>
-      {% with fotos=ot.fotos | selectattr('en_taller') | list, vacio_texto='Sin fotos del taller.', volver='' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
       {% if not editable and ot.clasificacion_cierre == 'Servicio' and ot.fotos %}
       <div class="card-body muted small" style="border-top:1px solid var(--border)"><i class="fa-solid fa-circle-info"></i> Si agregaste o cambiaste fotos después de cerrar, tocá "Regenerar reporte".</div>
       {% endif %}
+    </div>
+
+    <div class="card card-fotos" id="fotos-taller">
+      {{ encabezado('fa-warehouse', 'Fotos del taller',
+                    (ot.fotos | selectattr('en_taller') | list | length) ~ ' fotos · uso interno, no salen en el reporte') }}
+      <div class="card-body">{% with grande=False, destino='taller', url_subida=url_for('ot.foto_subir', id=ot.id),
+            placeholder_foto='Descripción (opcional): ej. número de motor' %}{% include "ot/_subir_fotos.html" %}{% endwith %}</div>
+      {% with fotos=ot.fotos | selectattr('en_taller') | list, vacio_texto='Sin fotos del taller.', volver='' %}{% include "ot/_galeria_fotos.html" %}{% endwith %}
     </div>
 
     {# ───── Checklist (solo lectura, en OT cerradas como Servicio) ───── #}

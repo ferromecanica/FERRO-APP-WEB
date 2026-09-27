@@ -1,16 +1,24 @@
-{% from "partials/macros.html" import vacio %}
+{% from "partials/macros.html" import vacio, titulo_ordenable as th %}
 {% if vehiculos %}
 {# La cuenta va acá adentro y no en el encabezado: la búsqueda recambia solo esta parte #}
 <div class="card-head"><span class="muted small">{{ vehiculos | length }}
   vehículo{{ 's' if vehiculos | length != 1 }}{% if q %} de {{ total | default(0) }}{% endif %}</span></div>
-<div class="table-wrap"><table class="tabla-densa lista-movil">
-  <colgroup><col style="width:120px"><col style="width:34%"><col style="width:30%">
+<div class="table-wrap"><table class="tabla-densa lista-movil" data-filtros="filtros-vehiculos">
+  <colgroup><col style="width:92px"><col style="width:120px"><col style="width:30%"><col style="width:26%">
     <col style="width:64px"><col style="width:96px"><col style="width:54px"></colgroup>
-  <thead><tr><th class="centro">Patente</th><th class="izq">Vehículo</th><th class="izq">Dueño</th>
-    <th class="centro hide-sm">Año</th><th class="num hide-sm">Km</th><th class="centro hide-sm">OT</th></tr></thead>
+  <thead><tr>
+    {{ th('id', 'ID', orden, direccion, 'centro') }}
+    {{ th('patente', 'Patente', orden, direccion, 'centro') }}
+    {{ th('vehiculo', 'Vehículo', orden, direccion, 'izq') }}
+    {{ th('dueno', 'Dueño', orden, direccion, 'izq') }}
+    {{ th('anio', 'Año', orden, direccion, 'centro hide-sm') }}
+    {{ th('km', 'Km', orden, direccion, 'num hide-sm') }}
+    {{ th('ot', 'OT', orden, direccion, 'centro hide-sm') }}
+  </tr></thead>
   <tbody>
   {% for v in vehiculos %}
     <tr class="clickable" onclick="location='{{ url_for('clientes.vehiculo_detalle', id=v.id) }}'">
+      <td class="centro mono codigo" data-titulo="ID">{{ v.codigo }}</td>
       <td class="centro">{% with patente=v.patente %}{% include "partials/_patente.html" %}{% endwith %}</td>
       <td class="izq envuelve destacado">{{ v.descripcion or '—' }}{% if v.color %}<div class="muted small">{{ v.color }}</div>{% endif %}</td>
       <td class="izq envuelve" data-titulo="Dueño">{{ v.cliente.nombre if v.cliente else '' }}{% if not v.cliente %}<span class="muted">Sin dueño</span>{% endif %}</td>
@@ -21,4 +29,5 @@
   {% endfor %}
   </tbody>
 </table></div>
+<div class="tabla-pie muted small">Clic en un título: ordena por esa columna.</div>
 {% else %}{{ vacio('fa-car', 'No hay vehículos' ~ (' que coincidan con “' ~ q ~ '”' if q else ' cargados todavía') ~ '.') }}{% endif %}

@@ -512,15 +512,6 @@ tr.fila-edicion td { padding: 12px 14px; }
 
 /* ── Fotos ─────────────────────────────────────────────── */
 .subir-fotos { display: grid; gap: 10px; }
-.destinos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.destinos-label { font-size: .8rem; font-weight: 600; color: #374151; margin-right: 4px; }
-.destino { margin: 0; cursor: pointer; }
-/* Ocultos pero heredaban el width:100% de los inputs: aunque no se vieran,
-   estiraban la página a lo ancho y en el celular se iba para el costado */
-.destino input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
-.destino span { display: inline-flex; gap: 7px; align-items: center; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: .86rem; color: #4b5563; }
-.destino input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
-.destino input:focus-visible + span { outline: 2px solid var(--accent-soft); }
 .botones-foto { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn-foto { cursor: pointer; }
 .cola-fotos:empty { display: none; }
@@ -537,7 +528,6 @@ tr.fila-edicion td { padding: 12px 14px; }
 .foto-edicion { display: grid; gap: 6px; padding: 8px; background: #fffaf3; }
 .foto-edicion input, .foto-edicion select { padding: 6px 8px; font-size: .85rem; }
 /* Vista grande (celular) */
-.subir-fotos.grande .destino span { padding: 12px 18px; font-size: 1rem; }
 .subir-fotos.grande .btn-foto { flex: 1 1 100%; justify-content: center; padding: 16px; font-size: 1.05rem; }
 .subir-fotos.grande input[name="descripcion_foto"] { padding: 12px; font-size: 1rem; }
 
@@ -601,15 +591,6 @@ body.movil { background: var(--bg); font-size: 16px; }
 .movil-form input, .movil-form select, .movil-form textarea { font-size: 1rem; padding: 12px; }
 .movil-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .btn-grande { justify-content: center; padding: 14px; font-size: 1rem; }
-.subir-fotos.grande .destinos-label { flex-basis: 100%; font-size: .9rem; }
-.subir-fotos.grande .destino { flex: 1 1 0; }
-.subir-fotos.grande .destino span { width: 100%; justify-content: center; padding: 12px 6px; }
-/* Destinos de foto en el celular: siempre los tres en un renglón */
-.subir-fotos.grande .destinos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.subir-fotos.grande .destinos-label { grid-column: 1 / -1; }
-.subir-fotos.grande .destino span { padding: 10px 4px; font-size: .9rem; gap: 5px; white-space: nowrap; }
-.subir-fotos.grande .destino span i { font-size: .85rem; }
-@media (max-width: 340px) { .subir-fotos.grande .destino span i { display: none; } }
 
 /* ── Visor de fotos ────────────────────────────────────── */
 body.visor-abierto { overflow: hidden; }
@@ -725,6 +706,20 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 
 /* ── A comprar: la libreta de pendientes ───────────────── */
 .lista-comprar .quien::before { content: "· "; }
+.cuantos { font-weight: 700; color: var(--accent-ink); margin-right: 2px; }
+
+/* Filtrar el stock columna por columna: un casillero por cada una */
+.filtros-columna { flex-basis: 100%; display: grid; gap: 8px 12px; margin-top: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.filtros-columna label { display: block; }
+.filtros-columna label > span { display: block; font-size: .78rem; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.filtros-columna input { width: 100%; }
+.filtros-pie { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* El código del cliente o del vehículo: columna propia, para poder ordenar por él */
+.codigo { color: var(--muted); font-size: .88em; white-space: nowrap; }
 /* El tilde es el gesto principal de la pantalla: grande, para el dedo */
 .tilde { background: none; border: 0; padding: 8px 12px; cursor: pointer; line-height: 1;
   font-size: 1.4rem; color: var(--muted); }
@@ -738,6 +733,9 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
   box-shadow: 0 24px 60px rgba(17, 19, 23, .28); color: var(--text); }
 .confirmar::backdrop { background: rgba(17, 19, 23, .18); backdrop-filter: blur(1.5px); }
 .confirmar-cuerpo { display: flex; gap: 14px; align-items: flex-start; }
+.confirmar-campo { display: block; margin-top: 12px; }
+.confirmar-campo span { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 4px; }
+.confirmar-campo input { width: 120px; text-align: center; font-size: 1.1rem; }
 .confirmar-icono { width: 42px; height: 42px; border-radius: 50%; flex: none; display: grid; place-items: center;
   background: var(--accent-soft); color: var(--accent); font-size: 1.15rem; }
 .confirmar-icono.peligro { background: var(--danger-soft); color: var(--danger); }

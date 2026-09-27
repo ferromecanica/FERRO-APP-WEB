@@ -29,7 +29,8 @@
   document.querySelectorAll('[data-subir-fotos]').forEach(function (caja) {
     var inputs = caja.querySelectorAll('input[type="file"]');
     var cola = caja.querySelector('.cola-fotos');
-    var destino = function () { var r = caja.querySelector('input[name="destino_foto"]:checked'); return r ? r.value : 'reporte'; };
+    // Cada caja sube a un solo lado: al reporte o al taller, según dónde esté
+    var destino = function () { return caja.dataset.destino || 'reporte'; };
     var descripcion = caja.querySelector('input[name="descripcion_foto"]');
 
     async function subir(archivos) {

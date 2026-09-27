@@ -4,12 +4,17 @@
 <div class="page-head">
   <div><div class="eyebrow">Taller</div><h1>Vehículos</h1></div>
   <div class="actions">
-    <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
-      <input type="search" name="q" value="{{ q }}" placeholder="Patente, marca, modelo o dueño…"
-             hx-get="{{ url_for('clientes.vehiculos') }}" hx-trigger="input changed delay:250ms, search"
-             hx-target="#tabla-vehiculos" hx-push-url="true"></div>
+    {# El buscador va en un formulario para que el orden elegido viaje con la búsqueda #}
+    <form id="filtros-vehiculos" style="display:contents" hx-get="{{ url_for('clientes.vehiculos') }}"
+          hx-target="#tabla-vehiculos" hx-push-url="true"
+          hx-trigger="input changed delay:250ms from:input[name=q], search, ordenar">
+      <input type="hidden" name="orden" value="{{ orden }}"><input type="hidden" name="dir" value="{{ direccion }}">
+      <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" name="q" value="{{ q }}" placeholder="Patente, marca, modelo o dueño…"></div>
+    </form>
     <a class="btn btn-primary" href="{{ url_for('clientes.vehiculo_form') }}"><i class="fa-solid fa-plus"></i> Vehículo</a>
   </div>
 </div>
 <div class="card" id="tabla-vehiculos">{% include "clientes/_tabla_vehiculos.html" %}</div>
+<script src="{{ url_for('static', filename='js/ordenar.js') }}"></script>
 {% endblock %}

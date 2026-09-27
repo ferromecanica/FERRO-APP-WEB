@@ -1,4 +1,5 @@
 import base64
+import re
 import secrets
 import time
 from datetime import date, datetime
@@ -34,7 +35,6 @@ from ..validaciones import numero_ar
 
 bp = Blueprint("stock", __name__)
 
-TOPE_LISTA = 60  # cuántas filas se dibujan sin pedir "ver todas"
 
 CAMPOS_TEXTO = ["nombre", "marca", "nro_parte", "codigo_barras", "proveedor", "cod_proveedor", "marca_proveedor",
                 "comp_marca", "comp_modelo", "comp_motor", "detalle", "estanteria", "estante"]
@@ -103,6 +103,71 @@ ORDENES = {
 }
 
 
+# Las columnas del listado: clave, título, si va a la izquierda y si es un número.
+# De acá salen los encabezados de la tabla y los filtros por columna.
+COLUMNAS = [
+    ("material", "Material", True, False), ("marca", "Marca", False, False),
+    ("parte", "Nº parte", False, False), ("stock", "Stock", False, True),
+    ("ubicacion", "Ubicación", False, False), ("costo", "Costo", False, True),
+    ("venta", "Venta", False, True), ("comp_marca", "Comp. marca", False, False),
+    ("comp_modelo", "Comp. modelo", False, False), ("comp_motor", "Comp. motor", False, False),
+    ("detalle", "Detalle", False, False), ("descuento", "Desc.", False, True),
+    ("cod_prov", "Cód. prov.", False, False), ("proveedor", "Proveedor", False, False),
+    ("categoria", "Categoría", False, False), ("subcategoria", "Subcategoría", False, False),
+]
+NUMERICAS = {col for col, _, _, numerica in COLUMNAS if numerica}
+
+# Con qué comparar cuando se filtra por una columna. La ubicación son dos campos
+# (estantería y estante), así que se busca en cualquiera de los dos.
+COMPARACION = re.compile(r"^(>=|<=|>|<|=)?\s*(-?[\d.,]+)\s*%?$")
+
+
+def _filtro_numero(columna, texto, escala=1):
+    """'> 10', '<=3' o '5' a secas. Devuelve None si no se entiende lo escrito."""
+    partido = COMPARACION.match(texto)
+    if not partido:
+        return None
+    valor = numero_ar(partido.group(2))
+    if valor is None:
+        return None
+    valor /= escala
+    operador = partido.group(1) or "="
+    return {">": columna > valor, ">=": columna >= valor,
+            "<": columna < valor, "<=": columna <= valor}.get(operador, columna == valor)
+
+
+def _filtrar_por_columna(consulta, filtros):
+    """Filtra por lo escrito en cada columna: los textos por 'contiene', los números comparando."""
+    for col, texto in filtros.items():
+        like = f"%{sin_acentos(texto)}%"
+        if col == "ubicacion":
+            consulta = consulta.filter(or_(_como(Repuesto.estanteria, like), _como(Repuesto.estante, like)))
+        elif col == "categoria":
+            consulta = consulta.filter(Repuesto.categoria_id.in_(
+                db.session.query(Categoria.id).filter(_como(Categoria.nombre, like))))
+        elif col == "subcategoria":
+            consulta = consulta.filter(Repuesto.subcategoria_id.in_(
+                db.session.query(Subcategoria.id).filter(_como(Subcategoria.nombre, like))))
+        elif col in NUMERICAS:
+            # El descuento se escribe en % ("20") pero se guarda como fracción (0,20)
+            escala = 100 if col == "descuento" else 1
+            condicion = _filtro_numero(ORDENES[col], texto, escala)
+            consulta = consulta.filter(condicion if condicion is not None else db.false())
+        else:
+            consulta = consulta.filter(_como(ORDENES[col], like))
+    return consulta
+
+
+def _filtros_pedidos():
+    """Lo que se escribió en cada columna, como {columna: texto}."""
+    puestos = {}
+    for col, _, _, _ in COLUMNAS:
+        texto = request.args.get(f"f_{col}", "").strip()
+        if texto:
+            puestos[col] = texto
+    return puestos
+
+
 def _ordenar(consulta, orden, direccion):
     """Ordena por la columna elegida; los vacíos siempre al final. Desempata por número de repuesto."""
     columna = ORDENES.get(orden)
@@ -141,13 +206,13 @@ def lista():
         consulta = consulta.filter(Repuesto.stock_actual > 0)
     elif filtro == "bajo":
         consulta = consulta.filter(Repuesto.stock_actual <= func.coalesce(Repuesto.stock_minimo, 0))
-    todos = _ordenar(consulta, orden, direccion).all()
-    # En el celular cada fila es una tarjeta: dibujar 240 de una hace pesado el
-    # scroll. Se muestran las primeras y el resto está a un click (o buscando)
-    repuestos = todos if request.args.get("todos") else todos[:TOPE_LISTA]
+    por_columna = _filtros_pedidos()
+    consulta = _filtrar_por_columna(consulta, por_columna)
+    repuestos = _ordenar(consulta, orden, direccion).all()
     plantilla = "stock/_tabla.html" if request.headers.get("HX-Request") else "stock/lista.html"
-    return render_template(plantilla, repuestos=repuestos, cuantos=len(todos), q=q, arbol=_arbol_categorias(),
+    return render_template(plantilla, repuestos=repuestos, q=q, arbol=_arbol_categorias(),
                            categoria_id=categoria_id, subcategoria_id=subcategoria_id, filtro=filtro,
+                           columnas=COLUMNAS, por_columna=por_columna,
                            orden=orden if orden in ORDENES else "", direccion=direccion)
 
 
@@ -757,6 +822,11 @@ def ingreso_eliminar(id):
 TOPE_COMPRADOS = 20   # los archivados se ven los últimos; el resto, a un click
 
 
+def _cant(n):
+    """1,5 se lee así; 2 se lee '2' y no '2,00'."""
+    return f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".").replace(",00", "")
+
+
 def _lo_que_se_anoto(texto):
     """Lo escrito en el campo: o es un repuesto del stock, o es texto a mano."""
     texto = (texto or "").strip()
@@ -787,11 +857,14 @@ def comprar():
 @bp.route("/comprar/nuevo", methods=["POST"])
 def comprar_nuevo():
     repuesto, texto = _lo_que_se_anoto(request.form.get("que"))
+    cantidad = numero_ar(request.form.get("cantidad"))
     if not repuesto and not texto:
         flash("Escribí qué hay que comprar.", "error")
+    elif cantidad is not None and cantidad <= 0:
+        flash("La cantidad tiene que ser mayor a cero.", "error")
     else:
-        db.session.add(AComprar(repuesto=repuesto, texto=texto,
-                                nota=_texto("nota"), anotado_por=current_user.nombre))
+        db.session.add(AComprar(repuesto=repuesto, texto=texto, nota=_texto("nota"),
+                                cantidad=cantidad or 1, anotado_por=current_user.nombre))
         db.session.commit()
     return redirect(url_for(".comprar"))
 
@@ -799,9 +872,28 @@ def comprar_nuevo():
 @bp.route("/comprar/<int:id>/listo", methods=["POST"])
 def comprar_listo(id):
     p = db.get_or_404(AComprar, id)
-    p.comprado = not p.comprado
-    p.fecha_comprado = date.today() if p.comprado else None
-    db.session.commit()
+    if p.comprado:                                  # se había tildado por error
+        p.comprado, p.fecha_comprado = False, None
+        db.session.commit()
+        return redirect(url_for(".comprar"))
+
+    compradas = numero_ar(request.form.get("cantidad"))
+    if compradas is None:
+        compradas = p.cantidad
+    if compradas <= 0:
+        flash("Poné cuántos compraste, que tiene que ser más de cero.", "error")
+    elif compradas < p.cantidad:
+        # Se compró una parte nomás: lo comprado se archiva y el resto sigue anotado
+        db.session.add(AComprar(repuesto_id=p.repuesto_id, texto=p.texto, nota=p.nota,
+                                cantidad=compradas, comprado=True, fecha_comprado=date.today(),
+                                anotado_por=p.anotado_por))
+        p.cantidad -= compradas
+        db.session.commit()
+        flash(f"Anotado: compraste {_cant(compradas)} y quedan {_cant(p.cantidad)} pendientes.", "ok")
+    else:
+        p.cantidad = compradas                      # compró de más: queda lo que realmente trajo
+        p.comprado, p.fecha_comprado = True, date.today()
+        db.session.commit()
     return redirect(url_for(".comprar"))
 
 

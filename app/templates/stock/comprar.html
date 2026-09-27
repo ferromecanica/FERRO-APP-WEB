@@ -8,7 +8,16 @@
   <td class="centro t-tilde">
     {# Un tilde de verdad (input) necesitaría JS para guardarse: si no corre, se
        tilda y no pasa nada. Un botón que se ve igual siempre envía. #}
-    <form method="post" action="{{ url_for('stock.comprar_listo', id=p.id) }}">
+    <form method="post" action="{{ url_for('stock.comprar_listo', id=p.id) }}"
+      {%- if p.comprado %} data-confirmar="¿Volver a pendiente?"
+          data-confirmar-detalle="Vuelve al listado de arriba, como si no se hubiera comprado."
+          data-confirmar-boton="Volver a pendiente"
+      {%- else %} data-confirmar="¿Compraste {{ p.que_es }}?"
+          data-confirmar-detalle="Si compraste menos de lo anotado, poné cuántos: el resto sigue pendiente."
+          data-confirmar-boton="Ya lo compré"
+          data-confirmar-campo="cantidad" data-confirmar-campo-label="¿Cuántos compraste?"
+          data-confirmar-campo-valor="{{ p.cantidad | numero(2) | replace(',00', '') }}"
+      {%- endif %}>
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="tilde {{ 'tildado' if p.comprado }}"
               title="{{ 'Volver a pendiente' if p.comprado else 'Ya lo compré' }}"
@@ -17,6 +26,7 @@
     </form>
   </td>
   <td class="izq envuelve t-que" data-titulo="Qué">
+    <span class="cuantos">{{ p.cantidad | numero(2) | replace(',00', '') }} ×</span>
     {% if p.repuesto %}
       <a href="{{ url_for('stock.ficha', id=p.repuesto_id) }}">{{ p.repuesto.nombre }}</a>
       <div class="muted small">del stock · quedan {{ p.repuesto.stock_actual | numero(2) | replace(',00', '') }}</div>
@@ -74,6 +84,7 @@
         <datalist id="lista-repuestos">
           {% for r in repuestos %}<option value="{{ r.id }} · {{ r.nombre }}">quedan {{ r.stock_actual | numero(1) }}</option>{% endfor %}
         </datalist></div>
+      <div class="c-cant"><label>Cant.</label><input name="cantidad" inputmode="decimal" value="1"></div>
       <div class="c-desc"><label>Nota (opcional)</label>
         <input name="nota" placeholder="Ej.: para la OT de Pérez, reponer, urgente"></div>
       <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Anotar</button></div>
