@@ -85,6 +85,19 @@ assert b.index(ultimo_v.codigo) < b.index(v.codigo), 'los vehículos no arrancan
 b = B(c.get('/clientes/vehiculos?orden=km&dir=desc'))
 assert 'ordenada' in b, 'no marcó la columna por la que está ordenando'
 
+# ── El disparador de htmx, que es lo que hace que escribir filtre de verdad ──
+# Con dos reglas para el mismo evento htmx se queda con la primera y la otra
+# no dispara nunca: así los filtros por columna no hacían nada.
+import re
+reglas = [r.strip() for r in re.search(r'hx-trigger="([^"]+)"', B(c.get('/stock/'))).group(1).split(',')]
+eventos = [r.split()[0] for r in reglas]
+assert len(eventos) == len(set(eventos)), f'hay dos reglas para el mismo evento: {reglas}'
+# Y la regla de escribir tiene que valer para todos los casilleros: ni atada a un
+# campo con "from:", ni con "changed" (que mira el valor del formulario, que no tiene).
+escribir = next(r for r in reglas if r.split()[0] == 'input')
+assert 'from:' not in escribir, f'escribir solo dispara en un campo, no en los filtros: {escribir}'
+assert 'changed' not in escribir, f'con "changed" no dispara nunca desde el formulario: {escribir}'
+
 # ── Una columna que no existe no rompe nada ──
 assert c.get('/clientes/?orden=loquesea').status_code == 200
 assert c.get('/stock/?f_inventado=x').status_code == 200

@@ -7,7 +7,11 @@
 </div>
 {% include "stock/_tabs.html" %}
 <form class="barra-filtros" id="filtros-stock" hx-get="{{ url_for('stock.lista') }}" hx-target="#tabla-stock" hx-push-url="true"
-      hx-trigger="input changed delay:250ms from:input[name=q], input changed delay:350ms from:.filtros-columna input, change from:select, search, ordenar, limpiar">
+      {# Un solo "input" para todos los casilleros: con dos reglas para el mismo
+         evento htmx se queda con la primera y la otra no dispara nunca. Y sin
+         "changed", que se fija en el valor del formulario —que no tiene— y así
+         no dispara nunca; el delay ya evita pedir una vez por tecla. #}
+      hx-trigger="input delay:300ms, change from:select, search, ordenar, limpiar">
   <input type="hidden" name="orden" value="{{ orden }}"><input type="hidden" name="dir" value="{{ direccion }}">
   <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
     <input type="search" name="q" value="{{ q }}" placeholder="Buscá por cualquier dato: nombre, proveedor, nº de parte, categoría…" autocomplete="off" data-escaner></div>
