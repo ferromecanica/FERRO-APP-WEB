@@ -30,7 +30,7 @@ from ..models import (
 from ..services import drive, listas
 from ..services.stock import (
     anular_ingreso, buscar_repuesto, confirmar_ingreso, para_elegir, posibles_duplicados,
-    recalcular_precio_venta, regla_markup,
+    recalcular_precio_venta, regla_markup, renombrar_proveedor, usos_del_proveedor,
     registrar_movimiento,
 )
 from ..validaciones import numero_ar
@@ -382,6 +382,51 @@ def proveedor_nuevo():
     return jsonify(ok=True, id=nombre, nombre=nombre)
 
 
+@bp.route("/proveedores/<int:pid>/editar", methods=["POST"])
+def proveedor_editar(pid):
+    prov = db.get_or_404(Proveedor, pid)
+    nombre = " ".join(request.form.get("nombre", "").split())
+    repetido = Proveedor.query.filter(func.lower(Proveedor.nombre) == nombre.lower(),
+                                      Proveedor.id != prov.id).first()
+    if not nombre:
+        flash("Escribí el nombre del proveedor.", "error")
+        return redirect(url_for(".markups") + "#proveedores")
+    if nombre == prov.nombre:
+        return redirect(url_for(".markups") + "#proveedores")
+
+    anterior, arrastrados = prov.nombre, sum(usos_del_proveedor(prov.nombre).values())
+    donde = (f" Se cambió en {arrastrados} lugar{'es' if arrastrados != 1 else ''} "
+             "entre repuestos, ingresos, reglas de markup y listas de precios." if arrastrados else "")
+    if repetido:
+        # Quedó cargado dos veces ("GATTI" y "Gatti"): se juntan en uno. Si no,
+        # no habría salida: renombrarlo choca y borrarlo no se puede porque está en uso.
+        renombrar_proveedor(prov, repetido.nombre)
+        db.session.delete(prov)
+        db.session.commit()
+        flash(f"«{anterior}» y «{repetido.nombre}» eran el mismo proveedor cargado dos veces: "
+              f"quedó «{repetido.nombre}».{donde}", "ok")
+    else:
+        renombrar_proveedor(prov, nombre)
+        db.session.commit()
+        flash(f"«{anterior}» ahora se llama «{nombre}».{donde}", "ok")
+    return redirect(url_for(".markups") + "#proveedores")
+
+
+@bp.route("/proveedores/<int:pid>/eliminar", methods=["POST"])
+def proveedor_eliminar(pid):
+    prov = db.get_or_404(Proveedor, pid)
+    usos = usos_del_proveedor(prov.nombre)
+    if any(usos.values()):
+        detalle = ", ".join(f"{cuantos} {COMO_SE_LLAMA[modelo]}" for modelo, cuantos in usos.items() if cuantos)
+        flash(f"No se puede borrar «{prov.nombre}»: lo usan {detalle}. "
+              "Cambiáselos de proveedor primero, o renombralo.", "error")
+    else:
+        db.session.delete(prov)
+        db.session.commit()
+        flash(f"Proveedor «{prov.nombre}» eliminado.", "ok")
+    return redirect(url_for(".markups") + "#proveedores")
+
+
 @bp.route("/subcategorias", methods=["POST"])
 def subcategoria_nueva():
     nombre = request.form.get("nombre", "").strip().upper()
@@ -637,8 +682,12 @@ def markups():
     for r in Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS, Repuesto.markup.is_(None)).all():
         _, origen = regla_markup(r)
         uso[origen] = uso.get(origen, 0) + 1
+    detalle = []
+    for prov in Proveedor.query.order_by(func.lower(Proveedor.nombre)).all():
+        usos = usos_del_proveedor(prov.nombre)
+        detalle.append({"id": prov.id, "nombre": prov.nombre, "usos": usos, "en_uso": any(usos.values())})
     return render_template("stock/markups.html", reglas=reglas, uso=uso, proveedores=_proveedores(),
-                           marcas=_distintos(Repuesto.marca_proveedor))
+                           proveedores_detalle=detalle, marcas=_distintos(Repuesto.marca_proveedor))
 
 
 @bp.route("/markups/<int:mid>/editar", methods=["POST"])
@@ -843,6 +892,9 @@ def ingreso_eliminar(id):
 
 
 # ───────────────────────────── A comprar (pendientes) ───────────────────────
+
+COMO_SE_LLAMA = {"Repuesto": "repuestos", "ConfigMarkup": "reglas de markup",
+                 "IngresoStock": "ingresos", "PerfilLista": "listas de precios"}
 
 TOPE_COMPRADOS = 20   # los archivados se ven los últimos; el resto, a un click
 

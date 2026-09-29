@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Markups<script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
-<script>FerroAltaEnSelect('proveedor-markup', 'nuevo-proveedor', '{{ url_for("stock.proveedor_nuevo") }}', 'Nombre del proveedor nuevo:');</script>
-{% endblock %}
+{% block title %}Markups{% endblock %}
 {% block content %}
 <div class="page-head">
   <div><div class="eyebrow">Stock</div><h1>Markups</h1></div>
@@ -52,6 +50,48 @@
     </form>
   </div>
 
+  {# ───── Proveedores ─────
+     El nombre está escrito en cada repuesto, ingreso, markup y lista, así que
+     corregirlo acá lo corrige en todos lados de una. #}
+  <div class="card" id="proveedores">
+    <div class="card-head seccion"><h2><i class="fa-solid fa-truck-field"></i> Proveedores</h2>
+      <span class="muted small">{{ proveedores | length }} en la lista</span></div>
+    {% if proveedores_detalle %}
+    <div class="table-wrap"><table class="tabla-densa lista-movil">
+      <colgroup><col><col style="width:90px"><col style="width:90px"><col style="width:90px"><col style="width:54px"></colgroup>
+      <thead><tr><th class="izq">Nombre</th><th class="num">Repuestos</th><th class="num hide-sm">Ingresos</th>
+        <th class="num hide-sm">Reglas</th><th></th></tr></thead>
+      <tbody>
+      {% for p in proveedores_detalle %}
+        <tr>
+          <td class="izq">
+            <form method="post" action="{{ url_for('stock.proveedor_editar', pid=p.id) }}" class="markup-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input name="nombre" value="{{ p.nombre }}" aria-label="Nombre del proveedor" class="nombre-proveedor">
+              <button class="btn-icon" title="Guardar el nombre"><i class="fa-solid fa-check"></i></button>
+            </form></td>
+          <td class="num" data-titulo="Repuestos">{{ p.usos['Repuesto'] }}</td>
+          <td class="num hide-sm" data-titulo="Ingresos">{{ p.usos['IngresoStock'] }}</td>
+          <td class="num hide-sm" data-titulo="Reglas">{{ p.usos['ConfigMarkup'] }}</td>
+          <td class="num">
+            <form method="post" action="{{ url_for('stock.proveedor_eliminar', pid=p.id) }}"
+                  data-confirmar="¿Eliminar el proveedor «{{ p.nombre }}»?"
+                  data-confirmar-detalle="{{ 'No lo usa nadie: sale de la lista y listo.' if not p.en_uso else 'Lo están usando: el sistema no te va a dejar.' }}"
+                  data-confirmar-boton="Eliminar" data-confirmar-tono="peligro" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn-icon" title="Eliminar"><i class="fa-solid fa-xmark"></i></button></form></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <div class="card-body muted small" style="border-top:1px solid var(--border)">
+      Para corregir un nombre, escribilo y tocá el tilde: se cambia también en los repuestos,
+      los ingresos, las reglas de markup y las listas de precios. Solo se puede borrar un
+      proveedor que no esté usado en ningún lado.
+    </div>
+    {% else %}<div class="empty">Todavía no hay proveedores cargados.</div>{% endif %}
+  </div>
+
   <div class="card card-body">
     <h2 style="margin-bottom:10px">Cómo se elige</h2>
     <ol class="small" style="margin:0;padding-left:18px;line-height:1.6">
@@ -65,4 +105,9 @@
       {{ uso['sin regla de markup'] }} repuesto{{ 's' if uso['sin regla de markup'] != 1 }} sin regla ni markup propio (se venden al costo).</p>{% endif %}
   </div>
 </div>
+<script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+<script>
+  FerroAltaEnSelect('proveedor-markup', 'nuevo-proveedor', '{{ url_for("stock.proveedor_nuevo") }}',
+                    'Nombre del proveedor nuevo:');
+</script>
 {% endblock %}

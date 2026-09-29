@@ -9,7 +9,9 @@ from difflib import SequenceMatcher
 from flask_login import current_user
 
 from ..extensions import db
-from ..models import ConfigMarkup, ConsumoOT, MovimientoStock, Repuesto, VentaItem
+from ..models import (
+    ConfigMarkup, ConsumoOT, IngresoStock, MovimientoStock, PerfilLista, Repuesto, VentaItem,
+)
 
 
 def _usuario_id():
@@ -281,6 +283,30 @@ def repuesto_varios():
         db.session.add(varios)
         db.session.flush()
     return varios
+
+
+# El nombre del proveedor está copiado como texto en cada uno de estos: no es
+# una referencia, así que renombrarlo hay que hacerlo en todos a la vez.
+DONDE_DICE_EL_PROVEEDOR = (Repuesto, ConfigMarkup, IngresoStock, PerfilLista)
+
+
+def usos_del_proveedor(nombre):
+    """Cuántas cosas tienen escrito ese nombre, por si se lo quiere borrar."""
+    return {modelo.__name__: modelo.query.filter_by(proveedor=nombre).count()
+            for modelo in DONDE_DICE_EL_PROVEEDOR}
+
+
+def renombrar_proveedor(proveedor, nombre):
+    """Le cambia el nombre en la lista y en todo lo que lo tenga escrito.
+
+    Si se cambiara en un solo lado, el resto dejaría de encontrarlo: los
+    repuestos se quedarían sin su regla de markup y pasarían a venderse al
+    costo, y los ingresos y las listas apuntarían a un proveedor que no existe.
+    """
+    viejo = proveedor.nombre
+    for modelo in DONDE_DICE_EL_PROVEEDOR:
+        modelo.query.filter_by(proveedor=viejo).update({"proveedor": nombre})
+    proveedor.nombre = nombre
 
 
 def para_elegir():
