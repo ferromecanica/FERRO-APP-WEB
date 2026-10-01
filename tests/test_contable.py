@@ -206,4 +206,29 @@ assert 'PRELIMINAR' not in enviados[-1]['html']
 
 drive.llamar, reporte.configurado = original, original_cfg
 
+# ── Filtrar los movimientos del mes por clasificación ──
+# El filtro y el total son del navegador: acá se revisa que la pantalla le dé
+# todo lo que necesita (los chips de ese mes y, en cada fila, de qué es y cuánto).
+with app.app_context():
+    for clas, total in [('Bien de uso', 295000), ('Bien de uso', 60000), ('Gasto menor', 12000)]:
+        db.session.add(MovimientoContable(fecha=date(2026, 8, 5), tipo='Egreso', mes_imputacion=MES,
+                                          clasificacion=clas, concepto=f'Prueba {clas} {total}',
+                                          total=total, cobrado=True))
+    db.session.add(MovimientoContable(fecha=date(2026, 8, 6), tipo='Egreso', mes_imputacion=MES,
+                                      clasificacion=None, concepto='Sin clasificar', total=5000, cobrado=True))
+    db.session.commit()
+
+b = B(c.get(f'/administracion/?mes={MES}'))
+for clas in ('Bien de uso', 'Gasto menor', 'Sin clasificar'):
+    assert f'data-clasif="{clas}"' in b, f'falta el chip de {clas}'
+assert b.count('data-clasif="Bien de uso"') == 3, 'un chip y sus dos filas'
+assert 'data-total="295000.0"' in b and 'data-tipo="Egreso"' in b, 'las filas no dicen cuánto ni de qué son'
+# Se ofrecen exactamente las clasificaciones que ese mes tiene, ni una más
+with app.app_context():
+    delmes = MovimientoContable.query.filter_by(mes_imputacion=MES).all()
+    hay = {m.clasificacion for m in delmes if m.clasificacion}
+    if any(not m.clasificacion for m in delmes):
+        hay.add('Sin clasificar')
+chips = set(re.findall(r'<button type="button" class="chip" data-clasif="([^"]+)"', b))
+assert chips == hay, (chips - hay, hay - chips)
 print('TODO OK')

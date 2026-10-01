@@ -183,6 +183,24 @@
   {% endfor %}
 </div>
 
+{# ───── Filtrar por clasificación ─────
+   Se elige una o varias y el total de abajo acompaña: sirve para armar los
+   comentarios del cierre ("compramos tanto en herramientas"). Se filtra acá
+   mismo, sin volver a pedir la página, para poder ir probando. #}
+{% if clasificaciones %}
+<div class="filtro-clasif" id="filtro-clasif">
+  <div class="filters">
+    <span class="muted small" style="align-self:center;margin-right:2px">Clasificación:</span>
+    {% for c in clasificaciones %}
+      <button type="button" class="chip" data-clasif="{{ c }}" aria-pressed="false">{{ c }}</button>
+    {% endfor %}
+    <button type="button" class="btn btn-sm" id="limpiar-clasif" hidden>
+      <i class="fa-solid fa-eraser"></i> Ver todas</button>
+  </div>
+  <div class="totalizador" id="totalizador"></div>
+</div>
+{% endif %}
+
 <div class="card">
   {% if movimientos %}
   <div class="table-wrap"><table class="tabla-densa lista-movil">
@@ -192,7 +210,8 @@
       <th class="izq">Concepto</th><th class="izq hide-sm">Clasificación</th><th class="num">Importe</th><th></th></tr></thead>
     <tbody>
     {% for m in movimientos %}
-      <tr id="mov-{{ m.id }}">
+      <tr id="mov-{{ m.id }}" data-clasif="{{ m.clasificacion or sin_clasificar }}"
+          data-tipo="{{ m.tipo }}" data-total="{{ m.total or 0 }}">
         <td class="centro fecha-chica" data-titulo="Fecha">{{ m.fecha | fecha }}</td>
         <td class="centro"><span class="badge {{ 'badge-ok' if m.tipo == 'Ingreso' else ('badge-info' if m.tipo == 'Colchón' else 'badge-danger') }}">{{ m.tipo }}</span></td>
         <td class="izq envuelve destacado">{{ m.quien or '—' }}
@@ -227,5 +246,61 @@
     </tbody>
   </table></div>
   {% else %}{{ vacio('fa-right-left', 'No hay movimientos' ~ (' que coincidan' if q or tipo else ' en ' ~ (mes | mes_imputacion)) ~ '.') }}{% endif %}
+  <div class="empty" id="nada-con-ese-filtro" hidden><i class="fa-solid fa-filter"></i>
+    Ningún movimiento de ese mes tiene esa clasificación.</div>
 </div>
+
+<script>
+/* Filtrar por clasificación sin recargar, y sumar lo que queda a la vista. */
+(function () {
+  var caja = document.getElementById('filtro-clasif');
+  if (!caja) return;
+  var chips = Array.prototype.slice.call(caja.querySelectorAll('[data-clasif]'));
+  var limpiar = document.getElementById('limpiar-clasif');
+  var cartel = document.getElementById('totalizador');
+  var vacio = document.getElementById('nada-con-ese-filtro');
+  var filas = Array.prototype.slice.call(document.querySelectorAll('tbody tr[data-clasif]'));
+
+  function elegidas() {
+    return chips.filter(function (c) { return c.getAttribute('aria-pressed') === 'true'; })
+                .map(function (c) { return c.dataset.clasif; });
+  }
+
+  function pesos(n) { return '$ ' + Math.round(n).toLocaleString('es-AR'); }
+
+  function actualizar() {
+    var puestas = elegidas();
+    var visibles = [];
+    filas.forEach(function (f) {
+      var va = !puestas.length || puestas.indexOf(f.dataset.clasif) !== -1;
+      f.hidden = !va;
+      if (va) visibles.push(f);
+    });
+    limpiar.hidden = !puestas.length;
+    if (vacio) vacio.hidden = !!visibles.length || !puestas.length;
+
+    var suma = { Egreso: 0, Ingreso: 0, 'Colchón': 0 };
+    visibles.forEach(function (f) { suma[f.dataset.tipo] = (suma[f.dataset.tipo] || 0) + (+f.dataset.total || 0); });
+    var partes = Object.keys(suma).filter(function (k) { return suma[k]; })
+                       .map(function (k) { return k + ' <strong>' + pesos(suma[k]) + '</strong>'; });
+    cartel.innerHTML = visibles.length + ' movimiento' + (visibles.length === 1 ? '' : 's') +
+      (partes.length ? ' · ' + partes.join(' · ') : '');
+    cartel.classList.toggle('con-filtro', !!puestas.length);
+  }
+
+  chips.forEach(function (c) {
+    c.addEventListener('click', function () {
+      var puesta = c.getAttribute('aria-pressed') === 'true';
+      c.setAttribute('aria-pressed', puesta ? 'false' : 'true');
+      c.classList.toggle('active', !puesta);
+      actualizar();
+    });
+  });
+  limpiar.addEventListener('click', function () {
+    chips.forEach(function (c) { c.setAttribute('aria-pressed', 'false'); c.classList.remove('active'); });
+    actualizar();
+  });
+  actualizar();
+})();
+</script>
 {% endblock %}

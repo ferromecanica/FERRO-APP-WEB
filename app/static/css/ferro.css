@@ -1,4 +1,10 @@
 /* Ferro — tema claro, acento naranja (inspirado en la app AppSheet) */
+
+/* Si algo está oculto, que esté oculto. El atributo hidden lo apaga el
+   navegador con display:none, pero cualquier clase nuestra con su propio
+   display le gana, y entonces se ve algo que creíamos escondido. */
+[hidden] { display: none !important; }
+
 :root {
   color-scheme: light;
   --bg: #f3f4f6;
@@ -719,6 +725,15 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .filtros-columna input { width: 100%; }
 .filtros-columna[hidden] { display: none; }   /* el display:grid le gana al atributo hidden */
 .filtros-pie { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Movimientos: filtrar por clasificación y ver el total de lo filtrado */
+.filtro-clasif { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+  justify-content: space-between; margin-bottom: 14px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.filtro-clasif .filters { margin: 0; }
+.totalizador { font-size: .95rem; color: var(--muted); white-space: nowrap; }
+.totalizador.con-filtro { color: var(--text); }
+.totalizador strong { color: var(--accent-ink); }
 
 /* Caja chica: un mes abajo del otro, se abre el que se quiere mirar */
 .mes-caja { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;

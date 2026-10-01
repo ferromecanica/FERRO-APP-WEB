@@ -52,6 +52,9 @@ def mes_lindo(mes):
         return mes or "—"
 
 
+SIN_CLASIFICAR = "Sin clasificar"
+
+
 @bp.app_template_filter("mes_imputacion")
 def _filtro_mes(valor):
     return mes_lindo(valor)
@@ -97,9 +100,15 @@ def movimientos():
     egresos = sum(m.total for m in del_mes if m.tipo == "Egreso"
                   and m.comprobante != "Liquidación" and m.clasificacion != "Inversión de Capital")
     colchon = sum(m.total for m in del_mes if m.tipo == "Colchón")
+    # Las clasificaciones que de verdad aparecen ese mes: no tiene sentido ofrecer
+    # un filtro de algo que no está
+    clasificaciones = sorted({m.clasificacion for m in del_mes if m.clasificacion}, key=str.lower)
+    if any(not m.clasificacion for m in del_mes):
+        clasificaciones.append(SIN_CLASIFICAR)
     return render_template(
         "contable/movimientos.html", movimientos=movs, mes=mes, meses=_meses_cargados(), tipo=tipo, q=q,
         tipos=TIPOS_MOVIMIENTO_CONTABLE, control=contable.control_del_mes(mes),
+        clasificaciones=clasificaciones, sin_clasificar=SIN_CLASIFICAR,
         totales={"ingresos": ingresos, "por_cobrar": por_cobrar, "egresos": egresos, "colchon": colchon,
                  "resultado": ingresos - egresos + colchon},
     )
