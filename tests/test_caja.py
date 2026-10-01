@@ -30,15 +30,19 @@ with app.app_context():
     assert caja.entradas_por_ventas() == 70000, 'a la caja va solo la parte en efectivo'
     assert caja.saldo() == 120000, caja.saldo()
 
-# ── Un gasto sale de la caja y además es egreso del mes ──
+# ── Un gasto sale de la caja, y no toca Movimientos ──
+with app.app_context():
+    egresos_antes = MovimientoContable.query.filter_by(tipo='Egreso').count()
 post('/administracion/caja/nuevo', {'tipo': 'Gasto', 'monto': '12.000',
                                     'concepto': 'Tornillería', 'quien': 'Ferretería López'})
 with app.app_context():
     assert caja.saldo() == 108000, caja.saldo()
     m = MovimientoCaja.query.filter_by(tipo='Gasto').one()
-    assert m.movimiento is not None, 'el gasto tiene que dejar su egreso'
-    assert m.movimiento.tipo == 'Egreso' and m.movimiento.total == 12000
-    assert 'caja chica' in m.movimiento.concepto
+    assert m.monto == 12000 and m.concepto == 'Tornillería'
+    # El gasto del taller se carga a mano: pide comprobante, CUIT y clasificación
+    assert MovimientoContable.query.filter_by(tipo='Egreso').count() == egresos_antes, \
+        'la caja chica no puede generar movimientos sola'
+    assert not MovimientoContable.query.filter(MovimientoContable.concepto.ilike('%Tornillería%')).count()
     gid = m.id
 
 # ── Un ajuste en negativo saca plata y NO es gasto del mes ──
@@ -46,8 +50,7 @@ post('/administracion/caja/nuevo', {'tipo': 'Ajuste', 'monto': '-40.000', 'conce
 post('/administracion/caja/nuevo', {'tipo': 'Ajuste', 'monto': '-8.000', 'concepto': 'Retiro de Lucio'})
 with app.app_context():
     assert caja.saldo() == 60000, caja.saldo()
-    for m in MovimientoCaja.query.filter_by(tipo='Ajuste').all():
-        assert m.movimiento is None, 'un ajuste no es un gasto: la plata cambia de lugar'
+    assert MovimientoCaja.query.filter_by(tipo='Ajuste').count() == 3
     r = caja.resumen()
     assert r['gastos'] == 12000 and r['ajustes'] == 2000, r   # +50.000 − 40.000 − 8.000
 
@@ -64,13 +67,14 @@ b = B(c.get('/administracion/caja'))
 assert 'Caja chica' in b and '$ 60.000' in b
 assert 'Tornillería' in b and 'Depósito al banco' in b
 
-# ── Borrar un gasto se lleva también su egreso ──
+# ── Borrar un gasto solo saca la fila de la caja ──
 with app.app_context():
-    mid = db.session.get(MovimientoCaja, gid).movimiento_id
+    egresos_antes = MovimientoContable.query.filter_by(tipo='Egreso').count()
 post(f'/administracion/caja/{gid}/eliminar')
 with app.app_context():
     assert db.session.get(MovimientoCaja, gid) is None
-    assert db.session.get(MovimientoContable, mid) is None, 'quedó el egreso de un gasto borrado'
+    assert MovimientoContable.query.filter_by(tipo='Egreso').count() == egresos_antes, \
+        'borrar en la caja no puede borrar nada de Movimientos'
     assert caja.saldo() == 72000, caja.saldo()
 
 # ── El saldo a una fecha: lo de mañana todavía no cuenta ──
@@ -134,26 +138,22 @@ post(f'/administracion/caja/{gid2}/editar', {'tipo': 'Gasto', 'monto': '7.000',
 with app.app_context():
     m = db.session.get(MovimientoCaja, gid2)
     assert m.monto == 7000 and m.concepto == 'De mañana, bien' and m.fecha == HOY, (m.monto, m.fecha)
-    assert m.movimiento.total == 7000, 'el egreso no siguió al gasto'
-    assert m.movimiento.fecha == HOY and 'De mañana, bien' in m.movimiento.concepto
 
-# De gasto a ajuste: el egreso tiene que desaparecer, porque deja de ser gasto del mes
+# De gasto a ajuste y de vuelta: sigue sin tocar Movimientos
 with app.app_context():
-    mid2 = db.session.get(MovimientoCaja, gid2).movimiento_id
+    egresos_antes = MovimientoContable.query.filter_by(tipo='Egreso').count()
 post(f'/administracion/caja/{gid2}/editar', {'tipo': 'Ajuste', 'monto': '-7.000',
                                              'concepto': 'Era un depósito', 'fecha': HOY.isoformat()})
 with app.app_context():
     m = db.session.get(MovimientoCaja, gid2)
     assert m.tipo == 'Ajuste' and m.monto == -7000, (m.tipo, m.monto)
-    assert m.movimiento is None and db.session.get(MovimientoContable, mid2) is None, 'quedó un egreso huérfano'
-
-# Y de vuelta a gasto: el egreso tiene que volver
 post(f'/administracion/caja/{gid2}/editar', {'tipo': 'Gasto', 'monto': '7.000',
                                              'concepto': 'Era un gasto nomás', 'fecha': HOY.isoformat()})
 with app.app_context():
     m = db.session.get(MovimientoCaja, gid2)
-    assert m.movimiento is not None and m.movimiento.total == 7000, 'no volvió a generar el egreso'
-    assert m.movimiento.tipo == 'Egreso' and m.movimiento.mes_imputacion == f'{HOY:%Y-%m}'
+    assert m.tipo == 'Gasto' and m.monto == 7000
+    assert MovimientoContable.query.filter_by(tipo='Egreso').count() == egresos_antes, \
+        'corregir en la caja no puede crear ni borrar movimientos'
 
 # Sin monto no se guarda nada
 assert 'Poné cuánta plata' in post(f'/administracion/caja/{gid2}/editar',

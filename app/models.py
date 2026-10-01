@@ -1047,8 +1047,9 @@ class MovimientoCaja(TimestampMixin, db.Model):
     olvidar. Acá van los gastos que Iván paga con esa plata, lo que se deposita
     en el banco, lo que se lleva un socio y la apertura del primer día.
 
-    Un gasto deja además su egreso en la administración: la plata salió de la
-    caja, pero es un gasto del taller igual que cualquier otro.
+    Esto no genera nada en Movimientos: un gasto del taller pide comprobante,
+    CUIT, clasificación, neto e IVA, y eso se carga a mano. Son dos registros
+    separados a propósito.
     """
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1057,9 +1058,6 @@ class MovimientoCaja(TimestampMixin, db.Model):
     monto = db.Column(db.Float, default=0, nullable=False)  # en los ajustes puede ser negativo
     concepto = db.Column(db.String(300))
     quien = db.Column(db.String(120))
-    movimiento_id = db.Column(db.Integer, db.ForeignKey("movimiento_contable.id"))  # el egreso que generó
-
-    movimiento = db.relationship("MovimientoContable", foreign_keys=[movimiento_id])
 
     @property
     def signo(self):

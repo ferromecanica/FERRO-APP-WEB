@@ -277,7 +277,7 @@ def caja_nuevo():
                         concepto=request.form.get("concepto", "").strip() or None)
         db.session.commit()
         aviso = f"{m.tipo}: ${abs(m.monto):,.0f}".replace(",", ".")
-        flash(aviso + (". Queda también en los egresos del mes." if m.es_gasto else "."), "ok")
+        flash(aviso + ". Acordate de cargarlo también en Movimientos." if m.es_gasto else aviso + ".", "ok")
         mes = MovimientoContable.mes_de(m.fecha)
         return redirect(url_for(".caja_chica", mes=mes) + f"#mes-{mes}")
     return redirect(url_for(".caja_chica"))

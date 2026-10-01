@@ -5,18 +5,16 @@ lo que salió. Lo que entró sale de las partes de cobro con destino Caja, así
 que no hay que anotarlo dos veces ni se puede olvidar. Lo que sale se anota
 (MovimientoCaja): gastos, depósitos al banco, retiros de un socio.
 
-Un gasto de la caja deja además su egreso en la administración. La plata salió
-de la caja, pero es un gasto del taller como cualquier otro y tiene que estar en
-el resultado del mes. Los depósitos y los retiros no son gastos: la plata cambia
-de lugar o se la lleva un socio, y eso se salda en el cierre.
+Lo que se anota acá **no** se replica en Movimientos. Un gasto del taller pide
+más datos de los que se cargan en la caja (comprobante, CUIT, clasificación,
+neto e IVA), así que el movimiento se carga a mano y esta pantalla no lo
+adivina. Son dos registros separados a propósito: la caja dice cuánta plata hay
+en el cajón, y Movimientos dice cuál fue el gasto.
 """
 from datetime import date, timedelta
 
 from ..extensions import db
-from ..models import CAJA, MOVIMIENTOS_CAJA, MovimientoCaja, MovimientoContable, PagoVenta, Venta
-
-CLASIFICACION_GASTO = "Gasto menor"
-
+from ..models import CAJA, MOVIMIENTOS_CAJA, MovimientoCaja, PagoVenta, Venta
 
 def _cobros_en_efectivo(hasta=None):
     """Las partes de cobro que entraron a la caja, ya acreditadas."""
@@ -78,7 +76,7 @@ def movimientos(desde=None, hasta=None, inicial=0):
 
 
 def anotar(tipo, monto, fecha=None, concepto=None, quien=None):
-    """Anota un movimiento de la caja. Si es un gasto, deja también su egreso."""
+    """Anota un movimiento de la caja. No toca Movimientos: eso se carga aparte."""
     if tipo not in MOVIMIENTOS_CAJA:
         raise ValueError(f"No sé qué es «{tipo}» en la caja.")
     fecha = fecha or date.today()
@@ -87,22 +85,11 @@ def anotar(tipo, monto, fecha=None, concepto=None, quien=None):
     monto = abs(monto) if MOVIMIENTOS_CAJA[tipo]["gasto"] else monto
     m = MovimientoCaja(tipo=tipo, monto=monto, fecha=fecha, concepto=concepto, quien=quien)
     db.session.add(m)
-    if m.es_gasto:
-        m.movimiento = MovimientoContable(
-            fecha=fecha, tipo="Egreso", mes_imputacion=MovimientoContable.mes_de(fecha),
-            clasificacion=CLASIFICACION_GASTO, comprobante="S/C", quien=quien,
-            concepto=f"{concepto or 'Gasto'} (caja chica)"[:300], total=abs(monto), cobrado=True,
-        )
-        db.session.add(m.movimiento)
     return m
 
 
 def editar(m, tipo, monto, fecha, concepto=None, quien=None):
-    """Cambia un movimiento ya anotado y deja su egreso igual de sincronizado.
-
-    Al cambiar de tipo, el egreso aparece o desaparece: un gasto tiene que estar
-    en el resultado del mes y un ajuste no, así que no alcanza con editar la fila.
-    """
+    """Cambia un movimiento ya anotado."""
     if tipo not in MOVIMIENTOS_CAJA:
         raise ValueError(f"No sé qué es «{tipo}» en la caja.")
     m.tipo = tipo
@@ -110,26 +97,11 @@ def editar(m, tipo, monto, fecha, concepto=None, quien=None):
     m.fecha = fecha
     m.concepto = concepto
     m.quien = quien
-    if m.es_gasto and m.movimiento is None:
-        m.movimiento = MovimientoContable(fecha=fecha, tipo="Egreso", comprobante="S/C", cobrado=True)
-        db.session.add(m.movimiento)
-    elif not m.es_gasto and m.movimiento is not None:
-        db.session.delete(m.movimiento)
-        m.movimiento = None
-    if m.movimiento is not None:
-        m.movimiento.fecha = fecha
-        m.movimiento.mes_imputacion = MovimientoContable.mes_de(fecha)
-        m.movimiento.clasificacion = CLASIFICACION_GASTO
-        m.movimiento.quien = quien
-        m.movimiento.concepto = f"{concepto or 'Gasto'} (caja chica)"[:300]
-        m.movimiento.total = abs(m.monto)
     return m
 
 
 def borrar(m):
-    """Saca el movimiento y, si era un gasto, su egreso."""
-    if m.movimiento is not None:
-        db.session.delete(m.movimiento)
+    """Saca el movimiento de la caja. Lo que haya en Movimientos no se toca."""
     db.session.delete(m)
 
 

@@ -29,9 +29,11 @@
       <input name="monto" inputmode="decimal" class="plata con-signo" placeholder="$" required></div>
     <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Anotar</button></div>
   </form>
-  <div class="muted small" style="margin-top:8px">Un <strong>gasto</strong> resta y va a los egresos del mes.
+  <div class="muted small" style="margin-top:8px">Un <strong>gasto</strong> resta.
     Un <strong>ajuste</strong> no es un gasto (lo que se depositó, lo que se llevó un socio, la apertura):
-    restá poniendo el monto en negativo.</div>
+    restá poniendo el monto en negativo.<br>
+    Esto es solo el cajón: el gasto del taller se carga aparte en <strong>Movimientos</strong>,
+    que pide comprobante, CUIT y clasificación.</div>
 </div>
 
 {# ───── Los meses, uno abajo del otro ───── #}
@@ -77,7 +79,7 @@
             <button type="button" class="btn-icon btn-editar" data-editar="caja-{{ mov.id }}" title="Corregir"><i class="fa-solid fa-pen"></i></button>
             <form method="post" action="{{ url_for('contable.caja_eliminar', id=mov.id) }}"
                   data-confirmar="¿Borrar este movimiento de la caja?"
-                  data-confirmar-detalle="{{ 'Se borra también su egreso del mes.' if mov.es_gasto else 'El saldo vuelve a lo de antes.' }}"
+                  data-confirmar-detalle="El saldo vuelve a lo de antes. Lo que haya en Movimientos no se toca."
                   data-confirmar-boton="Borrar" data-confirmar-tono="peligro" style="display:inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn-icon" title="Borrar"><i class="fa-solid fa-trash"></i></button></form>
