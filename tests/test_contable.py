@@ -229,6 +229,20 @@ assert 'Ver la preliminar' in b, 'falta el botón para abrir la circular prelimi
 with app.app_context():
     assert CierreMensual.query.filter_by(mes=MES).one().link_circular in b
 
+# ── Regenerar después de cambiar algo: primero guarda, después arma el PDF ──
+post(f'/administracion/cierres/{MES}', {'accion': 'circular', 'colchon_objetivo': '900.000',
+                                        'compromiso_concepto': 'Alquiler', 'compromiso_total': '988.735',
+                                        'compromiso_dejar': '800.000', 'caja_chica': '947.800',
+                                        'banco': '1.992.931',
+                                        'observaciones': 'Cambiamos el proveedor de aceites.'})
+with app.app_context():
+    assert CierreMensual.query.filter_by(mes=MES).one().observaciones == 'Cambiamos el proveedor de aceites.'
+assert 'Cambiamos el proveedor de aceites' in enviados[-1]['html'], \
+    'la circular salió con lo de antes: no guardó el cambio antes de armarla'
+# Y el botón avisa que está trabajando, porque armar el PDF tarda
+b = B(c.get(f'/administracion/cierres/{MES}'))
+assert 'data-ocupado=' in b, 'el botón tiene que avisar que está armando el PDF' 
+
 # ya cerrado, la circular sale definitiva
 post(f'/administracion/cierres/{MES}', {'accion': 'cerrar', 'modo': 'Automático', 'colchon_objetivo': '900.000',
                                         'fecha_cierre': '2026-08-31', 'cotizacion': '1.535',

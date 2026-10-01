@@ -4,9 +4,12 @@
 
    Puede además pedir un dato antes de enviar, que viaja con el formulario:
        data-confirmar-campo="cantidad" data-confirmar-campo-label="¿Cuántos compraste?"
-       data-confirmar-campo-valor="4"  */
+       data-confirmar-campo-valor="4"
+
+   Los mismos atributos valen en el botón, para cuando un formulario tiene
+   varios y solo uno necesita que se confirme (guardar no, cerrar el mes sí). */
 (function () {
-  var dialogo, titulo, detalle, aceptar, campo, campoCaja, campoLabel, pendiente;
+  var dialogo, titulo, detalle, aceptar, campo, campoCaja, campoLabel, pendiente, pendienteBoton;
 
   function armar() {
     dialogo = document.createElement('dialog');
@@ -30,48 +33,55 @@
     dialogo.addEventListener('click', function (e) { if (e.target === dialogo) dialogo.close(); });
     aceptar.addEventListener('click', function () {
       dialogo.close();
-      var form = pendiente;
-      pendiente = null;
+      var form = pendiente, boton = pendienteBoton;
+      pendiente = pendienteBoton = null;
       if (!form) return;
       // Lo que se contestó en la ventanita viaja con el formulario
-      if (form.dataset.confirmarCampo) {
-        var oculto = form.querySelector('[name="' + form.dataset.confirmarCampo + '"]');
+      var pideCampo = (boton && boton.dataset.confirmarCampo) || form.dataset.confirmarCampo;
+      if (pideCampo) {
+        var oculto = form.querySelector('[name="' + pideCampo + '"]');
         if (!oculto) {
           oculto = document.createElement('input');
           oculto.type = 'hidden';
-          oculto.name = form.dataset.confirmarCampo;
+          oculto.name = pideCampo;
           form.appendChild(oculto);
         }
         oculto.value = campo.value;
       }
       form.dataset.confirmado = '1';
-      form.requestSubmit ? form.requestSubmit() : form.submit();
+      // Se reenvía con el mismo botón: si no, se perderían su name, su value y
+      // su formaction, y el servidor no sabría qué se pidió
+      if (form.requestSubmit) form.requestSubmit(boton || undefined); else form.submit();
     });
   }
 
-  function preguntar(form) {
+  /* De dónde salen los textos: del botón si los trae, si no del formulario. */
+  function preguntar(form, boton) {
     if (!dialogo) armar();
     pendiente = form;
-    titulo.textContent = form.dataset.confirmar;
-    detalle.textContent = form.dataset.confirmarDetalle || '';
-    detalle.hidden = !form.dataset.confirmarDetalle;
-    aceptar.textContent = form.dataset.confirmarBoton || 'Confirmar';
-    aceptar.classList.toggle('btn-peligro', form.dataset.confirmarTono === 'peligro');
+    pendienteBoton = boton;
+    var d = (boton && boton.dataset.confirmar) ? boton.dataset : form.dataset;
+    titulo.textContent = d.confirmar;
+    detalle.textContent = d.confirmarDetalle || '';
+    detalle.hidden = !d.confirmarDetalle;
+    aceptar.textContent = d.confirmarBoton || 'Confirmar';
+    aceptar.classList.toggle('btn-peligro', d.confirmarTono === 'peligro');
     dialogo.querySelector('.confirmar-icono').className = 'confirmar-icono' +
-      (form.dataset.confirmarTono === 'peligro' ? ' peligro' : '');
-    campoCaja.hidden = !form.dataset.confirmarCampo;
-    if (form.dataset.confirmarCampo) {
-      campoLabel.textContent = form.dataset.confirmarCampoLabel || '';
-      campo.value = form.dataset.confirmarCampoValor || '';
+      (d.confirmarTono === 'peligro' ? ' peligro' : '');
+    campoCaja.hidden = !d.confirmarCampo;
+    if (d.confirmarCampo) {
+      campoLabel.textContent = d.confirmarCampoLabel || '';
+      campo.value = d.confirmarCampoValor || '';
     }
     dialogo.showModal();
     if (!campoCaja.hidden) { campo.focus(); campo.select(); } else { aceptar.focus(); }
   }
 
   document.addEventListener('submit', function (e) {
-    var form = e.target.closest('form[data-confirmar]');
+    var boton = e.submitter && e.submitter.dataset.confirmar ? e.submitter : null;
+    var form = boton ? e.target : e.target.closest('form[data-confirmar]');
     if (!form || form.dataset.confirmado) return;
     e.preventDefault();
-    preguntar(form);
+    preguntar(form, boton);
   }, true);
 })();

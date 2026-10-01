@@ -479,7 +479,12 @@ def cierre(mes):
         else:
             c.estado = "Abierto"
             db.session.commit()
-            flash("Números recalculados." if recalcula else "Borrador guardado.", "ok")
+            if accion != "circular":
+                flash("Números recalculados." if recalcula else "Borrador guardado.", "ok")
+        if accion == "circular":
+            # Primero se guarda lo que se escribió y recién después se arma el PDF,
+            # así la circular sale con los cambios que se acaban de hacer
+            _armar_circular(c, mes)
         return redirect(url_for(".cierre", mes=mes))
 
     objetivo = numero_ar(request.args.get("colchon_objetivo"))
@@ -525,8 +530,18 @@ def circular(mes):
     c = CierreMensual.query.filter_by(mes=mes).first()
     if c is None:
         flash("Guardá primero el borrador del cierre.", "error")
-        return redirect(url_for(".cierre", mes=mes))
+    else:
+        _armar_circular(c, mes)
+    return redirect(url_for(".cierre", mes=mes))
 
+
+def _armar_circular(c, mes):
+    """Arma la circular del mes y la deja en Drive. Avisa por flash cómo salió.
+
+    Se llama desde el botón del formulario, después de guardar el borrador: si
+    generara con lo que había guardado antes, los cambios recién hechos no
+    saldrían en el PDF y parecería que el botón no hace nada.
+    """
     if not c.cerrado:  # mes abierto: los totales se recalculan, si no la circular miente
         n = calculo.numeros_del_mes(mes)
         c.ingresos, c.egresos, c.colchon_entrante = n["ingresos"], n["egresos"], n["colchon_entrante"]
@@ -568,4 +583,3 @@ def circular(mes):
     except reporte.ErrorReporte as e:
         db.session.rollback()
         flash(str(e), "error")
-    return redirect(url_for(".cierre", mes=mes))

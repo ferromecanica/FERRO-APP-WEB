@@ -181,9 +181,10 @@
       <div><label>Notas</label><textarea name="notas" rows="2">{{ (c.notas or '') if c else '' }}</textarea></div>
       <button class="btn btn-primary" name="accion" value="guardar"><i class="fa-solid fa-floppy-disk"></i> Guardar borrador</button>
       {% if reportes_configurados %}
-      <button class="btn" formaction="{{ url_for('contable.circular', mes=mes) }}" formnovalidate
-              {{ 'disabled title="Guardá el borrador primero"' if not c }}>
-        <i class="fa-solid fa-file-pdf"></i> Circular preliminar</button>
+      {# Guarda el borrador y después arma el PDF, para que salga con lo último que
+         se escribió. Tarda, así que el botón avisa que está trabajando. #}
+      <button class="btn" name="accion" value="circular" data-ocupado="Armando la circular…">
+        <i class="fa-solid fa-file-pdf"></i> {{ 'Regenerar la circular' if c and c.link_circular else 'Circular preliminar' }}</button>
       {# Recién generada se abre desde acá, sin ir a buscarla a Drive a mano #}
       {% if c and c.link_circular %}
       <a class="btn" href="{{ c.link_circular }}" target="_blank" rel="noopener">
