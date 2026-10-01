@@ -184,6 +184,11 @@
       <button class="btn" formaction="{{ url_for('contable.circular', mes=mes) }}" formnovalidate
               {{ 'disabled title="Guardá el borrador primero"' if not c }}>
         <i class="fa-solid fa-file-pdf"></i> Circular preliminar</button>
+      {# Recién generada se abre desde acá, sin ir a buscarla a Drive a mano #}
+      {% if c and c.link_circular %}
+      <a class="btn" href="{{ c.link_circular }}" target="_blank" rel="noopener">
+        <i class="fa-solid fa-up-right-from-square"></i> Ver la preliminar</a>
+      {% endif %}
       {% endif %}
       <button class="btn" name="accion" value="cerrar"
               data-confirmar="¿Cerrar {{ mes | mes_imputacion }}?"

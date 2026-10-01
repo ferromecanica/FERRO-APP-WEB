@@ -24,6 +24,7 @@
       tr.total td { background: #fff3e3; font-weight: bold; color: #a85600; border-top: 2px solid #E48A06; font-size: 11px; }
       .chica { width: 62%; margin-left: auto; }
       .nota { font-size: 9px; color: #666; margin-top: 6px; line-height: 1.5; }
+      .historial { font-size: 10px; color: #555; margin: 2px 0 6px; }
       .observaciones li { margin-bottom: 4px; }
       .pie { margin-top: 18px; padding-top: 8px; border-top: 1px solid #eee; font-size: 9px; color: #888; text-align: center; }
       .salarios td { border: 0; padding: 2px 0; }
@@ -129,6 +130,11 @@
       <p style="margin:12px 0 4px"><strong>b) Liquidación de haberes</strong></p>
       <p style="margin:0 0 6px">Disponible para salarios: <strong>{{ (c.resultado - c.colchon) | pesos }}</strong>
         (R.O. {{ c.resultado | pesos }} − colchón {{ c.colchon | pesos }})</p>
+      {% if historial %}
+      {# Un R.O. suelto no dice si el mes fue bueno o flojo: al lado van los anteriores #}
+      <p class="historial">R.O. de los meses anteriores:
+        {% for h in historial %}{{ h.etiqueta }} <strong>{{ h.resultado | pesos }}</strong>{{ ' · ' if not loop.last }}{% endfor %}</p>
+      {% endif %}
       <table class="chica">
         <tbody>
         {% for fila in c.socios %}
@@ -140,6 +146,20 @@
         {% if c.ganancia %}<tr><td>Ganancia de socios</td><td class="num">{{ c.ganancia | pesos }}</td></tr>{% endif %}
         </tbody>
       </table>
+
+      {% if historial %}
+      <p style="margin:12px 0 4px" class="historial">Lo cobrado en los meses anteriores</p>
+      <table class="chica" style="width:auto">
+        <thead><tr><th></th>
+          {% for h in historial %}<th class="num" style="padding-left:22px">{{ h.etiqueta }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for s in socios %}
+          <tr><td>{{ s.nombre }}</td>
+            {% for h in historial %}<td class="num" style="padding-left:22px">{{ h.sueldos.get(s.id, 0) | pesos }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
 
       {% if c.disponible_real %}
       <p style="margin:12px 0 4px"><strong>c) Dinero disponible</strong></p>

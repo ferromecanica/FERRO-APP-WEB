@@ -177,6 +177,20 @@ def falso(accion, **datos):
 drive.llamar, original = falso, drive.llamar
 reporte.configurado, original_cfg = (lambda: True), reporte.configurado
 
+# Meses viejos, para que la circular pueda mostrar de dónde viene el mes
+with app.app_context():
+    from app.models import CierreSocio
+    los_socios = Socio.query.order_by(Socio.orden, Socio.nombre).all()
+    for mes_viejo, ingresos, sueldo in [('2026-04', 1000000, 100000), ('2026-05', 2000000, 200000),
+                                        ('2026-06', 3000000, 300000), ('2026-07', 4000000, 400000)]:
+        viejo_c = CierreMensual(mes=mes_viejo, estado='Cerrado', ingresos=ingresos, egresos=0,
+                                colchon_entrante=0)
+        db.session.add(viejo_c)
+        db.session.flush()
+        for s in los_socios:
+            db.session.add(CierreSocio(cierre_id=viejo_c.id, socio_id=s.id, sueldo=sueldo))
+    db.session.commit()
+
 # con el mes abierto sale el preliminar, con sus compromisos y observaciones
 post(f'/administracion/cierres/{MES}', {'accion': 'guardar', 'colchon_objetivo': '900.000',
                                         'compromiso_concepto': 'Alquiler', 'compromiso_total': '988.735',
@@ -194,6 +208,26 @@ with app.app_context():
     cc = CierreMensual.query.filter_by(mes=MES).one()
     assert cc.link_circular and cc.numero and cc.compromisos
     assert cc.compromisos[0].concepto == 'Alquiler'
+
+# ── De dónde viene el mes: los 3 anteriores, en el R.O. y en los sueldos ──
+assert 'R.O. de los meses anteriores' in html
+for etiqueta, resultado, sueldo in [('Jul 2026', '4.000.000', '400.000'),
+                                    ('Jun 2026', '3.000.000', '300.000'),
+                                    ('May 2026', '2.000.000', '200.000')]:
+    assert etiqueta in html, f'falta {etiqueta} en la circular'
+    assert resultado in html and sueldo in html, f'faltan los números de {etiqueta}'
+assert 'Abr 2026' not in html, 'tiene que traer 3 meses, no más'
+assert 'Lo cobrado en los meses anteriores' in html
+# Cada socio con su fila de sueldos viejos
+with app.app_context():
+    for s in Socio.query.all():
+        assert s.nombre in html.split('Lo cobrado en los meses anteriores')[1]
+
+# ── La preliminar se abre desde la app, sin ir a buscarla a Drive ──
+b = B(c.get(f'/administracion/cierres/{MES}'))
+assert 'Ver la preliminar' in b, 'falta el botón para abrir la circular preliminar'
+with app.app_context():
+    assert CierreMensual.query.filter_by(mes=MES).one().link_circular in b
 
 # ya cerrado, la circular sale definitiva
 post(f'/administracion/cierres/{MES}', {'accion': 'cerrar', 'modo': 'Automático', 'colchon_objetivo': '900.000',

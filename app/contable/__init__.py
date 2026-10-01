@@ -53,6 +53,30 @@ def mes_lindo(mes):
 
 
 SIN_CLASIFICAR = "Sin clasificar"
+MESES_DE_HISTORIAL = 3   # cuántos meses anteriores se muestran al lado de los números del mes
+
+
+def mes_corto(mes):
+    """'2026-08' → 'Ago 2026', para los encabezados de una tabla."""
+    try:
+        anio, numero = mes.split("-")
+        return f"{MESES[int(numero) - 1][:3].capitalize()} {anio}"
+    except (ValueError, IndexError, AttributeError):
+        return mes or "—"
+
+
+def _historial(mes, socios):
+    """Los cierres anteriores a ese mes, con su resultado y lo que cobró cada socio.
+
+    Va en la circular al lado de los números del mes: un resultado suelto no dice
+    si fue un buen mes o uno flojo; con los tres anteriores al lado, sí.
+    """
+    anteriores = (CierreMensual.query.filter(CierreMensual.mes < mes)
+                  .order_by(CierreMensual.mes.desc()).limit(MESES_DE_HISTORIAL).all())
+    return [{
+        "mes": viejo.mes, "etiqueta": mes_corto(viejo.mes), "resultado": viejo.resultado,
+        "sueldos": {f.socio_id: f.sueldo or 0 for f in viejo.socios},
+    } for viejo in anteriores]
 
 
 @bp.app_template_filter("mes_imputacion")
@@ -537,6 +561,7 @@ def circular(mes):
             "colchon_entrante": [m for m in movs if m.tipo == "Colchón"],
             "egresos": egresos, "socios": socios, "total_salarios": total_salarios,
             "incidencias": incidencias, "porcentajes": porcentajes,
+            "historial": _historial(mes, socios),
         })
         db.session.commit()
         flash("Circular generada en Drive." + ("" if c.cerrado else " Dice PRELIMINAR porque el mes está abierto."), "ok")
