@@ -105,9 +105,15 @@ with app.app_context():
     assert nuevo['final'] == caja.saldo(), 'el mes en curso termina en el saldo de hoy'
     assert mes_ant in caja.meses_con_movimiento() and mes_hoy in caja.meses_con_movimiento()
 
+# Los meses están todos en la pantalla, y se abre el que se pide
 b = B(c.get(f'/administracion/caja?mes={mes_ant}'))
-assert 'Del mes pasado' in b and 'Venían de antes' in b
-assert 'De mañana' not in b, 'la pantalla de un mes no puede mostrar los de otro'
+assert 'Del mes pasado' in b and 'De mañana' in b, 'faltan movimientos en la pantalla'
+assert f'id="mes-{mes_ant}" open' in b, 'no abrió el mes que se pidió'
+assert f'id="mes-{mes_hoy}" open' not in b, 'abrió un mes que no se pidió'
+# Cada fila cuelga de su mes, no de cualquiera
+import re as _re
+tramo_viejo = b.split(f'id="mes-{mes_ant}"')[1].split('</details>')[0]
+assert 'Del mes pasado' in tramo_viejo and 'De mañana' not in tramo_viejo, 'una fila quedó en el mes equivocado'
 
 # ── Un ajuste se puede cargar en negativo, que es como se saca plata ──
 with app.app_context():
@@ -120,6 +126,55 @@ post('/administracion/caja/nuevo', {'tipo': 'Gasto', 'monto': '-2.000', 'concept
 with app.app_context():
     assert caja.saldo() == antes - 7000, caja.saldo()
 
+# ── Corregir un movimiento del mes en curso ──
+with app.app_context():
+    gid2 = MovimientoCaja.query.filter_by(concepto='De mañana').one().id
+post(f'/administracion/caja/{gid2}/editar', {'tipo': 'Gasto', 'monto': '7.000',
+                                             'concepto': 'De mañana, bien', 'fecha': HOY.isoformat()})
+with app.app_context():
+    m = db.session.get(MovimientoCaja, gid2)
+    assert m.monto == 7000 and m.concepto == 'De mañana, bien' and m.fecha == HOY, (m.monto, m.fecha)
+    assert m.movimiento.total == 7000, 'el egreso no siguió al gasto'
+    assert m.movimiento.fecha == HOY and 'De mañana, bien' in m.movimiento.concepto
+
+# De gasto a ajuste: el egreso tiene que desaparecer, porque deja de ser gasto del mes
+with app.app_context():
+    mid2 = db.session.get(MovimientoCaja, gid2).movimiento_id
+post(f'/administracion/caja/{gid2}/editar', {'tipo': 'Ajuste', 'monto': '-7.000',
+                                             'concepto': 'Era un depósito', 'fecha': HOY.isoformat()})
+with app.app_context():
+    m = db.session.get(MovimientoCaja, gid2)
+    assert m.tipo == 'Ajuste' and m.monto == -7000, (m.tipo, m.monto)
+    assert m.movimiento is None and db.session.get(MovimientoContable, mid2) is None, 'quedó un egreso huérfano'
+
+# Y de vuelta a gasto: el egreso tiene que volver
+post(f'/administracion/caja/{gid2}/editar', {'tipo': 'Gasto', 'monto': '7.000',
+                                             'concepto': 'Era un gasto nomás', 'fecha': HOY.isoformat()})
+with app.app_context():
+    m = db.session.get(MovimientoCaja, gid2)
+    assert m.movimiento is not None and m.movimiento.total == 7000, 'no volvió a generar el egreso'
+    assert m.movimiento.tipo == 'Egreso' and m.movimiento.mes_imputacion == f'{HOY:%Y-%m}'
+
+# Sin monto no se guarda nada
+assert 'Poné cuánta plata' in post(f'/administracion/caja/{gid2}/editar',
+                                  {'tipo': 'Gasto', 'monto': '', 'concepto': 'x'})
+with app.app_context():
+    assert db.session.get(MovimientoCaja, gid2).concepto == 'Era un gasto nomás'
+
+# ── Los meses salen uno abajo del otro, con el arrastre encadenado ──
+with app.app_context():
+    meses = caja.por_mes()
+    assert [m['mes'] for m in meses] == sorted([m['mes'] for m in meses], reverse=True), 'el más nuevo va arriba'
+    for mas_viejo, mas_nuevo in zip(meses[1:], meses[:-1]):
+        assert mas_viejo['final'] == mas_nuevo['inicial'], (mas_viejo['mes'], mas_nuevo['mes'])
+    assert meses[0]['final'] == caja.saldo(), 'el último mes tiene que terminar en el saldo de hoy'
+    assert meses[-1]['inicial'] == 0, 'el primer mes arranca de cero'
+
+b = B(c.get('/administracion/caja'))
+with app.app_context():
+    for m in caja.por_mes():
+        assert f'id="mes-{m["mes"]}"' in b, f'falta el mes {m["mes"]} en la pantalla'
+
 # ── Un mes cerrado no se toca ──
 with app.app_context():
     from app.models import CierreMensual
@@ -127,7 +182,20 @@ with app.app_context():
     db.session.commit()
     viejo = MovimientoCaja.query.filter_by(concepto='Del mes pasado').one().id
 assert 'ya está cerrado' in post(f'/administracion/caja/{viejo}/eliminar')
+assert 'ya está cerrado' in post(f'/administracion/caja/{viejo}/editar',
+                                {'tipo': 'Gasto', 'monto': '1', 'concepto': 'no'})
 with app.app_context():
-    assert db.session.get(MovimientoCaja, viejo) is not None, 'borró un movimiento de un mes cerrado'
+    quedo = db.session.get(MovimientoCaja, viejo)
+    assert quedo is not None, 'borró un movimiento de un mes cerrado'
+    assert quedo.concepto == 'Del mes pasado' and quedo.monto == 1000, 'editó un mes cerrado'
+
+# Tampoco se puede meter una fila nueva adentro de un mes cerrado moviéndole la fecha
+with app.app_context():
+    suelto = MovimientoCaja.query.filter_by(concepto='Era un gasto nomás').one().id
+assert 'ya está cerrado' in post(f'/administracion/caja/{suelto}/editar',
+                                {'tipo': 'Gasto', 'monto': '7.000', 'concepto': 'Era un gasto nomás',
+                                 'fecha': anterior.isoformat()})
+with app.app_context():
+    assert db.session.get(MovimientoCaja, suelto).fecha == HOY, 'se mudó a un mes cerrado'
 
 print('CAJA OK')

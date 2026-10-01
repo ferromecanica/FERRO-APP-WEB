@@ -720,6 +720,26 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .filtros-columna[hidden] { display: none; }   /* el display:grid le gana al atributo hidden */
 .filtros-pie { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
+/* Caja chica: un mes abajo del otro, se abre el que se quiere mirar */
+.mes-caja { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  margin-bottom: 10px; overflow: hidden; }
+.mes-caja > summary { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  justify-content: space-between; padding: 12px 16px; cursor: pointer; list-style: none;
+  font-weight: 600; }
+.mes-caja > summary::-webkit-details-marker { display: none; }
+.mes-caja > summary:hover { background: var(--surface-2); }
+.mes-caja[open] > summary { border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.mes-nombre { display: inline-flex; align-items: center; gap: 9px; }
+.flecha-mes { color: var(--muted); font-size: .8em; transition: transform .15s; }
+.mes-caja[open] .flecha-mes { transform: rotate(90deg); }
+.mes-numeros { display: inline-flex; gap: 12px; align-items: baseline; font-weight: 500;
+  font-size: .92rem; white-space: nowrap; }
+.mes-numeros .entro { color: var(--ok); }
+.mes-numeros .salio { color: var(--danger); }
+@media (max-width: 700px) {
+  .mes-numeros { width: 100%; justify-content: space-between; gap: 6px; font-size: .85rem; }
+}
+
 /* El código del cliente o del vehículo: columna propia, para poder ordenar por él */
 .codigo { color: var(--muted); font-size: .88em; white-space: nowrap; }
 /* El tilde es el gesto principal de la pantalla: grande, para el dedo */

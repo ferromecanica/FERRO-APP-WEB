@@ -14,29 +14,52 @@
   </div>
 </div>
 
-<div class="filters" style="margin-bottom:14px">
-  <form method="get" style="display:contents">
-    <select name="mes" onchange="this.form.submit()" style="max-width:220px">
-      {% for x in meses %}<option value="{{ x }}" {{ 'selected' if x == mes }}>{{ x | mes_imputacion | capitalize }}</option>{% endfor %}
-    </select>
+{# ───── Anotar ─────
+   Arriba de todo y siempre a la vista: es lo que más se usa. #}
+<div class="card add-box" style="margin-bottom:14px">
+  <form method="post" action="{{ url_for('contable.caja_nuevo') }}" class="fila">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="c-fecha"><label>Fecha</label>
+      <input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
+    <div class="c-desc"><label>Concepto</label>
+      <input name="concepto" placeholder="Ej.: nafta, tornillería, depósito al banco" required></div>
+    <div class="c-tipo"><label>Tipo</label>
+      <select name="tipo">{% for t in tipos %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
+    <div class="c-plata"><label>Monto</label>
+      <input name="monto" inputmode="decimal" class="plata con-signo" placeholder="$" required></div>
+    <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Anotar</button></div>
   </form>
-  <span class="muted small" style="align-self:center">Venían de antes <strong>{{ m.inicial | pesos }}</strong>
-    · quedaron <strong>{{ m.final | pesos }}</strong> al final del mes</span>
+  <div class="muted small" style="margin-top:8px">Un <strong>gasto</strong> resta y va a los egresos del mes.
+    Un <strong>ajuste</strong> no es un gasto (lo que se depositó, lo que se llevó un socio, la apertura):
+    restá poniendo el monto en negativo.</div>
 </div>
 
-<div class="card">
-  <div class="card-head seccion"><h2><i class="fa-solid fa-receipt"></i> Movimientos</h2>
-    <span class="muted small">{{ m.filas | length }} movimiento{{ 's' if m.filas | length != 1 }}
-      · {{ m.entro | pesos }} entraron, {{ m.salio | pesos }} salieron</span></div>
+{# ───── Los meses, uno abajo del otro ───── #}
+{% for m in meses %}
+{% set cerrado = m.mes in cerrados %}
+<details class="mes-caja" id="mes-{{ m.mes }}" {{ 'open' if m.mes == abierto }}>
+  <summary>
+    <span class="mes-nombre"><i class="fa-solid fa-chevron-right flecha-mes"></i>
+      {{ m.mes | mes_imputacion | capitalize }}
+      {% if cerrado %}<span class="badge">cerrado</span>{% endif %}</span>
+    <span class="mes-numeros">
+      <span class="muted">venían</span> {{ m.inicial | pesos }}
+      <span class="entro">+{{ m.entro | pesos }}</span>
+      <span class="salio">−{{ m.salio | pesos }}</span>
+      <strong>{{ m.final | pesos }}</strong>
+    </span>
+  </summary>
+
   {% if m.filas %}
   <div class="table-wrap"><table class="tabla-densa lista-movil">
     <colgroup><col style="width:100px"><col style="width:140px"><col><col style="width:130px">
-      <col style="width:130px"><col style="width:48px"></colgroup>
+      <col style="width:130px"><col style="width:84px"></colgroup>
     <thead><tr><th class="centro">Fecha</th><th class="izq">Qué</th><th class="izq">Concepto</th>
       <th class="num">Monto</th><th class="num hide-sm">Quedaron</th><th></th></tr></thead>
     <tbody>
     {% for f in m.filas %}
-      <tr>
+      {% set mov = f.movimiento %}
+      <tr {% if mov %}id="caja-{{ mov.id }}"{% endif %}>
         <td class="centro fecha-chica" data-titulo="Fecha">{{ f.fecha | fecha }}</td>
         <td class="izq" data-titulo="Qué">
           {% if f.venta_id %}<a href="{{ url_for('ventas.detalle', id=f.venta_id) }}">Venta {{ f.venta_id }}</a>
@@ -48,36 +71,61 @@
             {{ '+' if f.monto > 0 }}{{ f.monto | pesos }}</strong></td>
         <td class="num hide-sm muted" data-titulo="Quedaron">{{ f.saldo | pesos }}</td>
         <td class="num">
-          {% if f.movimiento %}
-          <form method="post" action="{{ url_for('contable.caja_eliminar', id=f.movimiento.id) }}"
-                data-confirmar="¿Borrar este movimiento de la caja?"
-                data-confirmar-detalle="{{ 'Se borra también su egreso del mes.' if f.movimiento.es_gasto else 'El saldo vuelve a lo de antes.' }}"
-                data-confirmar-boton="Borrar" data-confirmar-tono="peligro" style="display:inline">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn-icon" title="Borrar"><i class="fa-solid fa-trash"></i></button></form>
+          {# Lo que entró por una venta se arregla en la venta, no acá #}
+          {% if mov and not cerrado %}
+          <span class="acciones-fila">
+            <button type="button" class="btn-icon btn-editar" data-editar="caja-{{ mov.id }}" title="Corregir"><i class="fa-solid fa-pen"></i></button>
+            <form method="post" action="{{ url_for('contable.caja_eliminar', id=mov.id) }}"
+                  data-confirmar="¿Borrar este movimiento de la caja?"
+                  data-confirmar-detalle="{{ 'Se borra también su egreso del mes.' if mov.es_gasto else 'El saldo vuelve a lo de antes.' }}"
+                  data-confirmar-boton="Borrar" data-confirmar-tono="peligro" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn-icon" title="Borrar"><i class="fa-solid fa-trash"></i></button></form>
+          </span>
           {% endif %}</td>
       </tr>
+      {% if mov and not cerrado %}
+      <tr id="caja-{{ mov.id }}-edicion" class="fila-edicion" hidden><td colspan="6">
+        <form method="post" action="{{ url_for('contable.caja_editar', id=mov.id) }}" class="fila">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="c-fecha"><label>Fecha</label>
+            <input type="date" name="fecha" value="{{ mov.fecha.isoformat() }}"></div>
+          <div class="c-desc"><label>Concepto</label><input name="concepto" value="{{ mov.concepto or '' }}"></div>
+          <div class="c-tipo"><label>Tipo</label>
+            <select name="tipo">{% for t in tipos %}<option {{ 'selected' if t == mov.tipo }}>{{ t }}</option>{% endfor %}
+              {% if mov.tipo not in tipos %}<option selected>{{ mov.tipo }}</option>{% endif %}</select></div>
+          <div class="c-plata"><label>Monto</label>
+            <input name="monto" inputmode="decimal" class="plata con-signo" value="{{ mov.monto | numero(2) }}"></div>
+          <div class="c-btn"><span class="acciones-edicion">
+            <button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Guardar</button>
+            <button type="button" class="btn btn-sm" data-cancelar>Cancelar</button></span></div>
+        </form>
+      </td></tr>
+      {% endif %}
     {% endfor %}
     </tbody>
   </table></div>
-  {% else %}{{ vacio('fa-wallet', 'No pasó nada por la caja en ' ~ (mes | mes_imputacion) ~ '.') }}{% endif %}
+  {% else %}
+  <div class="card-body muted small">No pasó nada por la caja en {{ m.mes | mes_imputacion }}.</div>
+  {% endif %}
+</details>
+{% else %}
+<div class="card">{{ vacio('fa-wallet', 'Todavía no hay movimientos en la caja.') }}</div>
+{% endfor %}
 
-  <div class="add-box">
-    <form method="post" action="{{ url_for('contable.caja_nuevo') }}" class="fila">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="c-fecha"><label>Fecha</label>
-        <input type="date" name="fecha" value="{{ hoy.isoformat() }}"></div>
-      <div class="c-desc"><label>Concepto</label>
-        <input name="concepto" placeholder="Ej.: nafta, tornillería, depósito al banco" required autofocus></div>
-      <div class="c-tipo"><label>Tipo</label>
-        <select name="tipo">{% for t in tipos %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select></div>
-      <div class="c-plata"><label>Monto</label>
-        <input name="monto" inputmode="decimal" class="plata con-signo" placeholder="$" required></div>
-      <div class="c-btn"><button class="btn btn-primary"><i class="fa-solid fa-check"></i> Anotar</button></div>
-    </form>
-    <div class="muted small" style="margin-top:8px">Un <strong>gasto</strong> resta y va a los egresos del mes.
-      Un <strong>ajuste</strong> no es un gasto (lo que se depositó, lo que se llevó un socio, la apertura):
-      restá poniendo el monto en negativo.</div>
-  </div>
-</div>
+<script>
+  /* Corregir un renglón en el lugar, igual que en los ingresos de stock */
+  document.querySelectorAll('[data-editar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.getElementById(b.dataset.editar).hidden = true;
+      document.getElementById(b.dataset.editar + '-edicion').hidden = false;
+    });
+  });
+  document.querySelectorAll('[data-cancelar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ed = b.closest('.fila-edicion'); ed.hidden = true;
+      document.getElementById(ed.id.replace(/-edicion$/, '')).hidden = false;
+    });
+  });
+</script>
 {% endblock %}

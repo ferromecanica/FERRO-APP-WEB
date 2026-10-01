@@ -97,6 +97,35 @@ def anotar(tipo, monto, fecha=None, concepto=None, quien=None):
     return m
 
 
+def editar(m, tipo, monto, fecha, concepto=None, quien=None):
+    """Cambia un movimiento ya anotado y deja su egreso igual de sincronizado.
+
+    Al cambiar de tipo, el egreso aparece o desaparece: un gasto tiene que estar
+    en el resultado del mes y un ajuste no, así que no alcanza con editar la fila.
+    """
+    if tipo not in MOVIMIENTOS_CAJA:
+        raise ValueError(f"No sé qué es «{tipo}» en la caja.")
+    m.tipo = tipo
+    m.monto = abs(monto) if MOVIMIENTOS_CAJA[tipo]["gasto"] else monto
+    m.fecha = fecha
+    m.concepto = concepto
+    m.quien = quien
+    if m.es_gasto and m.movimiento is None:
+        m.movimiento = MovimientoContable(fecha=fecha, tipo="Egreso", comprobante="S/C", cobrado=True)
+        db.session.add(m.movimiento)
+    elif not m.es_gasto and m.movimiento is not None:
+        db.session.delete(m.movimiento)
+        m.movimiento = None
+    if m.movimiento is not None:
+        m.movimiento.fecha = fecha
+        m.movimiento.mes_imputacion = MovimientoContable.mes_de(fecha)
+        m.movimiento.clasificacion = CLASIFICACION_GASTO
+        m.movimiento.quien = quien
+        m.movimiento.concepto = f"{concepto or 'Gasto'} (caja chica)"[:300]
+        m.movimiento.total = abs(m.monto)
+    return m
+
+
 def borrar(m):
     """Saca el movimiento y, si era un gasto, su egreso."""
     if m.movimiento is not None:
@@ -129,6 +158,27 @@ def meses_con_movimiento():
     meses = {f"{m:%Y-%m}" for (m,) in db.session.query(MovimientoCaja.fecha).distinct()}
     meses |= {f"{p.fecha_acreditacion:%Y-%m}" for p, _ in _cobros_en_efectivo() if p.fecha_acreditacion}
     return sorted(meses | {f"{date.today():%Y-%m}"}, reverse=True)
+
+
+def por_mes():
+    """Todos los meses con movimiento, del más nuevo al más viejo, ya con su extracto.
+
+    Se arma de una pasada: pedir mes por mes volvería a recorrer toda la historia
+    cada vez, porque el saldo inicial de un mes es el final del anterior.
+    """
+    arrastre = 0
+    armados = []
+    for mes in reversed(meses_con_movimiento()):   # del más viejo al más nuevo, para ir arrastrando
+        primero, ultimo = _primero_y_ultimo(mes)
+        filas = movimientos(desde=primero, hasta=ultimo, inicial=arrastre)
+        final = filas[0]["saldo"] if filas else arrastre
+        armados.append({
+            "mes": mes, "filas": filas, "inicial": arrastre, "final": final,
+            "entro": sum(f["monto"] for f in filas if f["monto"] > 0),
+            "salio": -sum(f["monto"] for f in filas if f["monto"] < 0),
+        })
+        arrastre = final
+    return list(reversed(armados))
 
 
 def del_mes(mes):
