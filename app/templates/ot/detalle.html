@@ -65,7 +65,9 @@
 {% elif ot.por_cobrar %}
 <div class="flash flash-warn" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
-  <span><i class="fa-solid fa-hourglass-half"></i> <strong>Por cobrar</strong> · calculado {{ total_calculado | pesos }}</span>
+  <span><i class="fa-solid fa-hourglass-half"></i> <strong>Por cobrar</strong>
+    {%- if ot.monto_acordado %} · acordado <strong>{{ ot.monto_acordado | pesos }}</strong>
+    {%- else %} · calculado {{ total_calculado | pesos }}{% endif %}</span>
 </div>
 {% elif ot.sin_cargo %}
 <div class="flash flash-info" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -288,6 +290,10 @@
           <dt>Repuestos</dt><dd class="num">{{ ot.total_repuestos | pesos }}</dd>
           <dt><strong>Total calculado</strong></dt><dd class="num"><strong>{{ total_calculado | pesos }}</strong></dd>
           <dt>Costo materiales</dt><dd class="num muted">{{ ot.costo_repuestos | pesos }}</dd>
+          {% if ot.por_cobrar and ot.monto_acordado %}
+          <dt><strong>Acordado</strong></dt><dd class="num"><strong style="color:var(--accent-ink)">{{ ot.monto_acordado | pesos }}</strong>
+            <div class="muted small">lo que nos tienen que pagar</div></dd>
+          {% endif %}
           {% if not editable and not ot.por_cobrar %}
           <dt><strong>Cobrado</strong></dt><dd class="num"><strong>{{ ot.total_cobrado | pesos }}</strong></dd>
           <dt>Ganancia</dt><dd class="num" style="color:var(--ok)"><strong>{{ ((ot.total_cobrado or 0) - ot.costo_repuestos) | pesos }}</strong></dd>

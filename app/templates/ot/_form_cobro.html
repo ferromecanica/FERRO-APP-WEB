@@ -7,7 +7,14 @@
     {% if not ot.cliente %}
       {% with valor=f.get('cliente', ''), obligatorio=True %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% endif %}
-    <div class="full">{{ cobro.cobro(condiciones, total_calculado or 0, f) }}</div>
+    {% if ot.monto_acordado %}
+    <div class="full flash flash-info" style="margin:0">
+      <i class="fa-solid fa-handshake"></i> Lo acordado al cerrar la OT fue <strong>{{ ot.monto_acordado | pesos }}</strong>{%
+        if total_calculado and (total_calculado - ot.monto_acordado) | abs >= 1 %}
+        · hoy el calculado da {{ total_calculado | pesos }}{% endif %}.
+    </div>
+    {% endif %}
+    <div class="full">{{ cobro.cobro(condiciones, sugerido or 0, f) }}</div>
 
     <div><label>Fecha del cobro</label><input type="date" name="fecha_cobro" value="{{ f.get('fecha_cobro', hoy.isoformat()) }}">
       <div class="muted small" style="margin-top:4px">La venta cuenta en el mes de esta fecha.</div></div>

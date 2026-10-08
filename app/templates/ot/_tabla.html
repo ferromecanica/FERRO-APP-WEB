@@ -26,7 +26,10 @@
       <td class="centro fecha-chica hide-sm" data-titulo="Ingreso">{{ ot.fecha_ingreso | fecha }}</td>
       <td class="centro fecha-chica hide-sm solo-escritorio" data-titulo="Fin">{{ ot.fecha_fin | fecha }}</td>
       <td class="num hide-sm solo-escritorio" data-titulo="Calculado">{{ (ot.horas_insumidas * valor_hora + ot.total_repuestos) | pesos }}</td>
-      <td class="num" data-titulo="Cobrado"><strong>{{ ot.total_cobrado | pesos }}</strong></td>
+      <td class="num" data-titulo="Cobrado">
+        {%- if ot.por_cobrar and ot.monto_acordado %}<strong class="a-cobrar">{{ ot.monto_acordado | pesos }}</strong>
+        <div class="muted small">a cobrar</div>
+        {%- else %}<strong>{{ ot.total_cobrado | pesos }}</strong>{% endif %}</td>
       <td class="num hide-sm solo-escritorio" data-titulo="Costo mat.">{{ ot.costo_repuestos | pesos }}</td>
       <td class="centro hide-sm solo-escritorio" data-titulo="Horas">{{ ot.horas_insumidas | numero(1) }}</td>
     </tr>

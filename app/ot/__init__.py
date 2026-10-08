@@ -600,6 +600,9 @@ def _contexto_cierre(ot):
     return dict(
         valor_hora=valor_hora, mano_obra=ot.horas_insumidas * valor_hora,
         total_calculado=ot.horas_insumidas * valor_hora + ot.total_repuestos,
+        # Lo que se le ofrece al cobrar: si se había acordado un monto, ese, porque
+        # el calculado pudo cambiar después y no es lo que se le dijo al cliente
+        sugerido=ot.monto_acordado or (ot.horas_insumidas * valor_hora + ot.total_repuestos),
         condiciones=CondicionPago.query.filter_by(activa=True).order_by(CondicionPago.orden).all(),
         clasificaciones=CLASIFICACIONES_CIERRE, checklist=CHECKLIST,
         motivos_sin_cargo=MOTIVOS_SIN_CARGO,
@@ -687,7 +690,9 @@ def cerrar(id):
         ot.total_cobrado = 0
         mensaje = f"OT #{ot.id} cerrada sin cargo{' (' + ot.motivo_sin_cargo + ')' if ot.motivo_sin_cargo else ''}."
     else:
-        mensaje = f"OT #{ot.id} cerrada. Queda por cobrar."
+        ot.monto_acordado = numero_ar(request.form.get("monto_acordado"))
+        mensaje = f"OT #{ot.id} cerrada. Queda por cobrar"
+        mensaje += f": ${ot.monto_acordado:,.0f}.".replace(",", ".") if ot.monto_acordado else "."
     db.session.commit()
     flash(mensaje, "ok")
     # El reporte sale siempre: en las que no son service, el checklist va todo en NO
@@ -750,6 +755,7 @@ def reabrir(id):
         ot.estado = "En proceso"
         ot.fecha_fin = None
         ot.total_cobrado = None
+        ot.monto_acordado = None
         ot.sin_cargo, ot.motivo_sin_cargo = False, None
         db.session.commit()
         flash(f"OT #{ot.id} reabierta. Se anuló la venta asociada.", "info")

@@ -27,6 +27,17 @@
       {% with valor=f.get('cliente', ''), obligatorio=(f.get('cobrado') != 'no') %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% endif %}
 
+    {# Queda por cobrar: se anota cuánto se arregló, que es lo que después se
+       olvida. Viene con el calculado puesto, y se corrige si se pactó otra cosa. #}
+    <div class="full bloque-acordado" {{ '' if f.get('cobrado') == 'no' else 'hidden' }}>
+      <label>¿Cuánto nos tienen que pagar?</label>
+      <input name="monto_acordado" inputmode="decimal" class="input-grande plata"
+             value="{{ f.get('monto_acordado', (total_calculado | numero) if total_calculado else '') }}"
+             placeholder="$">
+      <div class="muted small" style="margin-top:6px">Lo que arreglaste con el cliente. Queda anotado en la OT
+        y es lo que te va a sugerir el día que lo cobres.</div>
+    </div>
+
     <div class="full bloque-cobro" {{ '' if f.get('cobrado') == 'si' else 'hidden' }}>
       <div class="form-grid">
         <div class="full">{{ cobro.cobro(condiciones, total_calculado or 0, f) }}</div>
@@ -75,6 +86,8 @@
     var no = form.querySelector('input[name="cobrado"][value="no"]').checked;
     var caja = form.querySelector('.bloque-sin-cargo');
     if (caja) caja.hidden = !form.querySelector('input[name="cobrado"][value="sin_cargo"]').checked;
+    var acordado = form.querySelector('.bloque-acordado');
+    if (acordado) acordado.hidden = !no;
     cobro.hidden = !si;
     // Solo lo que se ve puede ser obligatorio: un campo oculto y sin llenar frena
     // el envío sin poder mostrar el aviso, y el botón parece que no hace nada.

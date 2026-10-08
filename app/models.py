@@ -193,6 +193,10 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     detalle = db.Column(db.Text)
     estado = db.Column(db.String(30), default="Pendiente", nullable=False)
     presupuesto_cliente = db.Column(db.Float)
+    # Lo que se arregló con el cliente al cerrar sin cobrar. El calculado puede
+    # cambiar después (se agrega un repuesto, cambia el valor hora), y lo que se
+    # pactó de palabra se olvida: por eso se anota cuando todavía está fresco.
+    monto_acordado = db.Column(db.Float)
     total_cobrado = db.Column(db.Float)
     fecha_fin = db.Column(db.Date)
     clasificacion_cierre = db.Column(db.String(40))
