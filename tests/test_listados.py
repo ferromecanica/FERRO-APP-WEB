@@ -116,6 +116,22 @@ escribir = next(r for r in reglas if r.split()[0] == 'input')
 assert 'from:' not in escribir, f'escribir solo dispara en un campo, no en los filtros: {escribir}'
 assert 'changed' not in escribir, f'con "changed" no dispara nunca desde el formulario: {escribir}'
 
+# ── Buscar un cliente por cualquier dato de su ficha ──
+with app.app_context():
+    quien = Cliente.query.order_by(Cliente.id).first()
+    quien.direccion = 'Santa María de Oro 217 bis'
+    quien.email = 'taller.prueba@ejemplo.com'
+    quien.telefono = '3416206823'
+    db.session.commit()
+    nombre, codigo = quien.nombre, quien.codigo
+
+for buscando in ['Santa María de Oro', 'oro 217', 'SANTA MARIA', 'taller.prueba', '6206823']:
+    b = B(c.get('/clientes/', query_string={'q': buscando}))
+    assert codigo in b, f'no encontró al cliente buscando «{buscando}»'
+
+# Y lo que no coincide con nadie sigue sin traer nada
+assert 'No hay clientes' in B(c.get('/clientes/', query_string={'q': 'Calle Inexistente 9999'}))
+
 # ── Una columna que no existe no rompe nada ──
 assert c.get('/clientes/?orden=loquesea').status_code == 200
 assert c.get('/stock/?f_inventado=x').status_code == 200

@@ -122,10 +122,12 @@ def lista():
         consulta = consulta.outerjoin(Vehiculo)
         for palabra in q.split():
             like = f"%{sin_acentos(palabra)}%"
+            # Se busca en todo lo que se carga del cliente: si un dato está en la
+            # ficha y el buscador no lo mira, parece que el cliente no existe
             consulta = consulta.filter(or_(
                 _como(Cliente.nombre, like), _como(Cliente.telefono, like), _como(Vehiculo.patente, like),
-                _como(Cliente.cuit, like), _como(Cliente.notas, like), _como(Vehiculo.marca, like),
-                _como(Vehiculo.modelo, like)))
+                _como(Cliente.cuit, like), _como(Cliente.notas, like), _como(Cliente.direccion, like),
+                _como(Cliente.email, like), _como(Vehiculo.marca, like), _como(Vehiculo.modelo, like)))
         consulta = consulta.distinct()
     # Sin elegir nada: el último cliente que se cargó, arriba de todo
     orden = request.args.get("orden", "") or "id"
