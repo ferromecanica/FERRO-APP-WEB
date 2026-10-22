@@ -600,9 +600,9 @@ def _contexto_cierre(ot):
     return dict(
         valor_hora=valor_hora, mano_obra=ot.horas_insumidas * valor_hora,
         total_calculado=ot.horas_insumidas * valor_hora + ot.total_repuestos,
-        # Lo que se le ofrece al cobrar: si se había acordado un monto, ese, porque
-        # el calculado pudo cambiar después y no es lo que se le dijo al cliente
-        sugerido=ot.monto_acordado or (ot.horas_insumidas * valor_hora + ot.total_repuestos),
+        # Lo que se le ofrece al cobrar: lo que falta. Con un monto acordado es el
+        # saldo (ya pueden haber pagado una parte); sin él, el calculado de hoy
+        sugerido=ot.saldo if ot.monto_acordado else (ot.horas_insumidas * valor_hora + ot.total_repuestos),
         condiciones=CondicionPago.query.filter_by(activa=True).order_by(CondicionPago.orden).all(),
         clasificaciones=CLASIFICACIONES_CIERRE, checklist=CHECKLIST,
         motivos_sin_cargo=MOTIVOS_SIN_CARGO,
@@ -622,21 +622,34 @@ def _guardar_checklist(ot, es_servicio):
 
 
 def _registrar_venta(ot, partes, fecha):
-    """Crea la venta de la OT (la fecha es la del cobro: la ganancia cuenta ese mes)."""
+    """Suma un cobro a la OT y devuelve cuánto entró ahora.
+
+    El primer cobro crea la venta; los siguientes se le agregan como una parte
+    más. La venta vale lo que se lleva cobrado, porque acá la plata se cuenta
+    cuando entra: si una OT se paga en dos veces, el ingreso cae en los dos
+    meses, cada parte el día que llegó. El costo de los materiales va una sola
+    vez, en el primer cobro.
+    """
     costo = ot.costo_repuestos  # antes de crear la venta (consultar la OT no debe arrastrar objetos a medio armar)
-    cobrado = sum(b for _, b in partes)
-    ot.total_cobrado = cobrado
-    venta = Venta(fecha=fecha, cliente=ot.cliente)
-    cobros.anotar(venta, partes, fecha)
-    venta.items.append(VentaItem(
-        descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
-        precio_unitario=cobrado, costo_unitario=costo,
-    ))
-    db.session.add(venta)
-    venta.ot = ot
+    venta = ot.venta
+    antes = (venta.bruto_cobrado or 0) if venta else 0
+    if venta is None:
+        venta = Venta(fecha=fecha, cliente=ot.cliente)
+        venta.items.append(VentaItem(
+            descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
+            precio_unitario=0, costo_unitario=costo,
+        ))
+        db.session.add(venta)
+        venta.ot = ot
+        cobros.anotar(venta, partes, fecha)
+    else:
+        cobros.agregar(venta, partes, fecha)
+    if venta.items:
+        venta.items[0].precio_unitario = venta.bruto_cobrado or 0
+    ot.total_cobrado = venta.bruto_cobrado or 0
     db.session.flush()  # la venta necesita id para atarle el ingreso
     contable.registrar_venta(venta)
-    return cobrado
+    return (venta.bruto_cobrado or 0) - antes
 
 
 def _datos_cobro(ot):
@@ -739,9 +752,16 @@ def cobrar(id):
         return render_template("ot/cobrar.html", ot=ot, **_contexto_cierre(ot))
     if ot.cliente is None:
         _asignar_cliente(ot, cliente)
+    # Si la OT se cerró sin anotar cuánto era, se puede decir acá: sin ese dato
+    # no hay con qué comparar y cualquier cobro la daría por saldada
+    if not ot.monto_acordado:
+        ot.monto_acordado = numero_ar(request.form.get("monto_acordado"))
     cobrado = _registrar_venta(ot, partes, _fecha("fecha_cobro", date.today()))
     db.session.commit()
-    flash(f"Cobro registrado: ${cobrado:,.0f}.".replace(",", "."), "ok")
+    aviso = f"Cobro registrado: ${cobrado:,.0f}.".replace(",", ".")
+    if ot.por_cobrar:
+        aviso += f" Quedan ${ot.saldo:,.0f} por cobrar.".replace(",", ".")
+    flash(aviso, "ok")
     return _volver(ot)
 
 

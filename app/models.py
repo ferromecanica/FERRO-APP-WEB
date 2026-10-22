@@ -249,12 +249,29 @@ class OrdenTrabajo(TimestampMixin, db.Model):
         return self.ventas[0] if self.ventas else None
 
     @property
-    def por_cobrar(self):
-        """Trabajo terminado pero todavía sin cobrar (sin venta registrada).
+    def saldo(self):
+        """Lo que falta cobrar, cuando se sabe cuánto se arregló.
 
+        Sin monto acordado no hay con qué comparar: ahí la primera venta cierra
+        el tema, como fue siempre.
+        """
+        if not self.monto_acordado:
+            return 0
+        return max(self.monto_acordado - (self.total_cobrado or 0), 0)
+
+    @property
+    def por_cobrar(self):
+        """Trabajo terminado al que todavía le falta entrar plata.
+
+        Puede ser que no se haya cobrado nada, o que el cliente haya pagado una
+        parte: mientras quede saldo, la OT sigue en la lista de por cobrar.
         Las que se cerraron sin cargo no cuentan: no hay nada que cobrar.
         """
-        return self.estado == "Finalizada" and not self.ventas and not self.sin_cargo
+        if self.estado != "Finalizada" or self.sin_cargo:
+            return False
+        if not self.ventas:
+            return True
+        return self.saldo >= 1      # con menos de un peso ya está saldada
 
     @classmethod
     def proximo_numero(cls):

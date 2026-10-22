@@ -51,25 +51,45 @@ def leer_del_formulario(form, prefijo="pago", sugerido=None):
 
 
 def anotar(venta, partes, fecha):
-    """Deja en la venta las partes del cobro y el resumen que leen las demás pantallas.
+    """Deja en la venta las partes del cobro, reemplazando las que hubiera.
 
     `partes` es una lista de (condición, lo que pagó el cliente en esa parte).
     """
     for viejo in list(venta.pagos):
         db.session.delete(viejo)
     venta.pagos = []
-    for orden, (condicion, bruto) in enumerate(partes, start=1):
+    return agregar(venta, partes, fecha)
+
+
+def agregar(venta, partes, fecha):
+    """Suma cobros a la venta sin tocar los que ya estaban.
+
+    Sirve para los pagos parciales: el cliente deja una seña y a la semana
+    completa. Cada pago entra con su fecha, así la plata cuenta el mes en que
+    cayó y no el de la primera entrega.
+    """
+    desde = len(venta.pagos)
+    for orden, (condicion, bruto) in enumerate(partes, start=desde + 1):
         venta.pagos.append(PagoVenta(
             condicion=condicion, orden=orden, bruto=bruto, destino=condicion.destino,
             neto=condicion.neto(bruto), fecha_acreditacion=condicion.acredita(fecha),
         ))
+    return _resumir(venta)
 
-    venta.condicion = partes[0][0] if partes else None
-    venta.metodo_pago = " + ".join(c.nombre for c, _ in partes) or None
-    venta.bruto_cobrado = sum(b for _, b in partes)
-    venta.neto_acreditado = sum(c.neto(b) for c, b in partes)
+
+def _resumir(venta):
+    """Rehace el resumen que leen los listados, Performance y el importador."""
+    pagos = sorted(venta.pagos, key=lambda p: p.orden or 0)
+    venta.condicion = pagos[0].condicion if pagos else None
+    nombres = []
+    for p in pagos:                       # sin repetir: "Efectivo + Efectivo" no dice nada
+        if p.nombre not in nombres:
+            nombres.append(p.nombre)
+    venta.metodo_pago = (" + ".join(nombres) or None) and " + ".join(nombres)[:30]
+    venta.bruto_cobrado = sum(p.bruto or 0 for p in pagos)
+    venta.neto_acreditado = sum(p.neto or 0 for p in pagos)
     # La venta termina de cobrarse cuando entra la última parte
-    venta.fecha_acreditacion = max((p.fecha_acreditacion for p in venta.pagos if p.fecha_acreditacion),
+    venta.fecha_acreditacion = max((p.fecha_acreditacion for p in pagos if p.fecha_acreditacion),
                                    default=None)
     return venta
 

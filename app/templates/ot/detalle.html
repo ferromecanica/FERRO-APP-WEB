@@ -66,7 +66,9 @@
 <div class="flash flash-warn" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
   <span><i class="fa-solid fa-hourglass-half"></i> <strong>Por cobrar</strong>
-    {%- if ot.monto_acordado %} · acordado <strong>{{ ot.monto_acordado | pesos }}</strong>
+    {%- if ot.monto_acordado and ot.total_cobrado %} · pagó {{ ot.total_cobrado | pesos }} de {{ ot.monto_acordado | pesos }},
+      falta <strong>{{ ot.saldo | pesos }}</strong>
+    {%- elif ot.monto_acordado %} · acordado <strong>{{ ot.monto_acordado | pesos }}</strong>
     {%- else %} · calculado {{ total_calculado | pesos }}{% endif %}</span>
 </div>
 {% elif ot.sin_cargo %}
@@ -290,15 +292,30 @@
           <dt>Repuestos</dt><dd class="num">{{ ot.total_repuestos | pesos }}</dd>
           <dt><strong>Total calculado</strong></dt><dd class="num"><strong>{{ total_calculado | pesos }}</strong></dd>
           <dt>Costo materiales</dt><dd class="num muted">{{ ot.costo_repuestos | pesos }}</dd>
+          {% if ot.monto_acordado %}
+          <dt><strong>Acordado</strong></dt><dd class="num"><strong>{{ ot.monto_acordado | pesos }}</strong></dd>
+          {% endif %}
           {% if ot.por_cobrar and ot.monto_acordado %}
-          <dt><strong>Acordado</strong></dt><dd class="num"><strong style="color:var(--accent-ink)">{{ ot.monto_acordado | pesos }}</strong>
-            <div class="muted small">lo que nos tienen que pagar</div></dd>
+            {% if ot.total_cobrado %}<dt>Ya pagó</dt><dd class="num">{{ ot.total_cobrado | pesos }}</dd>{% endif %}
+          <dt><strong>Falta cobrar</strong></dt><dd class="num"><strong style="color:var(--accent-ink)">{{ ot.saldo | pesos }}</strong></dd>
           {% endif %}
           {% if not editable and not ot.por_cobrar %}
           <dt><strong>Cobrado</strong></dt><dd class="num"><strong>{{ ot.total_cobrado | pesos }}</strong></dd>
           <dt>Ganancia</dt><dd class="num" style="color:var(--ok)"><strong>{{ ((ot.total_cobrado or 0) - ot.costo_repuestos) | pesos }}</strong></dd>
           {% endif %}
         </dl>
+        {% if ot.venta and ot.venta.pagos | length > 1 %}
+        {# Se cobró en varias veces: conviene ver cuándo entró cada parte #}
+        <div class="sub-seccion" style="margin:14px -16px 0"><i class="fa-solid fa-cash-register"></i> Pagos recibidos</div>
+        <table class="tabla-densa" style="width:100%;margin-top:6px">
+          <tbody>
+          {% for p in ot.venta.pagos %}
+            <tr><td>{{ p.fecha_acreditacion | fecha }}</td><td>{{ p.nombre }}</td>
+              <td class="num"><strong>{{ p.bruto | pesos }}</strong></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
         {% if not valor_hora %}<p class="small" style="margin:12px 0 0"><i class="fa-solid fa-circle-info"></i> Falta cargar el <a href="{{ url_for('dashboard.configuracion') }}">valor de la hora</a>.</p>{% endif %}
       </div>
     </div>

@@ -8,10 +8,34 @@
       {% with valor=f.get('cliente', ''), obligatorio=True %}{% include "ot/_cliente_picker.html" %}{% endwith %}
     {% endif %}
     {% if ot.monto_acordado %}
-    <div class="full flash flash-info" style="margin:0">
-      <i class="fa-solid fa-handshake"></i> Lo acordado al cerrar la OT fue <strong>{{ ot.monto_acordado | pesos }}</strong>{%
-        if total_calculado and (total_calculado - ot.monto_acordado) | abs >= 1 %}
-        · hoy el calculado da {{ total_calculado | pesos }}{% endif %}.
+    <div class="full cuenta-cobro">
+      <div><span class="muted small">Acordado</span><strong>{{ ot.monto_acordado | pesos }}</strong></div>
+      <div><span class="muted small">Ya pagó</span><strong>{{ (ot.total_cobrado or 0) | pesos }}</strong></div>
+      <div class="falta"><span class="muted small">Falta</span><strong>{{ ot.saldo | pesos }}</strong></div>
+    </div>
+    {% if total_calculado and (total_calculado - ot.monto_acordado) | abs >= 1 %}
+      <div class="full muted small" style="margin:-6px 0 0">Lo calculado hoy da {{ total_calculado | pesos }}.</div>
+    {% endif %}
+    {% else %}
+    {# Se cerró sin anotar cuánto era: sin ese dato, cualquier cobro la da por saldada #}
+    <div class="full"><label>¿Cuánto es el total a cobrar?</label>
+      <input name="monto_acordado" inputmode="decimal" class="plata"
+             value="{{ f.get('monto_acordado', (total_calculado | numero) if total_calculado else '') }}" placeholder="$">
+      <div class="muted small" style="margin-top:4px">Si te pagan solo una parte, con esto sabemos cuánto falta.</div></div>
+    {% endif %}
+
+    {% if ot.venta and ot.venta.pagos %}
+    <div class="full">
+      <label>Lo que ya entró</label>
+      <table class="tabla-densa" style="width:auto">
+        <tbody>
+        {% for p in ot.venta.pagos %}
+          <tr><td style="padding-right:18px">{{ p.fecha_acreditacion | fecha }}</td>
+            <td style="padding-right:18px">{{ p.nombre }}</td>
+            <td class="num"><strong>{{ p.bruto | pesos }}</strong></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
     </div>
     {% endif %}
     <div class="full">{{ cobro.cobro(condiciones, sugerido or 0, f) }}</div>
@@ -20,7 +44,8 @@
       <div class="muted small" style="margin-top:4px">La venta cuenta en el mes de esta fecha.</div></div>
   </div>
   <div class="actions" style="margin-top:18px">
-    <button class="btn btn-primary"><i class="fa-solid fa-cash-register"></i> Registrar cobro</button>
+    <button class="btn btn-primary"><i class="fa-solid fa-cash-register"></i>
+      {{ 'Registrar este pago' if ot.total_cobrado else 'Registrar cobro' }}</button>
     <button type="button" class="btn" data-cerrar-dialogo>Volver</button>
   </div>
 </form>
