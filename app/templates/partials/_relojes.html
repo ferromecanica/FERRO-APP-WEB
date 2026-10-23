@@ -35,10 +35,10 @@
          (t.margen.sin_costo ~ ' sin costo cargado') if t.margen.sin_costo else None) }}
 
 {{ reloj(t.relojes.resultado, 'Resultado del mes', 'fa-scale-balanced', t.plata.resultado | pesos,
-         (('%+d' % t.contra_resultado) ~ ' % contra el promedio')
+         (('%+d' % t.contra_resultado) ~ ' % contra el promedio, al día ' ~ t.hoy.day)
            if t.promedio_resultado else 'Sin meses anteriores para comparar',
-         ('Promedio últimos 6 meses ' ~ (t.promedio_resultado | pesos)) if t.promedio_resultado
-           else 'sin sueldos ni capital',
+         ('Promedio últimos 6 meses al día ' ~ t.hoy.day ~ ': ' ~ (t.promedio_resultado | pesos))
+           if t.promedio_resultado else 'sin sueldos ni capital',
          t.tono_resultado, (t.promedio_resultado | pesos) if t.promedio_resultado else None,
          'entraron ' ~ (t.plata.ingresos | pesos) ~ ', salieron ' ~ (t.plata.egresos | pesos)
            ~ ((', más el colchón de ' ~ (t.plata.colchon | pesos)) if t.plata.colchon else '')) }}

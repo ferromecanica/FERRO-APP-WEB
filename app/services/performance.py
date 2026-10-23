@@ -117,13 +117,30 @@ def _egresos_del_mes(mes):
             if m.comprobante not in FUERA_DE_LA_TORTA and m.clasificacion not in CLASIF_FUERA]
 
 
-def resultado_del_mes(mes):
+def _hasta_el_dia(mes, dia):
+    """El último día que entra en la cuenta, sin pasarse del mes.
+
+    El 31 de un mes de 30 no existe, y febrero termina antes que todos.
+    """
+    anio, numero = int(mes[:4]), int(mes[5:7])
+    largo = (_restar_meses(date(anio, numero, 1), -1) - date(anio, numero, 1)).days
+    return date(anio, numero, min(dia, largo))
+
+
+def resultado_del_mes(mes, hasta_dia=None):
     """El resultado operativo, con el mismo criterio que Movimientos y el cierre.
 
     El colchón que viene del mes anterior es plata disponible: sin él, el número
     no coincide con el del cierre mensual.
+
+    Con `hasta_dia` cuenta solo hasta ese día del mes. Sirve para comparar un
+    mes que recién empieza contra los anteriores en el mismo punto: medir diez
+    días contra meses enteros da siempre en rojo y no dice nada.
     """
-    movs = MovimientoContable.query.filter_by(mes_imputacion=mes).all()
+    movs = MovimientoContable.query.filter_by(mes_imputacion=mes)
+    if hasta_dia:
+        movs = movs.filter(MovimientoContable.fecha <= _hasta_el_dia(mes, hasta_dia).isoformat())
+    movs = movs.all()
     ingresos = sum(m.total for m in movs if m.tipo == "Ingreso" and m.cobrado)
     egresos = sum(m.total for m in movs if m.tipo == "Egreso"
                   and m.comprobante not in FUERA_DE_LA_TORTA and m.clasificacion not in CLASIF_FUERA)
@@ -133,13 +150,17 @@ def resultado_del_mes(mes):
             "resultado": ingresos - egresos + colchon}
 
 
-def promedio_de_resultados(hoy, cuantos=MESES_COMPARA):
+def promedio_de_resultados(hoy, cuantos=MESES_COMPARA, al_dia=True):
     """El resultado promedio de los meses anteriores, para tener contra qué comparar.
 
     Un resultado suelto no dice nada: $300.000 puede ser un buen mes o uno malo.
     Los meses sin movimiento no cuentan, si no arrastrarían el promedio a cero.
+
+    Por defecto mide cada mes hasta el mismo día del mes, igual que la
+    facturación: el día 10 se compara contra los primeros 10 días de cada mes.
     """
-    anteriores = [resultado_del_mes(_mes_de(m))["resultado"] for m in _ultimos_meses(hoy, cuantos)[:-1]]
+    dia = hoy.day if al_dia else None
+    anteriores = [resultado_del_mes(_mes_de(m), dia)["resultado"] for m in _ultimos_meses(hoy, cuantos)[:-1]]
     con_movimiento = [r for r in anteriores if r]
     return sum(con_movimiento) / len(con_movimiento) if con_movimiento else 0
 
@@ -257,19 +278,24 @@ def relojes_del_mes(hoy=None):
     contra = (actual["total"] / promedio - 1) * 100 if promedio else 0
 
     margen = margen_del_mes(hoy)
-    plata = resultado_del_mes(_mes_de(hoy))
+    # Hasta hoy, no el mes entero: es lo que se compara contra el promedio
+    plata = resultado_del_mes(_mes_de(hoy), hoy.day)
     stock = valor_del_stock()
     # El resultado se compara contra el promedio de los meses anteriores, igual que
     # la facturación: un número suelto no dice si el mes viene bien o mal
     prom_resultado = promedio_de_resultados(hoy)
-    contra_resultado = (plata["resultado"] / prom_resultado - 1) * 100 if prom_resultado else 0
+    # Contra un promedio negativo (una racha mala) el porcentaje no significa
+    # nada: ahí se muestran los números y se deja de comparar
+    compara = prom_resultado > 0
+    contra_resultado = (plata["resultado"] / prom_resultado - 1) * 100 if compara else 0
     return {
         "hoy": hoy,
         "relojes": {
             "facturacion": reloj(actual["total"], max(actual["total"], promedio) * 1.25 or 1, promedio),
             "margen": reloj(margen["porcentaje"], 100),
             "resultado": reloj(max(plata["resultado"], 0),
-                               max(plata["resultado"], prom_resultado) * 1.25 or 1, prom_resultado),
+                               max(plata["resultado"], prom_resultado) * 1.25 or 1,
+                               prom_resultado if compara else None),
             "stock": reloj(stock["costo"], stock["venta"] or 1),
         },
         "comparativa": comparativa,
@@ -279,9 +305,9 @@ def relojes_del_mes(hoy=None):
         "tono": tono(contra) if promedio else "",
         "margen": margen,
         "plata": plata,
-        "promedio_resultado": prom_resultado,
+        "promedio_resultado": prom_resultado if compara else 0,
         "contra_resultado": contra_resultado,
-        "tono_resultado": tono(contra_resultado) if prom_resultado else "",
+        "tono_resultado": tono(contra_resultado) if compara else "",
         "stock": stock,
     }
 

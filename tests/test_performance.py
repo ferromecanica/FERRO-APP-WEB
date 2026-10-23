@@ -89,4 +89,57 @@ b = B(c.get('/'))
 assert 'Cómo viene el mes' in b and 'marca-texto' in b
 assert 'Reponer' not in b
 
+# ── El resultado se mide al día, no contra meses enteros ──
+# Si no, el día 5 se compara una semana contra meses completos y siempre da rojo.
+with app.app_context():
+    from app.services.performance import _mes_de, _restar_meses, resultado_del_mes
+    # Se limpian esos meses para que la cuenta sea exacta: antes se cargaron otros
+    meses_prueba = [_mes_de(_restar_meses(HOY, n)) for n in (1, 2, 3)]
+    MovimientoContable.query.filter(MovimientoContable.mes_imputacion.in_(meses_prueba)).delete(
+        synchronize_session=False)
+    # En cada uno de los 3 meses anteriores: 100.000 el día 5 y 900.000 el día 25
+    for n in (1, 2, 3):
+        mes = _restar_meses(HOY, n)
+        for dia, monto in ((5, 100000), (25, 900000)):
+            f = mes.replace(day=dia)
+            db.session.add(MovimientoContable(fecha=f, tipo='Ingreso', mes_imputacion=_mes_de(f),
+                                              total=monto, concepto=f'Prueba al día {dia}', cobrado=True))
+    db.session.commit()
+
+    # Al día 10 solo cuentan los del día 5 de cada mes
+    for n in (1, 2, 3):
+        mes = _mes_de(_restar_meses(HOY, n))
+        assert resultado_del_mes(mes, 10)['resultado'] == 100000, mes
+        assert resultado_del_mes(mes, 25)['resultado'] == 1000000, mes
+        assert resultado_del_mes(mes)['resultado'] == 1000000, 'sin día, el mes entero'
+
+    dia10 = date(HOY.year, HOY.month, 10)
+    assert performance.promedio_de_resultados(dia10) == 100000, 'el promedio tiene que ser al día 10'
+    assert performance.promedio_de_resultados(dia10, al_dia=False) == 1000000, 'y el de meses enteros, entero'
+
+    # El 31 no existe en todos los meses: no se puede pasar del último día
+    corto = _mes_de(date(2026, 2, 1))
+    assert resultado_del_mes(corto, 31)['resultado'] == resultado_del_mes(corto)['resultado']
+
+# Y el reloj compara lo que va del mes contra ese promedio al mismo día
+with app.app_context():
+    t = performance.relojes_del_mes(dia10)
+    assert t['plata']['resultado'] == resultado_del_mes(_mes_de(dia10), 10)['resultado']
+    assert t['promedio_resultado'] == 100000
+b = B(c.get('/administracion/performance'))
+assert 'al día' in b, 'la tarjeta no aclara que la comparación es al mismo día del mes'
+
+# Con un promedio negativo no se compara: el porcentaje no significaría nada
+with app.app_context():
+    MovimientoContable.query.filter(MovimientoContable.mes_imputacion.in_(meses_prueba)).delete(
+        synchronize_session=False)
+    for n in (1, 2, 3):
+        mes = _restar_meses(HOY, n).replace(day=5)
+        db.session.add(MovimientoContable(fecha=mes, tipo='Egreso', mes_imputacion=_mes_de(mes),
+                                          total=50000, concepto='Mes malo', cobrado=True))
+    db.session.commit()
+    t = performance.relojes_del_mes(dia10)
+    assert t['promedio_resultado'] == 0 and t['contra_resultado'] == 0, t['contra_resultado']
+    assert t['tono_resultado'] == '', 'no puede pintarse rojo o verde sin con qué comparar'
+
 print('PERFORMANCE OK')
