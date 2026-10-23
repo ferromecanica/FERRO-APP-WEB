@@ -40,8 +40,9 @@
         <td class="izq">{{ v.detalle | truncate(70) if v.detalle else '—' }}
           <div class="muted small">
             {%- if v.ot_id %}<a href="{{ url_for('ot.detalle', id=v.ot_id) }}" onclick="event.stopPropagation()">OT #{{ v.ot_id }}</a>
-              {%- if v.ot and v.ot.ventas | length > 1 %} · pago {{ v.ot.ventas.index(v) + 1 }} de {{ v.ot.ventas | length }}
-                {%- if v.ot.por_cobrar %}, falta {{ v.ot.saldo | pesos }}{% endif %}
+              {# Cuántos pagos va a hacer el cliente no se sabe: se dice cuál es este y qué falta #}
+              {%- if v.ot and v.ot.ventas | length > 1 %} · {{ v.ot.ventas.index(v) + 1 }}º pago
+                {%- if v.ot.por_cobrar %}, faltan {{ v.ot.saldo | pesos }}{% endif %}
               {%- endif %}
             {%- else %}Mostrador{% endif %} · {{ v.items | length }} ítem{{ 's' if v.items | length != 1 }}</div></td>
         <td class="izq hide-sm" data-titulo="Pago">{{ v.metodo_pago or '—' }}</td>

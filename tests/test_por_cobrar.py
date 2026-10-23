@@ -141,7 +141,8 @@ with app.app_context():
 
 # En Ventas se ve cada pago, atado a su OT
 b = B(c.get('/ventas/'))
-assert f'OT #{oid2}' in b and 'pago 2 de 3' in b, 'el listado de ventas no distingue los pagos'
+assert f'OT #{oid2}' in b and '2º pago' in b, 'el listado de ventas no distingue los pagos'
+assert 'de 3' not in b, 'no se puede saber de antemano cuántos pagos va a hacer el cliente'
 
 # ── Una venta de OT no se anula desde Ventas: se maneja desde la OT ──
 with app.app_context():

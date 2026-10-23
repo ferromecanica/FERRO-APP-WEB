@@ -77,9 +77,9 @@
     {% else %}
     <div class="card card-body muted small"><i class="fa-solid fa-circle-info"></i>
       Esta venta salió del cierre de la OT #{{ v.ot_id }}: se maneja desde ahí.
-      {%- if v.ot and v.ot.ventas | length > 1 %} Es el pago {{ v.ot.ventas.index(v) + 1 }} de
-        {{ v.ot.ventas | length }} de ese trabajo{% if v.ot.por_cobrar %}, al que todavía le faltan
-        {{ v.ot.saldo | pesos }}{% endif %}.{% endif %}</div>
+      {%- if v.ot and v.ot.ventas | length > 1 %} Es el {{ v.ot.ventas.index(v) + 1 }}º pago de ese
+        trabajo, que se cobró en {{ v.ot.ventas | length }} veces{% if v.ot.por_cobrar %}
+        y al que todavía le faltan {{ v.ot.saldo | pesos }}{% endif %}.{% endif %}</div>
     {% endif %}
   </div>
 </div>

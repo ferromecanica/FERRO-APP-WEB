@@ -650,9 +650,9 @@ def _registrar_venta(ot, partes, fecha):
 
     venta = Venta(fecha=fecha, cliente=ot.cliente)
     cobros.anotar(venta, partes, fecha)
-    cuantos = len(ot.ventas) + 1
+    numero = len(ot.ventas) + 1   # cuántos pagos hará el cliente no se sabe; este es el que es
     venta.items.append(VentaItem(
-        descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}" + (f" (pago {cuantos})" if cuantos > 1 else ""),
+        descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}" + (f" ({numero}º pago)" if numero > 1 else ""),
         cantidad=1, precio_unitario=cobrado, costo_unitario=costo,
     ))
     db.session.add(venta)
