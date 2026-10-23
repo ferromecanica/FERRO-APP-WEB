@@ -13,6 +13,7 @@ with app.app_context():
     otid = ot.id
     assert ot.cliente is not None, 'la prueba necesita una OT con cliente'
     efectivo = str(CondicionPago.query.filter_by(nombre='Efectivo').one().id)
+    transferencia = str(CondicionPago.query.filter_by(nombre='Transferencia').one().id)
 
 # ── Al cerrar sin cobrar se anota lo que se arregló ──
 b = post(f'/ot/{otid}/cerrar', {'cobrado': 'no', 'clasificacion': 'Otro', 'monto_acordado': '450.000',
@@ -51,7 +52,7 @@ with app.app_context():
 
 # ── Pagos parciales: el cliente deja una parte y completa después ──
 with app.app_context():
-    from app.models import MovimientoContable
+    from app.models import MovimientoContable, Venta
     modelo = db.session.get(OrdenTrabajo, otid)
     otra = OrdenTrabajo(id=OrdenTrabajo.proximo_numero(), vehiculo_id=modelo.vehiculo_id,
                         cliente_id=modelo.cliente_id, estado='En proceso',
@@ -59,10 +60,10 @@ with app.app_context():
     db.session.add(otra)
     db.session.commit()
     oid2 = otra.id
-    movs_antes = MovimientoContable.query.count()
+    ventas_antes = Venta.query.count()
 
 post(f'/ot/{oid2}/cerrar', {'cobrado': 'no', 'clasificacion': 'Otro', 'monto_acordado': '400.000',
-                            'fecha_fin': date.today().isoformat()})
+                            'fecha_fin': '2026-10-01'})
 
 # Paga 200.000 de los 400.000: la OT sigue por cobrar, con saldo
 b = post(f'/ot/{oid2}/cobrar', {'pago_condicion_1': efectivo, 'pago_total_1': '200.000',
@@ -70,51 +71,90 @@ b = post(f'/ot/{oid2}/cobrar', {'pago_condicion_1': efectivo, 'pago_total_1': '2
 assert 'Quedan $200.000 por cobrar' in b, b[b.find('Cobro registrado'):][:140]
 with app.app_context():
     o = db.session.get(OrdenTrabajo, oid2)
-    assert o.total_cobrado == 200000 and o.saldo == 200000
-    assert o.por_cobrar, 'con saldo pendiente tiene que seguir por cobrar'
-    assert len(o.venta.pagos) == 1
+    assert o.total_cobrado == 200000 and o.saldo == 200000 and o.por_cobrar
+    assert len(o.ventas) == 1, 'el primer pago es su propia venta'
+    primera = o.ventas[0].id
 
-# Se puede volver a entrar y agregar otro pago
+# Cada pago es una venta aparte, en su mes
 b = post(f'/ot/{oid2}/cobrar', {'pago_condicion_1': efectivo, 'pago_total_1': '150.000',
                                 'fecha_cobro': '2026-11-03'})
 assert 'Quedan $50.000 por cobrar' in b
 with app.app_context():
     o = db.session.get(OrdenTrabajo, oid2)
     assert o.total_cobrado == 350000 and o.saldo == 50000 and o.por_cobrar
-    assert len(o.venta.pagos) == 2, 'el segundo pago tiene que sumarse, no reemplazar'
-    assert o.venta.bruto_cobrado == 350000
-    # Cada pago cuenta el mes en que entró
-    meses = sorted(m.mes_imputacion for m in MovimientoContable.query.filter_by(venta_id=o.venta.id))
+    assert len(o.ventas) == 2, 'el segundo pago tiene que ser otra venta'
+    assert [v.bruto_cobrado for v in o.ventas] == [200000, 150000]
+    assert all(v.ot_id == oid2 for v in o.ventas), 'cada venta queda atada a la OT'
+    # Lo importante: la venta de octubre no se tocó al cobrar en noviembre
+    vieja = db.session.get(Venta, primera)
+    assert vieja.bruto_cobrado == 200000 and f'{vieja.fecha:%Y-%m}' == '2026-10'
+    meses = sorted(m.mes_imputacion for m in MovimientoContable.query.filter(
+        MovimientoContable.venta_id.in_([v.id for v in o.ventas])))
     assert meses == ['2026-10', '2026-11'], meses
-    totales = sorted(m.total for m in MovimientoContable.query.filter_by(venta_id=o.venta.id))
-    assert totales == [150000, 200000], totales
 
-# El último pago la salda y sale de la lista de por cobrar
-b = post(f'/ot/{oid2}/cobrar', {'pago_condicion_1': efectivo, 'pago_total_1': '50.000',
-                                'fecha_cobro': '2026-11-10'})
-assert 'Quedan' not in b.split('Cobro registrado')[1][:80]
+# El último pago la salda
+post(f'/ot/{oid2}/cobrar', {'pago_condicion_1': efectivo, 'pago_total_1': '50.000',
+                            'fecha_cobro': '2026-11-10'})
 with app.app_context():
     o = db.session.get(OrdenTrabajo, oid2)
     assert o.total_cobrado == 400000 and o.saldo == 0 and not o.por_cobrar
-    assert len(o.venta.pagos) == 3
-    # El costo de los materiales se cuenta una sola vez
-    assert len(o.venta.items) == 1 and o.venta.items[0].precio_unitario == 400000
+    assert len(o.ventas) == 3 and Venta.query.count() == ventas_antes + 3
+    # El costo de los materiales se reparte, pero suma el real una sola vez
+    costo_puesto = sum((i.costo_unitario or 0) * (i.cantidad or 0) for v in o.ventas for i in v.items)
+    assert abs(costo_puesto - o.costo_repuestos) < 0.05, (costo_puesto, o.costo_repuestos)
+    assert sum(v.bruto_cobrado for v in o.ventas) == 400000
 
 # Ya saldada, no deja cobrar de nuevo
 assert 'no tiene un cobro pendiente' in post(f'/ot/{oid2}/cobrar',
                                              {'pago_condicion_1': efectivo, 'pago_total_1': '1.000'})
 
+# ── Lo que se paga en efectivo entra a la caja chica, pago por pago ──
+with app.app_context():
+    from app.services import caja
+    o = db.session.get(OrdenTrabajo, oid2)
+    enlacaja = [f for f in caja.movimientos() if f['venta_id'] in [v.id for v in o.ventas]]
+    assert len(enlacaja) == 3, 'cada pago en efectivo tiene que entrar a la caja'
+    assert sorted(f['monto'] for f in enlacaja) == [50000, 150000, 200000]
+    assert sorted(str(f['fecha']) for f in enlacaja) == ['2026-10-05', '2026-11-03', '2026-11-10'], \
+        'cada pago entra a la caja el día que se cobró'
+
+# ── Y si un pago es mitad efectivo y mitad transferencia, solo va el efectivo ──
+with app.app_context():
+    modelo = db.session.get(OrdenTrabajo, otid)
+    mixta = OrdenTrabajo(id=OrdenTrabajo.proximo_numero(), vehiculo_id=modelo.vehiculo_id,
+                         cliente_id=modelo.cliente_id, estado='En proceso', detalle='Pago mixto')
+    db.session.add(mixta)
+    db.session.commit()
+    oid3 = mixta.id
+    caja_antes = caja.entradas_por_ventas()
+
+post(f'/ot/{oid3}/cerrar', {'cobrado': 'no', 'clasificacion': 'Otro', 'monto_acordado': '300.000',
+                            'fecha_fin': '2026-10-01'})
+post(f'/ot/{oid3}/cobrar', {'pago_condicion_1': efectivo, 'pago_total_1': '80.000',
+                            'pago_condicion_2': transferencia, 'pago_total_2': '20.000',
+                            'fecha_cobro': '2026-10-20'})
+with app.app_context():
+    o = db.session.get(OrdenTrabajo, oid3)
+    assert o.total_cobrado == 100000 and o.saldo == 200000, (o.total_cobrado, o.saldo)
+    assert caja.entradas_por_ventas() == caja_antes + 80000, 'a la caja va solo la parte en efectivo'
+    assert sorted(p.destino for p in o.cobros) == ['Banco', 'Caja']
+
+# En Ventas se ve cada pago, atado a su OT
+b = B(c.get('/ventas/'))
+assert f'OT #{oid2}' in b and 'pago 2 de 3' in b, 'el listado de ventas no distingue los pagos'
+
 # ── Una venta de OT no se anula desde Ventas: se maneja desde la OT ──
 with app.app_context():
-    vid = db.session.get(OrdenTrabajo, oid2).venta.id
+    vid = db.session.get(OrdenTrabajo, oid2).ventas[0].id
 assert 'se maneja desde la OT' in post(f'/ventas/{vid}/anular')
 
-# ── Reabrir la OT se lleva la venta entera, con sus tres pagos ──
+# ── Reabrir la OT se lleva las tres ventas ──
 post(f'/ot/{oid2}/reabrir')
 with app.app_context():
     o = db.session.get(OrdenTrabajo, oid2)
     assert o.abierta and not o.ventas and o.total_cobrado is None and o.monto_acordado is None
-    assert MovimientoContable.query.filter_by(venta_id=vid).count() == 0, 'quedaron ingresos de una venta borrada'
+    assert Venta.query.filter_by(ot_id=oid2).count() == 0, 'quedaron ventas de una OT reabierta'
+    assert MovimientoContable.query.filter_by(venta_id=vid).count() == 0
 
 # ── Reabrir la OT borra el acuerdo junto con el resto del cierre ──
 post(f'/ot/{otid}/reabrir')

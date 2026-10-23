@@ -226,7 +226,7 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     horas = db.relationship("RegistroHoras", back_populates="ot", cascade="all, delete-orphan")
     consumos = db.relationship("ConsumoOT", back_populates="ot", cascade="all, delete-orphan")
     fotos = db.relationship("FotoOT", back_populates="ot", cascade="all, delete-orphan")
-    ventas = db.relationship("Venta", back_populates="ot")
+    ventas = db.relationship("Venta", back_populates="ot", order_by="Venta.fecha, Venta.id")
 
     @property
     def horas_insumidas(self):
@@ -247,6 +247,16 @@ class OrdenTrabajo(TimestampMixin, db.Model):
     @property
     def venta(self):
         return self.ventas[0] if self.ventas else None
+
+    @property
+    def cobros(self):
+        """Cada pago que entró, de la más vieja a la más nueva.
+
+        Un trabajo se puede cobrar en varias veces, y cada cobro es su propia
+        venta: así un pago de noviembre no le cambia los números a octubre, que
+        quizá ya está cerrado.
+        """
+        return [p for v in self.ventas for p in v.pagos]
 
     @property
     def saldo(self):

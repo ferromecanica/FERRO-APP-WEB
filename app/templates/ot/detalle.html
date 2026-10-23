@@ -47,7 +47,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn"><i class="fa-solid fa-rotate"></i> <span>{{ 'Regenerar' if ot.link_reporte else 'Generar' }} reporte</span></button></form>
       {% endif %}
-      <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" data-confirmar="¿Reabrir la OT {{ ot.id }}?" data-confirmar-detalle="{{ 'Se anula la venta registrada al cerrarla.' if ot.venta else 'Vuelve a estar en proceso.' }}" data-confirmar-boton="Reabrir">
+      <form method="post" action="{{ url_for('ot.reabrir', id=ot.id) }}" data-confirmar="¿Reabrir la OT {{ ot.id }}?" data-confirmar-detalle="{{ ('Se anulan las ' ~ ot.ventas | length ~ ' ventas cobradas.') if ot.ventas | length > 1 else ('Se anula la venta registrada al cerrarla.' if ot.ventas else 'Vuelve a estar en proceso.') }}" data-confirmar-boton="Reabrir">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn"><i class="fa-solid fa-lock-open"></i> Reabrir</button></form>
     {% endif %}
@@ -80,7 +80,9 @@
 {% else %}
 <div class="flash flash-ok" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
   <span><i class="fa-solid fa-circle-check"></i> Finalizada el {{ ot.fecha_fin | fecha }}{% if ot.clasificacion_cierre %} · {{ ot.clasificacion_cierre }}{% endif %}</span>
-  <span>Cobrado <strong>{{ ot.total_cobrado | pesos }}</strong>{% if ot.venta %} · {{ ot.venta.metodo_pago }} · {{ ot.venta.fecha | fecha }}{% endif %}</span>
+  <span>Cobrado <strong>{{ ot.total_cobrado | pesos }}</strong>
+    {%- if ot.ventas | length > 1 %} · en {{ ot.ventas | length }} pagos
+    {%- elif ot.venta %} · {{ ot.venta.metodo_pago }} · {{ ot.venta.fecha | fecha }}{% endif %}</span>
 </div>
 {% endif %}
 
@@ -304,15 +306,16 @@
           <dt>Ganancia</dt><dd class="num" style="color:var(--ok)"><strong>{{ ((ot.total_cobrado or 0) - ot.costo_repuestos) | pesos }}</strong></dd>
           {% endif %}
         </dl>
-        {% if ot.venta and ot.venta.pagos | length > 1 %}
-        {# Se cobró en varias veces: conviene ver cuándo entró cada parte #}
+        {% if ot.cobros | length > 1 %}
+        {# Se cobró en varias veces: cada pago es su propia venta #}
         <div class="sub-seccion" style="margin:14px -16px 0"><i class="fa-solid fa-cash-register"></i> Pagos recibidos</div>
         <table class="tabla-densa" style="width:100%;margin-top:6px">
           <tbody>
-          {% for p in ot.venta.pagos %}
+          {% for v in ot.ventas %}{% for p in v.pagos %}
             <tr><td>{{ p.fecha_acreditacion | fecha }}</td><td>{{ p.nombre }}</td>
+              <td><a href="{{ url_for('ventas.detalle', id=v.id) }}" class="muted small">venta {{ v.id }}</a></td>
               <td class="num"><strong>{{ p.bruto | pesos }}</strong></td></tr>
-          {% endfor %}
+          {% endfor %}{% endfor %}
           </tbody>
         </table>
         {% endif %}

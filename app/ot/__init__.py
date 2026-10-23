@@ -621,35 +621,46 @@ def _guardar_checklist(ot, es_servicio):
     ot.otros = (request.form.get("otros", "").strip() or None) if es_servicio else None
 
 
-def _registrar_venta(ot, partes, fecha):
-    """Suma un cobro a la OT y devuelve cuánto entró ahora.
+def _costo_de_este_pago(ot, cobrado_ahora, queda_saldo):
+    """Qué parte del costo de los materiales carga este pago.
 
-    El primer cobro crea la venta; los siguientes se le agregan como una parte
-    más. La venta vale lo que se lleva cobrado, porque acá la plata se cuenta
-    cuando entra: si una OT se paga en dos veces, el ingreso cae en los dos
-    meses, cada parte el día que llegó. El costo de los materiales va una sola
-    vez, en el primer cobro.
+    El costo es uno solo para todo el trabajo. Si se cargara entero en el
+    primer pago, esa venta daría pérdida y las siguientes 100 % de ganancia.
+    Se reparte a prorrata de lo que cubre cada pago, y el que salda la OT se
+    lleva lo que falte, así el total siempre cierra con el costo real.
     """
-    costo = ot.costo_repuestos  # antes de crear la venta (consultar la OT no debe arrastrar objetos a medio armar)
-    venta = ot.venta
-    antes = (venta.bruto_cobrado or 0) if venta else 0
-    if venta is None:
-        venta = Venta(fecha=fecha, cliente=ot.cliente)
-        venta.items.append(VentaItem(
-            descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}", cantidad=1,
-            precio_unitario=0, costo_unitario=costo,
-        ))
-        db.session.add(venta)
-        venta.ot = ot
-        cobros.anotar(venta, partes, fecha)
-    else:
-        cobros.agregar(venta, partes, fecha)
-    if venta.items:
-        venta.items[0].precio_unitario = venta.bruto_cobrado or 0
-    ot.total_cobrado = venta.bruto_cobrado or 0
+    total = ot.costo_repuestos
+    ya_puesto = sum((i.costo_unitario or 0) * (i.cantidad or 0) for v in ot.ventas for i in v.items)
+    falta = max(total - ya_puesto, 0)
+    if not queda_saldo or not ot.monto_acordado:
+        return falta
+    return min(round(total * cobrado_ahora / ot.monto_acordado, 2), falta)
+
+
+def _registrar_venta(ot, partes, fecha):
+    """Registra un cobro de la OT como su propia venta. Devuelve cuánto entró.
+
+    Cada pago es una venta aparte, con su fecha y su forma de pago. Así la
+    plata cuenta el mes en que entra y, sobre todo, un pago nuevo no le toca
+    los números a una venta de un mes que ya se cerró.
+    """
+    cobrado = sum(b for _, b in partes)
+    queda_saldo = bool(ot.monto_acordado) and (ot.monto_acordado - (ot.total_cobrado or 0) - cobrado) >= 1
+    costo = _costo_de_este_pago(ot, cobrado, queda_saldo)
+
+    venta = Venta(fecha=fecha, cliente=ot.cliente)
+    cobros.anotar(venta, partes, fecha)
+    cuantos = len(ot.ventas) + 1
+    venta.items.append(VentaItem(
+        descripcion=f"{ot.detalle or 'Trabajo'} - OT {ot.id}" + (f" (pago {cuantos})" if cuantos > 1 else ""),
+        cantidad=1, precio_unitario=cobrado, costo_unitario=costo,
+    ))
+    db.session.add(venta)
+    venta.ot = ot
+    ot.total_cobrado = (ot.total_cobrado or 0) + cobrado
     db.session.flush()  # la venta necesita id para atarle el ingreso
     contable.registrar_venta(venta)
-    return (venta.bruto_cobrado or 0) - antes
+    return cobrado
 
 
 def _datos_cobro(ot):

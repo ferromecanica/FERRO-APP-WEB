@@ -24,12 +24,12 @@
       <div class="muted small" style="margin-top:4px">Si te pagan solo una parte, con esto sabemos cuánto falta.</div></div>
     {% endif %}
 
-    {% if ot.venta and ot.venta.pagos %}
+    {% if ot.cobros %}
     <div class="full">
       <label>Lo que ya entró</label>
       <table class="tabla-densa" style="width:auto">
         <tbody>
-        {% for p in ot.venta.pagos %}
+        {% for p in ot.cobros %}
           <tr><td style="padding-right:18px">{{ p.fecha_acreditacion | fecha }}</td>
             <td style="padding-right:18px">{{ p.nombre }}</td>
             <td class="num"><strong>{{ p.bruto | pesos }}</strong></td></tr>
