@@ -31,8 +31,13 @@
          t.tono, (t.promedio | pesos) if t.promedio else None) }}
 
 {{ reloj(t.relojes.margen, 'Margen bruto', 'fa-percent', (t.margen.porcentaje | numero(0)) ~ ' %',
-         (t.margen.ganancia | pesos) ~ ' sobre ' ~ (t.margen.total | pesos),
-         (t.margen.sin_costo ~ ' sin costo cargado') if t.margen.sin_costo else None) }}
+         ((('%+.0f' % t.contra_margen) ~ ' puntos contra el promedio, al día ' ~ t.hoy.day)
+           if t.promedio_margen else ((t.margen.ganancia | pesos) ~ ' sobre ' ~ (t.margen.total | pesos))),
+         (('Promedio últimos 6 meses al día ' ~ t.hoy.day ~ ': ' ~ (t.promedio_margen | numero(0)) ~ ' %')
+           if t.promedio_margen else ((t.margen.sin_costo ~ ' sin costo cargado') if t.margen.sin_costo else None)),
+         t.tono_margen, ((t.promedio_margen | numero(0)) ~ ' %') if t.promedio_margen else None,
+         (t.margen.ganancia | pesos) ~ ' sobre ' ~ (t.margen.total | pesos)
+           ~ ((' · ' ~ t.margen.sin_costo ~ ' ítems sin costo cargado') if t.margen.sin_costo else '')) }}
 
 {{ reloj(t.relojes.resultado, 'Resultado del mes', 'fa-scale-balanced', t.plata.resultado | pesos,
          (('%+d' % t.contra_resultado) ~ ' % contra el promedio, al día ' ~ t.hoy.day)

@@ -97,6 +97,46 @@ def _proyeccion(hoy, facturado):
 # ───────────────────────────── Margen ───────────────────────────────
 
 
+def tono_por_puntos(diferencia):
+    """Para el margen, que se compara en puntos y no en porcentaje.
+
+    Bajar 20 % de facturación es un mes flojo; bajar 20 puntos de margen sería
+    una catástrofe. Acá cinco puntos ya es para mirar y diez para preocuparse.
+    """
+    if diferencia <= -10:
+        return "tono-malo"
+    if diferencia <= -5:
+        return "tono-aviso"
+    return ""
+
+
+def margen_al_dia(hoy):
+    """El margen de cada mes hasta el mismo día, para tener contra qué comparar.
+
+    Un 60 % suelto no dice nada: puede ser el mejor mes del año o el peor. Y
+    comparar diez días contra meses enteros tampoco, porque un repuesto caro al
+    principio del mes mueve mucho el número hasta que entra el resto.
+    """
+    filas = []
+    for primero in _ultimos_meses(hoy, MESES_COMPARA):
+        hasta = f"{primero:%Y-%m}-{min(hoy.day, 31):02d}"
+        ventas = Venta.query.filter(Venta.fecha >= primero.isoformat(), Venta.fecha <= hasta).all()
+        total = sum(v.cobrado for v in ventas)
+        costo = sum(v.costo_total for v in ventas)
+        filas.append({"mes": primero, "clave": _mes_de(primero), "total": total,
+                      "porcentaje": (total - costo) / total * 100 if total else 0})
+    return filas
+
+
+def promedio_de_margenes(hoy):
+    """El margen promedio de los meses anteriores, hasta el mismo día.
+
+    Los meses sin ventas no cuentan: un cero arrastraría el promedio a la nada.
+    """
+    anteriores = [f["porcentaje"] for f in margen_al_dia(hoy)[:-1] if f["total"]]
+    return sum(anteriores) / len(anteriores) if anteriores else 0
+
+
 def margen_del_mes(hoy):
     """Lo facturado menos lo que costaron los repuestos y la compra."""
     desde, hasta = hoy.replace(day=1), hoy
@@ -278,6 +318,11 @@ def relojes_del_mes(hoy=None):
     contra = (actual["total"] / promedio - 1) * 100 if promedio else 0
 
     margen = margen_del_mes(hoy)
+    # El margen también se compara contra los meses anteriores al mismo día: un
+    # 60 % suelto no dice si es un buen mes. La diferencia va en puntos, no en
+    # porcentaje, porque comparar dos porcentajes entre sí se lee mal.
+    prom_margen = promedio_de_margenes(hoy)
+    contra_margen = margen["porcentaje"] - prom_margen if prom_margen else 0
     # Hasta hoy, no el mes entero: es lo que se compara contra el promedio
     plata = resultado_del_mes(_mes_de(hoy), hoy.day)
     stock = valor_del_stock()
@@ -292,7 +337,7 @@ def relojes_del_mes(hoy=None):
         "hoy": hoy,
         "relojes": {
             "facturacion": reloj(actual["total"], max(actual["total"], promedio) * 1.25 or 1, promedio),
-            "margen": reloj(margen["porcentaje"], 100),
+            "margen": reloj(margen["porcentaje"], 100, prom_margen or None),
             "resultado": reloj(max(plata["resultado"], 0),
                                max(plata["resultado"], prom_resultado) * 1.25 or 1,
                                prom_resultado if compara else None),
@@ -304,6 +349,9 @@ def relojes_del_mes(hoy=None):
         "contra_promedio": contra,
         "tono": tono(contra) if promedio else "",
         "margen": margen,
+        "promedio_margen": prom_margen,
+        "contra_margen": contra_margen,
+        "tono_margen": tono_por_puntos(contra_margen) if prom_margen else "",
         "plata": plata,
         "promedio_resultado": prom_resultado if compara else 0,
         "contra_resultado": contra_resultado,

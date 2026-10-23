@@ -142,4 +142,27 @@ with app.app_context():
     assert t['promedio_resultado'] == 0 and t['contra_resultado'] == 0, t['contra_resultado']
     assert t['tono_resultado'] == '', 'no puede pintarse rojo o verde sin con qué comparar'
 
+# ── El margen bruto también se compara contra los meses anteriores ──
+with app.app_context():
+    from app.services.performance import margen_al_dia, promedio_de_margenes, tono_por_puntos
+    filas = margen_al_dia(HOY)
+    assert len(filas) == 6 and filas[-1]['clave'] == performance._mes_de(HOY)
+    # Cada mes mide hasta el mismo día
+    assert all('porcentaje' in f for f in filas)
+
+    t = performance.relojes_del_mes(HOY)
+    assert 'promedio_margen' in t and 'contra_margen' in t
+    if t['promedio_margen']:
+        # La diferencia va en puntos: 70 % contra un promedio de 60 % son +10
+        esperado = t['margen']['porcentaje'] - t['promedio_margen']
+        assert abs(t['contra_margen'] - esperado) < 0.01, (t['contra_margen'], esperado)
+        assert t['relojes']['margen'].get('marca'), 'el reloj del margen tiene que marcar el promedio'
+
+# Cinco puntos abajo avisa, diez puntos abajo es malo; arriba no pinta nada
+assert tono_por_puntos(2) == '' and tono_por_puntos(-4) == ''
+assert tono_por_puntos(-6) == 'tono-aviso' and tono_por_puntos(-12) == 'tono-malo'
+
+b = B(c.get('/administracion/performance'))
+assert 'puntos contra el promedio' in b, 'la tarjeta de margen no dice contra qué compara'
+
 print('PERFORMANCE OK')
