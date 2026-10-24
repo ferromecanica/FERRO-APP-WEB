@@ -126,6 +126,14 @@ NUMERICAS = {col for col, _, _, numerica in COLUMNAS if numerica}
 COMPARACION = re.compile(r"^(>=|<=|>|<|=)?\s*(-?[\d.,]+)\s*%?$")
 
 
+# Por qué columna se filtra cada una. Casi siempre es la misma por la que se
+# ordena, pero no siempre: Material se ordena por el código —que es lo que
+# muestra la celda, "1243 · NOMBRE"— y se filtra por el nombre, que es lo que
+# uno escribe. Compartir el mapa hacía que buscar "KIT" en Material lo buscara
+# adentro del número de repuesto y no encontrara nunca nada.
+FILTROS = dict(ORDENES, material=Repuesto.nombre)
+
+
 def _filtro_numero(columna, texto, escala=1):
     """'> 10', '<=3' o '5' a secas. Devuelve None si no se entiende lo escrito."""
     partido = COMPARACION.match(texto)
@@ -155,10 +163,10 @@ def _filtrar_por_columna(consulta, filtros):
         elif col in NUMERICAS:
             # El descuento se escribe en % ("20") pero se guarda como fracción (0,20)
             escala = 100 if col == "descuento" else 1
-            condicion = _filtro_numero(ORDENES[col], texto, escala)
+            condicion = _filtro_numero(FILTROS[col], texto, escala)
             consulta = consulta.filter(condicion if condicion is not None else db.false())
         else:
-            consulta = consulta.filter(_como(ORDENES[col], like))
+            consulta = consulta.filter(_como(FILTROS[col], like))
     return consulta
 
 

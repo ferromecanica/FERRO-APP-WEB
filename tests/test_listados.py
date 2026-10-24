@@ -36,6 +36,20 @@ assert 'Filtro Chevrolet' not in b, 'el filtro de marca se perdió al agregar el
 b = cuerpo('/stock/?f_stock=<=2')
 assert 'Filtro Fiat flojo' in b and 'Filtro Chevrolet' not in b
 
+# ── Material se ordena por código pero se filtra por nombre ──
+# Compartían el mismo mapa: filtrar "Filtro" buscaba esa palabra adentro del
+# número de repuesto y no devolvía nunca nada.
+b = cuerpo('/stock/?f_material=flojo')
+assert 'Filtro Fiat flojo' in b and 'Filtro Chevrolet' not in b, 'el filtro de Material no busca en el nombre'
+assert cuerpo('/stock/?f_material=FILTRO').count('Filtro') >= 3, 'tiene que traer los tres'
+assert 'No hay repuestos' in B(c.get('/stock/?f_material=noexisteestapalabra'))
+# Y se combina con el stock, que es el caso real: "los KIT que están en cero"
+# (los tres de prueba tienen 2, 40 y 7, así que en cero no hay ninguno)
+assert 'No hay repuestos' in B(c.get('/stock/?f_material=filtro&f_stock=0'))
+b = cuerpo('/stock/?f_material=filtro&f_stock=%3C%3D2')
+assert 'Filtro Fiat flojo' in b, 'el que tiene 2 tiene que aparecer pidiendo 2 o menos'
+assert 'Filtro Fiat surtido' not in b and 'Filtro Chevrolet' not in b
+
 # ── El descuento se escribe en % aunque se guarde como fracción ──
 assert 'Filtro Fiat flojo' in cuerpo('/stock/?f_descuento=20')
 assert 'No hay repuestos' in B(c.get('/stock/?f_descuento=0,20')), 'el % se interpretó como fracción' 
