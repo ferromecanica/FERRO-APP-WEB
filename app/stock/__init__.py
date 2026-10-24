@@ -932,7 +932,12 @@ def comprar():
     listos = (AComprar.query.filter_by(comprado=True)
               .order_by(AComprar.fecha_comprado.desc(), AComprar.id.desc()).all())
     todos = bool(request.args.get("todos"))
+    # Cuánto sale comprar lo pendiente. Lo escrito a mano no tiene precio, así
+    # que se cuenta aparte en vez de sumar cero y mentir sobre el total.
+    con_precio = [p for p in pendientes if p.costo]
     return render_template("stock/comprar.html", pendientes=pendientes,
+                           total_pendiente=sum(p.costo for p in con_precio),
+                           sin_precio=len(pendientes) - len(con_precio),
                            comprados=listos if todos else listos[:TOPE_COMPRADOS],
                            cuantos_comprados=len(listos), todos=todos,
                            repuestos=para_elegir(), hoy=date.today())

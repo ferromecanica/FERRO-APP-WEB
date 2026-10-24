@@ -872,6 +872,17 @@ class AComprar(TimestampMixin, db.Model):
         """Cómo se lee en el listado, sea del stock o escrito a mano."""
         return self.repuesto.nombre if self.repuesto else (self.texto or "")
 
+    @property
+    def costo(self):
+        """Lo que costaría comprarlo, al último costo cargado del repuesto.
+
+        Solo de los del stock: de lo escrito a mano no sabemos el precio, y
+        ponerle cero haría parecer que no cuesta nada.
+        """
+        if self.repuesto and self.repuesto.precio_costo:
+            return (self.cantidad or 0) * self.repuesto.precio_costo
+        return None
+
 
 # ──────────────────────────────── Presupuestos ──────────────────────────────
 

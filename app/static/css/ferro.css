@@ -328,13 +328,14 @@ textarea { min-height: 90px; resize: vertical; }
   .lista-comprar tr {
     display: grid; align-items: start; column-gap: 4px; padding: 6px 8px;
     grid-template-columns: auto 1fr auto;
-    grid-template-areas: "tilde que borrar" "tilde nota nota" "tilde cuando cuando";
+    grid-template-areas: "tilde que borrar" "tilde nota costo" "tilde cuando cuando";
   }
   .lista-comprar .t-tilde { grid-area: tilde; align-self: center; }
   .lista-comprar .t-que { grid-area: que; }
   .lista-comprar .t-nota { grid-area: nota; }
   .lista-comprar .t-cuando { grid-area: cuando; }
   .lista-comprar .t-borrar { grid-area: borrar; }
+  .lista-comprar .t-costo { grid-area: costo; text-align: right !important; }
   .lista-comprar td[data-titulo]::before { content: none; }   /* el renglón se lee solo */
   .lista-comprar .t-nota, .lista-comprar .t-cuando { color: var(--muted); font-size: .88em; }
   .lista-comprar .t-cuando { text-align: left !important; }

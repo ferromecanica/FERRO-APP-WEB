@@ -28,14 +28,17 @@
   <td class="izq envuelve t-que" data-titulo="Qué">
     <span class="cuantos">{{ p.cantidad | numero(2) | replace(',00', '') }} ×</span>
     {% if p.repuesto %}
-      <a href="{{ url_for('stock.ficha', id=p.repuesto_id) }}">{{ p.repuesto.nombre }}</a>
-      <div class="muted small">del stock · quedan {{ p.repuesto.stock_actual | numero(2) | replace(',00', '') }}</div>
+      <a href="{{ url_for('stock.ficha', id=p.repuesto_id) }}"><span class="muted">{{ p.repuesto_id }}</span> · {{ p.repuesto.nombre }}</a>
+      <div class="muted small">del stock · quedan {{ p.repuesto.stock_actual | numero(2) | replace(',00', '') }}
+        {%- if p.repuesto.precio_costo %} · costo {{ p.repuesto.precio_costo | pesos }} c/u{% endif %}</div>
     {% else %}
       {{ p.texto }}
       <div class="muted small">a mano</div>
     {% endif %}
   </td>
   <td class="izq envuelve t-nota" data-titulo="Nota">{{- p.nota or '' -}}</td>
+  <td class="num t-costo" data-titulo="Sale">
+    {%- if p.costo %}<strong>{{ p.costo | pesos }}</strong>{% else %}<span class="muted">—</span>{% endif %}</td>
   <td class="centro fecha-chica hide-sm t-cuando" data-titulo="Cuándo">
     {{ (p.fecha_comprado or p.creado.date()) | fecha }}
     {% if p.anotado_por and not p.comprado %}<span class="muted small quien">{{ p.anotado_por }}</span>{% endif %}
@@ -50,9 +53,9 @@
 {% endmacro %}
 
 {% macro cabecera() %}
-<colgroup><col style="width:48px"><col><col><col style="width:110px"><col style="width:48px"></colgroup>
+<colgroup><col style="width:48px"><col><col><col style="width:120px"><col style="width:110px"><col style="width:48px"></colgroup>
 <thead><tr><th></th><th class="izq">Qué</th><th class="izq">Nota</th>
-  <th class="centro hide-sm">Cuándo</th><th></th></tr></thead>
+  <th class="num">Sale</th><th class="centro hide-sm">Cuándo</th><th></th></tr></thead>
 {% endmacro %}
 
 {% block content %}
@@ -66,11 +69,20 @@
 
 <div class="card">
   <div class="card-head seccion"><h2><i class="fa-regular fa-rectangle-list"></i> Pendientes</h2>
-    <span class="muted small">{{ pendientes | length }} pendiente{{ 's' if pendientes | length != 1 }}</span></div>
+    <span class="muted small">{{ pendientes | length }} pendiente{{ 's' if pendientes | length != 1 }}
+      {%- if total_pendiente %} · sale <strong>{{ total_pendiente | pesos }}</strong>
+        {%- if sin_precio %} <span class="muted">(falta el precio de {{ sin_precio }})</span>{% endif %}
+      {%- endif %}</span></div>
   {% if pendientes %}
   <div class="table-wrap"><table class="tabla-densa lista-movil lista-comprar">
     {{ cabecera() }}
-    <tbody>{% for p in pendientes %}{{ renglon(p) }}{% endfor %}</tbody>
+    <tbody>{% for p in pendientes %}{{ renglon(p) }}{% endfor %}
+      {% if total_pendiente %}
+      <tr class="total-row"><td></td><td class="izq">Total a comprar</td><td></td>
+        <td class="num"><strong>{{ total_pendiente | pesos }}</strong></td>
+        <td class="hide-sm"></td><td></td></tr>
+      {% endif %}
+    </tbody>
   </table></div>
   {% else %}{{ vacio('fa-regular fa-rectangle-list', 'No hay nada pendiente de comprar.') }}{% endif %}
 

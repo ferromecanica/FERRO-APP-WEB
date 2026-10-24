@@ -140,4 +140,35 @@ assert f'Ver los {archivados}' in b
 b = B(c.get('/stock/comprar?todos=1'))
 assert b.count('Comprado ') == TOPE_COMPRADOS + 4, b.count('Comprado ')
 
+# ── Lo que sale: el costo del stock, y el total de lo pendiente ──
+with app.app_context():
+    AComprar.query.delete()
+    rep2 = Repuesto.query.filter(Repuesto.id != Repuesto.ID_VARIOS, Repuesto.id != rid).first()
+    rep2.precio_costo, caro = 3000, rep2.id
+    db.session.get(Repuesto, rid).precio_costo = 500
+    db.session.add_all([
+        AComprar(repuesto_id=rid, cantidad=4),        # 4 × 500  = 2.000
+        AComprar(repuesto_id=caro, cantidad=2),       # 2 × 3000 = 6.000
+        AComprar(texto='Trapos', cantidad=1),         # a mano: sin precio
+    ])
+    db.session.commit()
+    deacuatro = AComprar.query.filter_by(repuesto_id=rid).one()
+    assert deacuatro.costo == 2000, deacuatro.costo
+    assert AComprar.query.filter_by(texto='Trapos').one().costo is None, 'lo escrito a mano no tiene precio'
+
+b = B(c.get('/stock/comprar'))
+assert '$ 8.000' in b, 'falta el total de lo pendiente'
+assert 'falta el precio de 1' in b, 'tiene que avisar cuántos no tienen precio'
+assert 'Total a comprar' in b
+# Y se ve el código del repuesto, no solo el nombre
+assert f'>{rid}</span>' in b, 'falta el código del repuesto en el renglón'
+
+# Un repuesto sin costo cargado no inventa un precio
+with app.app_context():
+    db.session.get(Repuesto, rid).precio_costo = 0
+    db.session.commit()
+    assert AComprar.query.filter_by(repuesto_id=rid).one().costo is None
+b = B(c.get('/stock/comprar'))
+assert '$ 6.000' in b and 'falta el precio de 2' in b
+
 print('A COMPRAR OK')
