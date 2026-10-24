@@ -156,7 +156,14 @@ with app.app_context():
         # La diferencia va en puntos: 70 % contra un promedio de 60 % son +10
         esperado = t['margen']['porcentaje'] - t['promedio_margen']
         assert abs(t['contra_margen'] - esperado) < 0.01, (t['contra_margen'], esperado)
-        assert t['relojes']['margen'].get('marca'), 'el reloj del margen tiene que marcar el promedio'
+        # La tarjeta son seis barras, una por mes, con la línea del promedio cruzada
+        assert len(t['margen_meses']) == 6
+        assert sum(1 for f in t['margen_meses'] if f['actual']) == 1, 'un solo mes es el actual'
+        assert all(0 <= f['alto'] <= 100 for f in t['margen_meses']), 'alturas fuera de escala'
+        assert 0 < t['alto_promedio_margen'] < 100, 'la línea del promedio tiene que caer adentro'
+        # La escala no arranca en 100: si no, entre 56 % y 74 % no se vería diferencia
+        mayor = max(f['alto'] for f in t['margen_meses'])
+        assert mayor > 60, 'la barra más alta tiene que ocupar el dibujo, no quedar chiquita'
 
 # Cinco puntos abajo avisa, diez puntos abajo es malo; arriba no pinta nada
 assert tono_por_puntos(2) == '' and tono_por_puntos(-4) == ''
@@ -164,5 +171,7 @@ assert tono_por_puntos(-6) == 'tono-aviso' and tono_por_puntos(-12) == 'tono-mal
 
 b = B(c.get('/administracion/performance'))
 assert 'puntos contra el promedio' in b, 'la tarjeta de margen no dice contra qué compara'
+assert 'columnas-promedio' in b, 'falta la línea del promedio sobre las barras'
+assert b.count('columna-barra') >= 6, 'faltan barras de los últimos 6 meses'
 
 print('PERFORMANCE OK')

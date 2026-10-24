@@ -726,6 +726,26 @@ th.soltar-aca { box-shadow: inset 3px 0 0 var(--accent); background: #ffd9b0 !im
 .filtros-columna[hidden] { display: none; }   /* el display:grid le gana al atributo hidden */
 .filtros-pie { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
+/* Seis meses en columnas, con la línea del promedio cruzada. Ocupa lo mismo
+   que un reloj, para que las cuatro tarjetas sigan midiendo igual. */
+.columnas { margin: 0 auto 4px; max-width: 210px; }
+/* El importe se mete adentro del arco del reloj; acá abajo de las barras no
+   tiene nada que tapar, así que no se sube */
+.columnas + .reloj-valor { margin-top: 6px; }
+.columnas-plot { position: relative; display: flex; align-items: flex-end; gap: 6px; height: 68px; }
+.columna { flex: 1; display: flex; align-items: flex-end; height: 100%; }
+.columna-barra { display: block; width: 100%; border-radius: 4px 4px 0 0;
+  background: var(--border); min-height: 2px; }
+.columna.actual .columna-barra { background: var(--ok); }
+.columna.actual.tono-aviso .columna-barra { background: var(--warn); }
+.columna.actual.tono-malo .columna-barra { background: var(--danger); }
+.columnas-promedio { position: absolute; left: -2px; right: -2px; z-index: 1;
+  border-top: 1px dashed var(--muted); opacity: .75; }
+.columnas-meses { display: flex; gap: 6px; margin-top: 4px; }
+.columnas-meses span { flex: 1; text-align: center; font-size: .62rem; color: var(--muted);
+  letter-spacing: .02em; }
+.columnas-meses span.actual { color: var(--text); font-weight: 700; }
+
 /* La cuenta de un cobro en partes: acordado, lo que entró y lo que falta */
 .cuenta-cobro { display: flex; flex-wrap: wrap; gap: 10px 26px; padding: 10px 14px;
   border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
@@ -931,6 +951,9 @@ table.formas-pago td.num { font-variant-numeric: tabular-nums; white-space: nowr
 @media (max-width: 720px) {
   /* En el celular entran de a dos: el número no se puede cortar */
   .reloj-valor { font-size: 1.05rem; white-space: nowrap; margin-top: -10px; }
+  .columnas + .reloj-valor { margin-top: 4px; }
+  .columnas { max-width: 150px; }
+  .columnas-plot { height: 52px; }
   .reloj-pie { font-size: .78rem; }
   .reloj { max-width: 130px; }
   .torta-caja { gap: 12px; }

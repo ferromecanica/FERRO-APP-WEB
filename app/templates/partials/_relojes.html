@@ -23,6 +23,35 @@
 {% endmacro %}
 
 
+{# Para un porcentaje, seis barras dicen más que una aguja: se ve la racha.
+   La línea punteada es el promedio, que es contra lo que se compara. #}
+{% macro columnas(serie, alto_promedio, titulo, icono, valor, pie, nota=None, tono='', pie2=None) %}
+<div class="card">
+  <div class="card-head seccion"><h2><i class="fa-solid {{ icono }}"></i> {{ titulo }}</h2>
+    {% if nota %}<span class="muted small">{{ nota }}</span>{% endif %}</div>
+  <div class="card-body">
+    <div class="columnas">
+      <div class="columnas-plot">
+        {# La línea del promedio va adentro del área de las barras, no sobre los meses #}
+        {% if alto_promedio %}<div class="columnas-promedio" style="bottom:{{ alto_promedio }}%"></div>{% endif %}
+        {% for f in serie %}
+        <div class="columna {{ 'actual' if f.actual }} {{ tono if f.actual }}"
+             title="{{ f.mes | mes_largo | capitalize }}: {{ f.porcentaje | numero(0) }} %">
+          <span class="columna-barra" style="height:{{ f.alto }}%"></span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="columnas-meses">
+        {% for f in serie %}<span class="{{ 'actual' if f.actual }}">{{ (f.mes | mes_largo)[:3] | capitalize }}</span>{% endfor %}
+      </div>
+    </div>
+    <div class="reloj-valor">{{ valor }}</div>
+    <div class="reloj-pie {{ tono }}">{{ pie }}</div>
+    {% if pie2 %}<div class="reloj-pie2">{{ pie2 }}</div>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
 {% macro cuatro(t) %}
 {{ reloj(t.relojes.facturacion, 'Facturado en el mes', 'fa-chart-line', t.facturado | pesos,
          (('%+d' % t.contra_promedio) ~ ' % contra el promedio, al día ' ~ t.hoy.day)
@@ -30,12 +59,13 @@
          ('Promedio últimos 6 meses ' ~ (t.promedio | pesos)) if t.promedio else None,
          t.tono, (t.promedio | pesos) if t.promedio else None) }}
 
-{{ reloj(t.relojes.margen, 'Margen bruto', 'fa-percent', (t.margen.porcentaje | numero(0)) ~ ' %',
+{{ columnas(t.margen_meses, t.alto_promedio_margen, 'Margen bruto', 'fa-percent',
+         (t.margen.porcentaje | numero(0)) ~ ' %',
          ((('%+.0f' % t.contra_margen) ~ ' puntos contra el promedio, al día ' ~ t.hoy.day)
            if t.promedio_margen else ((t.margen.ganancia | pesos) ~ ' sobre ' ~ (t.margen.total | pesos))),
-         (('Promedio últimos 6 meses al día ' ~ t.hoy.day ~ ': ' ~ (t.promedio_margen | numero(0)) ~ ' %')
-           if t.promedio_margen else ((t.margen.sin_costo ~ ' sin costo cargado') if t.margen.sin_costo else None)),
-         t.tono_margen, ((t.promedio_margen | numero(0)) ~ ' %') if t.promedio_margen else None,
+         ('Promedio ' ~ (t.promedio_margen | numero(0)) ~ ' %, al día ' ~ t.hoy.day)
+           if t.promedio_margen else ((t.margen.sin_costo ~ ' sin costo cargado') if t.margen.sin_costo else None),
+         t.tono_margen,
          (t.margen.ganancia | pesos) ~ ' sobre ' ~ (t.margen.total | pesos)
            ~ ((' · ' ~ t.margen.sin_costo ~ ' ítems sin costo cargado') if t.margen.sin_costo else '')) }}
 

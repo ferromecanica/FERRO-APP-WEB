@@ -128,13 +128,25 @@ def margen_al_dia(hoy):
     return filas
 
 
-def promedio_de_margenes(hoy):
+def promedio_de_margenes(hoy, filas=None):
     """El margen promedio de los meses anteriores, hasta el mismo día.
 
     Los meses sin ventas no cuentan: un cero arrastraría el promedio a la nada.
     """
-    anteriores = [f["porcentaje"] for f in margen_al_dia(hoy)[:-1] if f["total"]]
+    anteriores = [f["porcentaje"] for f in (filas or margen_al_dia(hoy))[:-1] if f["total"]]
     return sum(anteriores) / len(anteriores) if anteriores else 0
+
+
+def _columnas(filas, promedio, clave="porcentaje"):
+    """Le pone a cada mes qué alto le toca en el dibujo, y dónde va el promedio.
+
+    La escala no arranca en 100: entre 58 % y 74 % la diferencia se tiene que
+    ver, y contra un techo de 100 todas las columnas quedarían casi iguales.
+    """
+    tope = max([f[clave] for f in filas] + [promedio, 1]) * 1.15
+    for f in filas:
+        f["alto"] = round(f[clave] / tope * 100, 1)
+    return round(promedio / tope * 100, 1)
 
 
 def margen_del_mes(hoy):
@@ -321,7 +333,11 @@ def relojes_del_mes(hoy=None):
     # El margen también se compara contra los meses anteriores al mismo día: un
     # 60 % suelto no dice si es un buen mes. La diferencia va en puntos, no en
     # porcentaje, porque comparar dos porcentajes entre sí se lee mal.
-    prom_margen = promedio_de_margenes(hoy)
+    margen_meses = margen_al_dia(hoy)
+    for f in margen_meses:
+        f["actual"] = f["clave"] == _mes_de(hoy)
+    prom_margen = promedio_de_margenes(hoy, margen_meses)
+    alto_prom_margen = _columnas(margen_meses, prom_margen)
     contra_margen = margen["porcentaje"] - prom_margen if prom_margen else 0
     # Hasta hoy, no el mes entero: es lo que se compara contra el promedio
     plata = resultado_del_mes(_mes_de(hoy), hoy.day)
@@ -350,6 +366,8 @@ def relojes_del_mes(hoy=None):
         "tono": tono(contra) if promedio else "",
         "margen": margen,
         "promedio_margen": prom_margen,
+        "margen_meses": margen_meses,
+        "alto_promedio_margen": alto_prom_margen,
         "contra_margen": contra_margen,
         "tono_margen": tono_por_puntos(contra_margen) if prom_margen else "",
         "plata": plata,
