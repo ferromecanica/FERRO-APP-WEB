@@ -139,6 +139,27 @@ with app.app_context():
     assert caja.entradas_por_ventas() == caja_antes + 80000, 'a la caja va solo la parte en efectivo'
     assert sorted(p.destino for p in o.cobros) == ['Banco', 'Caja']
 
+# ── Lo que pagó a medias sigue apareciendo en el listado y en el Tablero ──
+# Antes, en cuanto entraba el primer pago la OT ya tenía una venta y las dos
+# consultas la dejaban afuera: desaparecía justo la que había que ir a cobrar.
+with app.app_context():
+    a_medias = db.session.get(OrdenTrabajo, oid3)   # pagó 100.000 de 300.000
+    assert a_medias.por_cobrar and a_medias.ventas, 'la prueba necesita una OT pagada a medias'
+    porsql = OrdenTrabajo.query.filter(OrdenTrabajo.filtro_por_cobrar()).all()
+    porpropiedad = [o for o in OrdenTrabajo.query.all() if o.por_cobrar]
+    assert {o.id for o in porsql} == {o.id for o in porpropiedad}, 'el filtro no dice lo mismo que la OT'
+    assert oid3 in {o.id for o in porsql}, 'la pagada a medias se cayó del filtro'
+    assert a_medias.falta_cobrar == 200000, a_medias.falta_cobrar
+
+b = B(c.get('/ot/?estado=por_cobrar'))
+assert f'>{oid3}<' in b.replace(' ', ''), 'el listado Por cobrar no muestra la pagada a medias'
+
+b = B(c.get('/'))
+assert 'Por cobrar' in b, 'el Tablero tiene que mostrar la tarjeta'
+with app.app_context():
+    cuantas = OrdenTrabajo.query.filter(OrdenTrabajo.filtro_por_cobrar()).count()
+assert f'{cuantas} OT' in b, f'el Tablero no cuenta las {cuantas} por cobrar'
+
 # En Ventas se ve cada pago, atado a su OT
 b = B(c.get('/ventas/'))
 assert f'OT #{oid2}' in b and '2º pago' in b, 'el listado de ventas no distingue los pagos'

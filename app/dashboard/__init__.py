@@ -21,8 +21,7 @@ def index():
         .order_by(OrdenTrabajo.fecha_ingreso).all()
     turnos = Turno.query.filter(Turno.fecha >= hoy, Turno.estado != "Cancelado") \
         .order_by(Turno.fecha, Turno.hora).limit(6).all()
-    por_cobrar = OrdenTrabajo.query.filter(OrdenTrabajo.estado == "Finalizada", ~OrdenTrabajo.ventas.any(),
-                                           OrdenTrabajo.sin_cargo.is_(False)).all()
+    por_cobrar = OrdenTrabajo.query.filter(OrdenTrabajo.filtro_por_cobrar()).all()
     valor_hora = ConfigTaller.get().valor_hora or 0
     facturado = sum(v.total for v in ventas_mes)
     ganancia = sum(v.ganancia for v in ventas_mes)
@@ -35,7 +34,8 @@ def index():
         ots_abiertas=ots_abiertas,
         turnos=turnos,
         cant_por_cobrar=len(por_cobrar),
-        monto_por_cobrar=sum(o.horas_insumidas * valor_hora + o.total_repuestos for o in por_cobrar),
+        # Lo que falta entrar: de las que cobraron una parte, solo el saldo
+        monto_por_cobrar=sum(o.falta_cobrar for o in por_cobrar),
     )
 
 

@@ -128,8 +128,7 @@ def lista():
     q = request.args.get("q", "").strip()
     consulta = OrdenTrabajo.query.join(Vehiculo).outerjoin(Cliente, OrdenTrabajo.cliente_id == Cliente.id)
     if estado == "por_cobrar":
-        consulta = consulta.filter(OrdenTrabajo.estado == "Finalizada", ~OrdenTrabajo.ventas.any(),
-                                   OrdenTrabajo.sin_cargo.is_(False))
+        consulta = consulta.filter(OrdenTrabajo.filtro_por_cobrar())
     elif estado:
         consulta = consulta.filter(OrdenTrabajo.estado == estado)
     for palabra in q.split():  # todas las palabras tienen que aparecer en algún lado

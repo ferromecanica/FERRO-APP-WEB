@@ -284,6 +284,36 @@ class OrdenTrabajo(TimestampMixin, db.Model):
         return self.saldo >= 1      # con menos de un peso ya está saldada
 
     @classmethod
+    def filtro_por_cobrar(cls):
+        """Lo mismo que `por_cobrar`, pero para filtrar en la base.
+
+        Tiene que decir exactamente lo mismo que la propiedad: si se separan,
+        el listado y el tablero muestran una cosa y la ficha de la OT otra.
+        """
+        return db.and_(
+            cls.estado == "Finalizada",
+            cls.sin_cargo.is_(False),
+            db.or_(
+                ~cls.ventas.any(),                       # no entró nada todavía
+                db.and_(                                 # pagó una parte y falta el resto
+                    cls.monto_acordado.isnot(None),
+                    cls.monto_acordado - db.func.coalesce(cls.total_cobrado, 0) >= 1,
+                ),
+            ),
+        )
+
+    @property
+    def falta_cobrar(self):
+        """Cuánta plata falta entrar por esta OT.
+
+        Con un monto acordado es el saldo. Sin él no sabemos cuánto se arregló,
+        así que vale lo calculado, que es lo mejor que tenemos.
+        """
+        if self.monto_acordado:
+            return self.saldo
+        return self.total_repuestos + self.horas_insumidas * (ConfigTaller.get().valor_hora or 0)
+
+    @classmethod
     def proximo_numero(cls):
         ultimo = db.session.query(db.func.max(cls.id)).scalar()
         return (ultimo or 9999) + 1
