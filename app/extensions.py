@@ -13,8 +13,10 @@ csrf = CSRFProtect()
 migrate = Migrate(render_as_batch=True)  # batch: SQLite no soporta ALTER COLUMN
 
 login_manager.login_view = "auth.login"
-login_manager.login_message = "Ingresá para continuar."
-login_manager.login_message_category = "info"
+# Sin aviso al mandar al login: la pantalla ya dice qué hacer, y el cartel se
+# leía como un casillero más para completar. Los errores de verdad ("usuario o
+# contraseña incorrectos") los avisa la propia pantalla de ingreso.
+login_manager.login_message = ""
 
 
 def sin_acentos(texto):
